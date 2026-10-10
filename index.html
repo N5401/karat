@@ -1070,7 +1070,7 @@ const CONFIG = {
     expert:    "https://buy.stripe.com/bJe28j0GQclk5E93ib5c402"
   },
   VERIFY_ENDPOINT: "",   // serveur qui confirme l'abonnement après paiement (webhook Stripe)
-  AI_ENDPOINT: "ai.php"        // moteur IA réel : POST {mode, messages} -> {reply}
+  AI_ENDPOINT: "/.netlify/functions/ai"        // moteur IA réel : POST {mode, messages} -> {reply}
 };
 
 const PLANS = {
