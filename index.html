@@ -3167,69 +3167,74 @@ async function fillAnnonceList(){
    GÉNÉRATION D'IMAGES (abonnés payants)
    ===================================================================== */
 const imagesUsed = () => { const u = users[emailOf(session && session.email)]; return (u && u.imagesUsed) || 0; };
+// Quota affiché selon l'offre (le serveur fait foi)
+function imgQuotaText(){
+  if (isAdmin(session && session.email)) return "Accès illimité.";
+  const p = planOf(session && session.email);
+  if (p === "expert") return "Offre Expert : images illimitées.";
+  if (p === "pro") return "Offre Pro : 10 images par jour.";
+  if (p === "essentiel") return "Offre Essentiel : 3 images par jour.";
+  return "Choisissez une offre pour générer des images.";
+}
 function vImages(){
+  const ref = ui.imgRef
+    ? `<div class="img-tray" style="margin:0 0 14px;padding:0"><div class="img-thumb"><img src="${ui.imgRef}" alt="Photo de référence"><button type="button" data-action="img-ref-remove" aria-label="Retirer la photo de référence"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div></div>`
+    : "";
   return appShell("/app/images", pageHead("Espace", "Génération d'images", "Décrivez l'image souhaitée, KARAT la génère pour vous.") +
     `<div class="card" style="max-width:720px">
-      ${inTrial() && TRIAL_IMAGES === 0 ? `<p class="muted small" style="margin-bottom:14px">La génération d'images n'est pas incluse dans l'essai gratuit. Choisissez une offre pour y accéder.</p>` : inTrial() ? `<p class="muted small" style="margin-bottom:14px">Essai gratuit : ${Math.max(0, TRIAL_IMAGES - imagesUsed())} image(s) restante(s) sur ${TRIAL_IMAGES}.</p>` : ""}
-      <div class="field" style="margin-bottom:16px"><label for="img-prompt">DESCRIPTION</label><textarea id="img-prompt" class="textarea" rows="3" maxlength="1000" placeholder="Ex : un logo minimaliste vert citron sur fond noir"></textarea></div>
-      <button class="btn btn-accent" data-action="img-generate">Générer l'image</button>
+      <p class="muted small" style="margin-bottom:14px">${esc(imgQuotaText())}</p>
+      ${ref}
+      <div class="field" style="margin-bottom:16px"><label for="img-prompt">DESCRIPTION</label><textarea id="img-prompt" class="textarea" rows="3" maxlength="1000" placeholder="Ex : fais le même logo sur ce flyer, en vert citron"></textarea></div>
+      <div class="row" style="gap:10px;flex-wrap:wrap">
+        <button class="btn btn-accent" data-action="img-generate">Générer l'image</button>
+        <button class="btn btn-line" data-action="img-ref-pick">${ic("image")} ${ui.imgRef ? "Changer la photo" : "Ajouter une photo de référence"}</button>
+      </div>
+      <input type="file" id="imgRefFile" accept="image/*" hidden />
       <div id="img-out" style="margin-top:22px"></div>
     </div>`);
 }
 
 Object.assign(ACTIONS, {
-  "ann-create": async () => {
-    const title = ($("#ann-title")?.value || "").trim();
-    const text = ($("#ann-text")?.value || "").trim();
-    const hours = Number($("#ann-hours")?.value) || 24;
-    const token = ($("#ann-token")?.value || "").trim();
-    if (!title) return toast("Ajoutez un titre", true);
-    if (!token) return toast("Jeton administrateur requis", true);
-    try { sessionStorage.setItem("karat_admin_token", token); } catch (e) {}
-    const r = await fetch("/.netlify/functions/annonces", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-admin-token": token },
-      body: JSON.stringify({ title, text, hours })
-    });
-    const d = await r.json().catch(() => ({}));
-    if (!r.ok) return toast(d.error || "Publication impossible", true);
-    toast("Annonce publiée");
-    $("#ann-title").value = ""; $("#ann-text").value = "";
-    fillAnnonceList();
-  },
-  "ann-del": async el => {
-    const token = ($("#ann-token")?.value || "").trim() || adminToken();
-    const r = await fetch("/.netlify/functions/annonces", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-admin-token": token },
-      body: JSON.stringify({ action: "delete", id: el.dataset.id })
-    });
-    if (!r.ok) return toast("Retrait impossible", true);
-    toast("Annonce retirée");
-    fillAnnonceList();
-  },
+  "img-ref-pick": () => { const f = $("#imgRefFile"); if (f) f.click(); },
+  "img-ref-remove": () => { const pr = ($("#img-prompt") || {}).value || ""; ui.imgRef = null; render(); const t = $("#img-prompt"); if (t) t.value = pr; },
   "img-generate": async () => {
     const prompt = ($("#img-prompt")?.value || "").trim();
     const out = $("#img-out");
     if (!prompt) return toast("Décrivez l'image souhaitée", true);
-    if (!paidAccess() && imagesUsed() >= TRIAL_IMAGES){
-      toast("Essai terminé : choisissez une offre pour générer plus d'images", true);
+    if (!session) return go("/connexion?next=/app/images");
+    if (!paidAccess() && !isAdmin(session.email)){
+      toast("Choisissez une offre pour générer des images", true);
       return go("/tarifs");
     }
     out.innerHTML = `<p class="muted small">Génération en cours, cela peut prendre quelques secondes…</p>`;
     try {
       const r = await fetch("/.netlify/functions/image", {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt })
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: session.email, prompt, ref: ui.imgRef || null })
       });
       const d = await r.json().catch(() => ({}));
       if (!r.ok || !d.image) throw new Error(d.error || "Erreur");
-      if (!paidAccess()) { const u = users[emailOf(session.email)]; if (u){ u.imagesUsed = imagesUsed() + 1; saveUsers(); } }
+      const restant = d.remaining === null || d.remaining === undefined ? "" : `<p class="muted small" style="margin-top:12px">Il vous reste ${d.remaining} image${d.remaining > 1 ? "s" : ""} aujourd'hui.</p>`;
       out.innerHTML = `<img src="${d.image}" alt="${esc(prompt)}" style="width:100%;max-width:520px;border-radius:14px;border:1px solid var(--line)">
-        <div style="margin-top:14px"><a class="btn btn-line btn-sm" href="${d.image}" download="karat-image.png">Télécharger</a></div>`;
+        <div style="margin-top:14px"><a class="btn btn-line btn-sm" href="${d.image}" download="karat-image.png">Télécharger</a></div>${restant}`;
     } catch (e) {
-      out.innerHTML = `<p class="muted small">La génération a échoué. Réessayez dans un instant.</p>`;
+      out.innerHTML = `<p class="muted small">${esc(e.message === "Erreur" ? "La génération a échoué. Réessayez dans un instant." : e.message)}</p>`;
     }
   }
+});
+
+document.addEventListener("change", async e => {
+  if (!e.target || e.target.id !== "imgRefFile") return;
+  const file = (e.target.files || [])[0];
+  e.target.value = "";
+  if (!file) return;
+  const pr = ($("#img-prompt") || {}).value || "";
+  try {
+    const im = await shrinkImage(file);
+    ui.imgRef = im.data;
+    render();
+    const t = $("#img-prompt"); if (t) t.value = pr;
+  } catch (err) { toast(`« ${file.name} » n'a pas pu être lue. Essayez une photo JPG ou PNG.`, true); }
 });
 
 Object.assign(ACTIONS, {
