@@ -1536,6 +1536,13 @@ h1,.page-head h1,.h-xl{font-family:var(--display);font-weight:600;letter-spacing
 .bubble,.msgs,.msg .bubble *,.msg-meta,pre,pre *,code{-webkit-user-select:text!important;user-select:text!important;-webkit-touch-callout:default!important}
 .copy-btn{opacity:1!important}
 
+/* Téléphone : bouton « Se déconnecter » accessible depuis la barre du haut */
+@media (max-width:820px){
+  .side .foot{display:flex!important;flex:0 0 auto;align-items:center;margin:0 0 0 auto;padding:0;border:0}
+  .side .foot .plan-block,.side .foot .me-card{display:none!important}
+  .side .foot .btn{width:auto!important;margin-top:0!important;white-space:nowrap}
+}
+
 </style>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 
