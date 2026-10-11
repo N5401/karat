@@ -2,6 +2,11 @@
 // La clé est lue dans la variable d'environnement Netlify OPENAI_API_KEY, jamais dans ce fichier.
 // Chaque image est facturée par OpenAI : vérifiez votre solde sur platform.openai.com.
 
+// Modèle et qualité : modifiables ici. « gpt-image-2.5-sunburst » est le modèle actuel de la liste OpenAI,
+// « medium » est le meilleur compromis qualité / prix ; « high » donne plus de détails mais coûte plus cher.
+const IMAGE_MODEL = process.env.IMAGE_MODEL || "gpt-image-2.5-sunburst";
+const IMAGE_QUALITY = process.env.IMAGE_QUALITY || "medium";
+
 const json = (statusCode, body) => ({
   statusCode,
   headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" },
@@ -23,7 +28,7 @@ exports.handler = async (event) => {
     const r = await fetch("https://api.openai.com/v1/images/generations", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: "Bearer " + apiKey },
-      body: JSON.stringify({ model: "gpt-image-1", prompt, size: "1024x1024", quality: "low", n: 1 }),
+      body: JSON.stringify({ model: IMAGE_MODEL, prompt, size: "1024x1024", quality: IMAGE_QUALITY, n: 1 }),
     });
     const result = await r.json().catch(() => ({}));
     if (!r.ok || !result.data || !result.data[0] || !result.data[0].b64_json) {
