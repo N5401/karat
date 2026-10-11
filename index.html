@@ -1532,6 +1532,10 @@ h1,.page-head h1,.h-xl{font-family:var(--display);font-weight:600;letter-spacing
 .inbox textarea{background:transparent!important;border:0!important;box-shadow:none!important;outline:none!important;min-width:0!important;flex:1 1 0!important;width:auto!important;font-size:15px!important;line-height:1.4!important;padding:8px 6px!important}
 .inbox .send{flex:0 0 36px!important}
 
+/* Texte copiable au doigt (appui long) sur téléphone, bouton Copier toujours visible */
+.bubble,.msgs,.msg .bubble *,.msg-meta,pre,pre *,code{-webkit-user-select:text!important;user-select:text!important;-webkit-touch-callout:default!important}
+.copy-btn{opacity:1!important}
+
 </style>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 
@@ -2911,10 +2915,7 @@ const ACTIONS = {
   "plan":          el => startPlan(el.dataset.plan),
   "ack-confirm":   () => confirmAck(),
   "copy":          el => {
-    const txt = el.dataset.text;
-    const done = () => toast("Réponse copiée");
-    if (navigator.clipboard) navigator.clipboard.writeText(txt).then(done, () => toast("Copie impossible", true));
-    else toast("Copie non disponible sur ce navigateur", true);
+    copyText(el.dataset.text || "").then(() => toast("Réponse copiée"), () => toast("Copie impossible : sélectionnez le texte et copiez-le", true));
   },
   "set-mode":      el => {
     ui.mode = el.dataset.mode;
@@ -3195,11 +3196,7 @@ Object.assign(ACTIONS, {
 
 Object.assign(ACTIONS, {
   "copy-code": el => {
-    const txt = el.dataset.code || "";
-    const ok = () => toast("Code copié");
-    const ko = () => toast("Copie impossible", true);
-    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(ok, ko);
-    else ko();
+    copyText(el.dataset.code || "").then(() => toast("Code copié"), () => toast("Copie impossible : sélectionnez le code et copiez-le", true));
   }
 });
 
@@ -3296,20 +3293,40 @@ function shrinkImage(file){
     img.src = url;
   });
 }
+// Copie dans le presse-papiers ; repli compatible iPhone et anciens navigateurs
+function copyText(txt){
+  return new Promise((res, rej) => {
+    const fallback = () => {
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = txt; ta.setAttribute("readonly", "");
+        ta.style.position = "fixed"; ta.style.top = "0"; ta.style.left = "0"; ta.style.opacity = "0"; ta.style.fontSize = "16px";
+        document.body.appendChild(ta); ta.focus(); ta.select(); ta.setSelectionRange(0, txt.length);
+        const ok = document.execCommand("copy"); ta.remove();
+        ok ? res() : rej(new Error("copie"));
+      } catch (e) { rej(e); }
+    };
+    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(txt).then(res, fallback);
+    else fallback();
+  });
+}
 function readDataURL(file){
   return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); });
 }
 async function handleChatFiles(list){
   const draft = ($("#input") || {}).value || "";
   for (const file of Array.from(list || [])){
-    if (/^image\//.test(file.type)){
+    if (/^image\//.test(file.type) || /\.(jpe?g|png|webp|gif|heic|heif)$/i.test(file.name)){
       if (ui.pendingImg.length >= 4){ toast("4 images maximum par message", true); break; }
       try { const im = await shrinkImage(file); ui.pendingImg.push({ name: file.name, data: im.data, thumb: im.thumb }); }
-      catch (e) { toast(`« ${file.name} » est illisible`, true); }
+      catch (e) { toast(`« ${file.name} » n'a pas pu être lue. Essayez une photo JPG ou PNG.`, true); }
     } else if (/\.pdf$/i.test(file.name) || file.type === "application/pdf"){
-      if (file.size > 1.5 * 1024 * 1024){ toast(`« ${file.name} » dépasse 1,5 Mo`, true); continue; }
-      if (ui.pendingFiles.filter(f => f.pdf).length >= 2){ toast("2 PDF maximum par message", true); continue; }
-      try { ui.pendingFiles.push({ name: file.name, content: null, pdf: await readDataURL(file) }); }
+      if (file.size > 2.5 * 1024 * 1024){ toast(`« ${file.name} » dépasse 2,5 Mo`, true); continue; }
+      const pdfs = ui.pendingFiles.filter(f => f.pdf);
+      if (pdfs.length >= 2){ toast("2 PDF maximum par message", true); continue; }
+      const totalPdf = pdfs.reduce((n, f) => n + (f.size || 0), 0) + file.size;
+      if (totalPdf > 3.5 * 1024 * 1024){ toast("Les PDF joints dépassent 3,5 Mo au total", true); continue; }
+      try { ui.pendingFiles.push({ name: file.name, content: null, size: file.size, pdf: await readDataURL(file) }); }
       catch (e) { toast(`« ${file.name} » est illisible`, true); }
     } else if (isTextLike(file)){
       if (file.size > 300 * 1024){ toast(`« ${file.name} » dépasse 300 Ko`, true); continue; }
