@@ -34,6 +34,20 @@ exports.handler = async (event) => {
   messages = messages.slice(-20);
   if (!messages.length) return json(400, { error: "Aucun message" });
 
+  // Images jointes au dernier message (au format data:image/...;base64,...)
+  const imgs = (Array.isArray(data.images) ? data.images : [])
+    .filter(x => typeof x === "string" && /^data:image\/(jpeg|png|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(x))
+    .slice(0, 4);
+  if (imgs.length){
+    const last = messages[messages.length - 1];
+    if (last.role === "user"){
+      last.content = [
+        ...imgs.map(d => ({ type: "image", source: { type: "base64", media_type: d.slice(5, d.indexOf(";")), data: d.slice(d.indexOf(",") + 1) } })),
+        { type: "text", text: last.content },
+      ];
+    }
+  }
+
   const FORMAT = "\n\nMise en forme : quand tu donnes du code, mets-le dans un bloc entouré de trois apostrophes inversées, avec sur la première ligne le langage puis le nom exact du fichier à créer (exemple : html index.html). Un fichier par bloc. Utilise des paragraphes courts et des listes simples, sans titres inutiles.";
   const system = (MODES[data.mode] || "Tu es KARAT, un assistant IA sobre et utile. Réponds en français.") + FORMAT;
 
