@@ -3211,4 +3211,44 @@ function shrinkImage(file){
       URL.revokeObjectURL(url);
       res({ data, thumb });
     };
-    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error("image illisible")
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error("image illisible")); };
+    img.src = url;
+  });
+}
+async function handleChatFiles(list){
+  const draft = ($("#input") || {}).value || "";
+  for (const file of Array.from(list || [])){
+    if (/^image\//.test(file.type)){
+      if (ui.pendingImg.length >= 4){ toast("4 images maximum par message", true); break; }
+      try { const im = await shrinkImage(file); ui.pendingImg.push({ name: file.name, data: im.data, thumb: im.thumb }); }
+      catch (e) { toast(`« ${file.name} » est illisible`, true); }
+    } else {
+      if (file.size > 2 * 1024 * 1024){ toast(`« ${file.name} » dépasse 2 Mo`, true); continue; }
+      let content = null;
+      if (isTextLike(file) && file.size <= 300 * 1024){ try { content = await readText(file); } catch (e) {} }
+      const k = emailOf(session.email);
+      if (!files[k]) files[k] = [];
+      const entry = { id: uid(), name: file.name, size: file.size, type: file.type, content, createdAt: Date.now() };
+      files[k].push(entry);
+      ui.attached = [...new Set([...ui.attached, entry.id])];
+      saveFiles();
+    }
+  }
+  rerenderKeepDraft();
+  const ni = $("#input"); if (ni && draft && !ni.value) ni.value = draft;
+}
+document.addEventListener("change", e => {
+  if (e.target && e.target.id === "chatFile"){
+    const files = e.target.files;
+    e.target.value = "";
+    handleChatFiles(files);
+  }
+});
+
+render();
+showAnnoncesOnOpen();
+if (session && !planOf(session.email)) syncPlan().then(ok => { if (ok) render(); });
+
+</script>
+</body>
+</html>
