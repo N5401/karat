@@ -3309,4 +3309,37 @@ async function handleChatFiles(list){
     } else if (/\.pdf$/i.test(file.name) || file.type === "application/pdf"){
       if (file.size > 1.5 * 1024 * 1024){ toast(`« ${file.name} » dépasse 1,5 Mo`, true); continue; }
       if (ui.pendingFiles.filter(f => f.pdf).length >= 2){ toast("2 PDF maximum par message", true); continue; }
-      try { ui.pendingFiles.push({
+      try { ui.pendingFiles.push({ name: file.name, content: null, pdf: await readDataURL(file) }); }
+      catch (e) { toast(`« ${file.name} » est illisible`, true); }
+    } else if (isTextLike(file)){
+      if (file.size > 300 * 1024){ toast(`« ${file.name} » dépasse 300 Ko`, true); continue; }
+      try { ui.pendingFiles.push({ name: file.name, content: await readText(file), pdf: null }); }
+      catch (e) { toast(`« ${file.name} » est illisible`, true); }
+    } else {
+      toast(`« ${file.name} » : format non lu. Joignez du texte, un PDF ou une image.`, true);
+    }
+  }
+  rerenderKeepDraft();
+  const ni = $("#input"); if (ni && draft && !ni.value) ni.value = draft;
+}
+document.addEventListener("change", e => {
+  if (e.target && e.target.id === "chatFile"){
+    const picked = Array.from(e.target.files || []);
+    e.target.value = "";
+    handleChatFiles(picked);
+  }
+});
+
+render();
+showAnnoncesOnOpen();
+if (session) syncPlan().then(() => render());
+// Quand la personne revient sur l'onglet (ou rouvre l'app), on revérifie son offre et on met à jour l'écran si elle a changé
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden || !session) return;
+  const before = planOf(session.email);
+  syncPlan().then(() => { if (planOf(session.email) !== before) render(); });
+});
+
+</script>
+</body>
+</html>
