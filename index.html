@@ -1568,7 +1568,8 @@ const CONFIG = {
     expert:    "https://buy.stripe.com/bJe28j0GQclk5E93ib5c402"
   },
   VERIFY_ENDPOINT: "/.netlify/functions/abo",   // serveur qui confirme l'abonnement après paiement (webhook Stripe)
-  AI_ENDPOINT: "/.netlify/functions/ai"        // moteur IA réel : POST {mode, messages} -> {reply}
+  AI_ENDPOINT: "/.netlify/functions/ai-background",  // moteur IA réel (réponses longues, en arrière-plan)
+  AI_RESULT: "/.netlify/functions/ai-result"         // récupère la réponse une fois prête
 };
 
 const PLANS = {
@@ -2373,14 +2374,26 @@ function vChat(m){
     </form>
   </div>`);
 }
-async function askAI(conv, ctx, images, pdfs, names){
+// Attend la réponse d'une génération en arrière-plan (interrogation toutes les 2 secondes)
+async function pollAI(id){
+  const t0 = Date.now();
+  while (Date.now() - t0 < 10 * 60 * 1000){
+    await new Promise(r => setTimeout(r, 2000));
+    let d = null;
+    try { d = await (await fetch(CONFIG.AI_RESULT + "?id=" + enc(id), { cache: "no-store" })).json(); } catch (e) { d = null; }
+    if (!d) continue;
+    if (d.status === "done") return d.reply + (d.stopped ? "\n\n[Réponse coupée : demandez « continue » pour la suite.]" : "");
+    if (d.status === "error") throw new Error(d.error || "Erreur IA");
+  }
+  throw new Error("Délai dépassé");
+}
+async function askAI(conv, ctx, images, pdfs, names, id){
   const history = conv.messages.map(m => ({ role: m.role === "user" ? "user" : "assistant", content: m.text }));
   if (ctx && history.length) history[history.length - 1].content = ctx + "\n\n" + history[history.length - 1].content;
   if (CONFIG.AI_ENDPOINT){
-    const r = await fetch(CONFIG.AI_ENDPOINT, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: conv.mode, messages: history, images: images || [], pdfs: pdfs || [], imageNames: (names && names.images) || [], pdfNames: (names && names.pdfs) || [] }) });
-    const d = await r.json();
-    if (!r.ok || !d.reply) throw new Error(d.error || "Erreur IA");
-    return d.reply;
+    const r = await fetch(CONFIG.AI_ENDPOINT, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, mode: conv.mode, messages: history, images: images || [], pdfs: pdfs || [], imageNames: (names && names.images) || [], pdfNames: (names && names.pdfs) || [] }) });
+    if (!r.ok && r.status !== 202) throw new Error("Envoi impossible");
+    return pollAI(id);
   }
   await new Promise(r => setTimeout(r, 900 + Math.random() * 800));
   const last = conv.messages[conv.messages.length - 1].text;
@@ -2432,9 +2445,12 @@ async function sendMessage(override){
   go(`/app/chat/${conv.id}`);
   if (location.hash === "#/app/chat/" + conv.id) render();
 
+  const reqId = uid() + uid();
+  store.set("karat_ai_pending", { id: reqId, conv: conv.id });
   let reply;
-  try{ reply = await askAI(conv, ctx, imgs.map(i => i.data), pdfs, { images: imgNames, pdfs: pdfNames }); }
-  catch(e){ reply = "Erreur de connexion au moteur. Réessayez."; }
+  try{ reply = await askAI(conv, ctx, imgs.map(i => i.data), pdfs, { images: imgNames, pdfs: pdfNames }, reqId); }
+  catch(e){ reply = "La réponse n'a pas pu être générée (" + (e.message || "erreur") + "). Réessayez."; }
+  store.del("karat_ai_pending");
   conv.messages.push({ role: "ai", text: reply, at: Date.now() });
   conv.updatedAt = Date.now();
   ui.typing = false;
@@ -3410,6 +3426,22 @@ document.addEventListener("change", e => {
 render();
 showAnnoncesOnOpen();
 if (session) syncPlan().then(() => render());
+// Reprise : si la page a été fermée pendant une réponse, on récupère la réponse quand on revient
+(function resumePendingAI(){
+  const p = store.get("karat_ai_pending", null);
+  if (!p || !session) return;
+  const conv = convById(p.conv);
+  if (!conv){ store.del("karat_ai_pending"); return; }
+  ui.typing = true; ui.convId = conv.id;
+  pollAI(p.id).catch(e => "La réponse n'a pas pu être récupérée (" + (e.message || "erreur") + ")").then(reply => {
+    store.del("karat_ai_pending");
+    conv.messages.push({ role: "ai", text: reply, at: Date.now() });
+    conv.updatedAt = Date.now();
+    ui.typing = false;
+    saveChats();
+    render();
+  });
+})();
 // Quand la personne revient sur l'onglet (ou rouvre l'app), on revérifie son offre et on met à jour l'écran si elle a changé
 document.addEventListener("visibilitychange", () => {
   if (document.hidden || !session) return;
