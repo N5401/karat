@@ -1573,9 +1573,9 @@ const CONFIG = {
 };
 
 const PLANS = {
-  essentiel: { name: "Essentiel", price: "7,99 €",  num: 7.99,  desc: "Pour découvrir KARAT au quotidien.", feats: ["Panel IA standard", "Fichiers texte et images", "Historique 30 jours", "Support e-mail"] },
-  pro:       { name: "Pro",       price: "18,99 €", num: 18.99, desc: "Pour les professionnels qui travaillent chaque jour.", feats: ["Tout Essentiel", "Modules avancés", "Gros fichiers", "Historique illimité", "Support prioritaire"] },
-  expert:    { name: "Expert",    price: "39,99 €", num: 39.99, desc: "Pour les équipes et l'automatisation à grande échelle.", feats: ["Tout Pro", "Workflows automatisés", "Accès API", "Priorité de traitement", "Accompagnement dédié"] }
+  essentiel: { name: "Essentiel", price: "7,99 €",  num: 7.99,  desc: "Pour découvrir KARAT au quotidien.", feats: ["Assistant IA polyvalent", "3 générations d'images par jour", "Analyse de fichiers texte, PDF et images", "Historique des conversations sur 30 jours", "Support par e-mail"] },
+  pro:       { name: "Pro",       price: "18,99 €", num: 18.99, desc: "Pour les professionnels qui travaillent chaque jour.", feats: ["Tout Essentiel", "10 générations d'images par jour", "Retouche d'image à partir d'une photo de référence", "Analyse de plusieurs documents à la fois (jusqu'à 10 PDF par message)", "Réponses longues et détaillées, jusqu'à une quinzaine de pages", "Modes spécialisés : code, rédaction, analyse de données", "Historique illimité", "Support prioritaire"] },
+  expert:    { name: "Expert",    price: "39,99 €", num: 39.99, desc: "Pour les équipes et les usages intensifs.", feats: ["Tout Pro", "Images illimitées", "Modèle d'IA le plus avancé, pour les tâches complexes", "Accompagnement dédié à la mise en place"] }
 };
 
 const MODES = {
@@ -2391,7 +2391,7 @@ async function askAI(conv, ctx, images, pdfs, names, id){
   const history = conv.messages.map(m => ({ role: m.role === "user" ? "user" : "assistant", content: m.text }));
   if (ctx && history.length) history[history.length - 1].content = ctx + "\n\n" + history[history.length - 1].content;
   if (CONFIG.AI_ENDPOINT){
-    const r = await fetch(CONFIG.AI_ENDPOINT, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, mode: conv.mode, messages: history, images: images || [], pdfs: pdfs || [], imageNames: (names && names.images) || [], pdfNames: (names && names.pdfs) || [] }) });
+    const r = await fetch(CONFIG.AI_ENDPOINT, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, email: session ? session.email : "", mode: conv.mode, messages: history, images: images || [], pdfs: pdfs || [], imageNames: (names && names.images) || [], pdfNames: (names && names.pdfs) || [] }) });
     if (!r.ok && r.status !== 202) throw new Error("Envoi impossible");
     return pollAI(id);
   }
