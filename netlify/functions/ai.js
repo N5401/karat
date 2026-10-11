@@ -48,7 +48,7 @@ exports.handler = async (event) => {
     });
     const result = await r.json();
     if (!r.ok || !Array.isArray(result.content)) {
-      console.error("KARAT ai: erreur API", r.status);
+      console.error("KARAT ai: erreur API", r.status, "modele=" + model, JSON.stringify(result).slice(0, 800));
       return json(502, { error: "Le moteur IA a renvoyé une erreur" });
     }
     const reply = result.content.filter(b => b.type === "text").map(b => b.text).join("");
