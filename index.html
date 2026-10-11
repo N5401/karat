@@ -2244,13 +2244,17 @@ async function syncPlan(){
   try{
     const r = await fetch(CONFIG.VERIFY_ENDPOINT + "?email=" + enc(session.email), { cache: "no-store" });
     const j = await r.json();
-    if (!j.plan || !PLANS[j.plan]) return false;
     const k = emailOf(session.email);
     const prev = subs[k];
-    if (!prev || prev.plan !== j.plan){
-      subs[k] = { plan: j.plan, since: Date.now(), ack: prev ? !!prev.ack : false };
+    if (!j.plan || !PLANS[j.plan]){
+      // accès retiré côté serveur : on retire l'offre synchronisée (les offres de test restent)
+      if (prev && prev.src === "server"){ delete subs[k]; saveSubs(); logEvent("accès", session.email, "retiré"); }
+      return false;
+    }
+    if (!prev || prev.plan !== j.plan || prev.src !== "server"){
+      subs[k] = { plan: j.plan, since: prev && prev.plan === j.plan ? prev.since : Date.now(), ack: prev ? !!prev.ack : false, src: "server" };
       saveSubs();
-      logEvent("abonnement", session.email, PLANS[j.plan].name + " (Stripe)");
+      logEvent("abonnement", session.email, PLANS[j.plan].name + (j.source === "offert" ? " (offert)" : " (Stripe)"));
     }
     return true;
   }catch(e){ return false; }
@@ -2550,7 +2554,7 @@ function planSelect(r){
   if (r.isAdmin) return planBadge(r);
   return `<select class="select" data-change="plan-select" data-email="${esc(r.email)}" aria-label="Offre de ${esc(rowName(r))}">
     <option value="">Aucune offre</option>
-    ${Object.keys(PLANS).map(p => `<option value="${p}" ${r.plan === p ? "selected" : ""}>${PLANS[p].name} · ${PLANS[p].price}</option>`).join("")}
+    ${Object.keys(PLANS).map(p => `<option value="${p}" ${effPlan(r.email) === p ? "selected" : ""}>${PLANS[p].name} · ${PLANS[p].price}</option>`).join("")}
   </select>`;
 }
 function sortBy(rows){
@@ -2675,35 +2679,76 @@ function fillAdminUsers(){
 }
 let stripeCache = null;
 try { stripeCache = JSON.parse(sessionStorage.getItem("karat_stripe_subs") || "null"); } catch (e) { stripeCache = null; }
-function stripeRows(){
-  return (stripeCache || []).map(x => {
-    const parts = String(x.name || "").trim().split(" ");
-    return { email: x.email, firstName: parts[0] || "", lastName: parts.slice(1).join(" "), plan: x.plan, since: x.since, ack: true, stripe: true };
-  });
+let accesCache = null;
+try { accesCache = JSON.parse(sessionStorage.getItem("karat_acces") || "null"); } catch (e) { accesCache = null; }
+const accesLoaded = () => !!(stripeCache || accesCache);
+
+// Offre effective d'un compte : accès offert par l'administrateur, sinon abonnement Stripe
+function effPlan(email){
+  const k = emailOf(email);
+  if (!accesLoaded()) return (subs[k] || {}).plan || null;
+  const ov = (accesCache || {})[k];
+  if (ov && PLANS[ov.plan]) return ov.plan;
+  const st = (stripeCache || []).find(x => x.email === k);
+  return st ? st.plan : null;
 }
-const subSource = () => stripeCache ? stripeRows() : allRows();
+
+// Une ligne par compte : payant (Stripe) et/ou accès offert
+function stripeRows(){
+  const acc = accesCache || {};
+  const byEmail = {};
+  (stripeCache || []).forEach(x => { byEmail[x.email] = x; });
+  return [...new Set([...Object.keys(byEmail), ...Object.keys(acc)])].map(email => {
+    const st = byEmail[email] || {};
+    const ov = acc[email];
+    const offert = !!(ov && PLANS[ov.plan]);
+    const parts = String(st.name || "").trim().split(" ");
+    return {
+      email,
+      firstName: parts[0] || "",
+      lastName: parts.slice(1).join(" "),
+      plan: offert ? ov.plan : (st.plan || null),
+      stripePlan: st.plan || null,
+      offert,
+      since: st.since || (ov && ov.at) || 0,
+    };
+  }).filter(r => r.plan && PLANS[r.plan]);
+}
+const subSource = () => stripeRows();
 function subKpisHTML(rows){
-  const paying = rows.filter(r => r.plan && PLANS[r.plan]);
-  const mrr = paying.reduce((s, r) => s + PLANS[r.plan].num, 0);
-  const arpu = paying.length ? mrr / paying.length : 0;
-  return `${kpi("Abonnés actifs", paying.length)}
+  const paying = rows.filter(r => r.stripePlan && PLANS[r.stripePlan]);
+  const offered = rows.filter(r => r.offert);
+  const mrr = paying.reduce((s, r) => s + PLANS[r.stripePlan].num, 0);
+  return `${kpi("Abonnés payants", paying.length, "Stripe")}
+      ${kpi("Accès offerts", offered.length, "gratuits")}
       ${kpi("Revenu mensuel", money(mrr), "MRR estimé")}
-      ${kpi("Revenu moyen / abonné", money(arpu), "ARPU")}
       ${kpi("Projection annuelle", money(mrr * 12), "sur la base actuelle")}`;
 }
 function vAdminSubs(){
   const rows = subSource();
-  return appShell("/admin/abonnements", pageHead("Administration", "Abonnements", "Qui paie, quelle offre, et depuis quand.",
+  return appShell("/admin/abonnements", pageHead("Administration", "Abonnements", "Qui paie, qui a un accès offert, et quelle offre.",
     `<div class="search">${ic("search")}<input class="input" placeholder="Rechercher un abonné…" aria-label="Rechercher un abonné" data-input="sub-search" /></div>`) +
     `<div class="card" style="margin-bottom:18px">
-      <div class="card-h"><h3>Abonnés en direct (Stripe)</h3></div>
-      <p class="muted small" style="margin:6px 0 14px">Tous les abonnements actifs, quel que soit l'appareil du client.</p>
+      <div class="card-h"><h3>Connexion administrateur</h3></div>
+      <p class="muted small" style="margin:6px 0 14px">Les abonnés payants viennent de Stripe. Les accès offerts sont enregistrés sur le serveur et valables sur tous les appareils.</p>
       <div class="row" style="gap:10px;flex-wrap:wrap"><input id="stripe-token" class="input" type="password" style="max-width:320px" value="${esc(adminToken())}" placeholder="Jeton administrateur" /><button class="btn btn-accent" data-action="stripe-load">Charger</button></div>
       <p id="stripeStatus" class="muted small" style="margin-top:12px"></p>
     </div>
+    <div class="card" style="margin-bottom:18px">
+      <div class="card-h"><h3>Donner ou retirer un accès</h3></div>
+      <p class="muted small" style="margin:6px 0 14px">Un accès offert est gratuit : la personne n'est pas facturée. Pour arrêter un paiement Stripe, faites-le dans Stripe.</p>
+      <div class="row" style="gap:10px;flex-wrap:wrap">
+        <input id="acc-email" class="input" type="email" style="max-width:300px" placeholder="E-mail de la personne" aria-label="E-mail de la personne" />
+        <select id="acc-plan" class="select" aria-label="Offre à donner">
+          <option value="">Retirer l'accès offert</option>
+          ${planOpts("")}
+        </select>
+        <button class="btn btn-accent" data-action="access-apply">Appliquer</button>
+      </div>
+    </div>
     <div class="grid g4" id="subKpis" style="margin-bottom:18px">${subKpisHTML(rows)}</div>
     <div class="table-wrap"><table class="tbl">
-      <thead><tr><th>Abonné</th><th>E-mail</th><th>Offre</th><th>Montant</th><th>Depuis</th><th>Validation</th><th></th></tr></thead>
+      <thead><tr><th>Abonné</th><th>E-mail</th><th>Offre</th><th>Accès</th><th>Changer l'offre</th><th>Depuis</th></tr></thead>
       <tbody id="subBody"></tbody>
     </table></div>`);
 }
@@ -2712,19 +2757,43 @@ function fillSubs(){
   const source = subSource();
   const kp = $("#subKpis"); if (kp) kp.innerHTML = subKpisHTML(source);
   const q = (($("[data-input='sub-search']") || {}).value || "").trim().toLowerCase();
-  const list = source.filter(r => r.plan && PLANS[r.plan] && (!q || (r.email + " " + rowName(r)).toLowerCase().includes(q)));
+  const list = source.filter(r => !q || (r.email + " " + rowName(r)).toLowerCase().includes(q));
   body.innerHTML = list.map(r => `<tr>
       <td><div class="who-cell"><span class="avatar sm">${esc(initial(rowName(r)))}</span><b>${esc(rowName(r))}</b></div></td>
       <td>${esc(r.email)}</td>
-      <td>${r.stripe ? esc(PLANS[r.plan].name) : `<select class="select" data-change="plan-select" data-email="${esc(r.email)}" aria-label="Changer l'offre">
-        <option value="">Résilier</option>
-        ${Object.keys(PLANS).map(p => `<option value="${p}" ${r.plan === p ? "selected" : ""}>${PLANS[p].name}</option>`).join("")}
-      </select>`}</td>
-      <td>${PLANS[r.plan].price}</td>
-      <td>${fmtDay(r.since)}</td>
-      <td>${r.stripe ? '<span class="badge ok">STRIPE</span>' : (r.ack ? `<span class="badge ok">VALIDÉ</span>` : `<span class="badge warn">EN ATTENTE</span>`)}</td>
-      <td>${r.stripe ? "" : `<button class="btn btn-ghost btn-sm" data-action="cancel-sub-admin" data-email="${esc(r.email)}">Résilier</button>`}</td>
-    </tr>`).join("") || `<tr><td colspan="7"><div class="empty"><b>Aucun abonné</b>Chargez la liste Stripe ci-dessus pour voir tous les abonnés.</div></td></tr>`;
+      <td>${esc(PLANS[r.plan].name)} · ${PLANS[r.plan].price}</td>
+      <td>${r.offert ? '<span class="badge accent">GRATUIT</span>' : '<span class="badge ok">PAYANT</span>'}</td>
+      <td><select class="select" data-change="plan-select" data-email="${esc(r.email)}" aria-label="Changer l'offre de ${esc(rowName(r))}">
+        <option value="">${r.stripePlan ? "Retirer l'offre offerte" : "Retirer l'accès"}</option>
+        ${planOpts(r.plan)}
+      </select></td>
+      <td>${r.since ? fmtDay(r.since) : "—"}</td>
+    </tr>`).join("") || `<tr><td colspan="6"><div class="empty"><b>Aucun abonné</b>Saisissez le jeton administrateur puis cliquez sur Charger.</div></td></tr>`;
+}
+function planOpts(sel){ return Object.keys(PLANS).map(p => `<option value="${p}" ${sel === p ? "selected" : ""}>${PLANS[p].name}</option>`).join(""); }
+
+// Enregistre sur le serveur un accès offert (plan) ou le retire (plan null)
+async function setAccess(email, plan){
+  const tok = adminToken();
+  if (!tok){ toast("Saisissez le jeton administrateur dans Abonnements", true); return false; }
+  try {
+    const r = await fetch("/.netlify/functions/abo", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-admin-token": tok },
+      body: JSON.stringify({ email: emailOf(email), plan: plan || null }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.error || "Erreur");
+    accesCache = d.acces || {};
+    try { sessionStorage.setItem("karat_acces", JSON.stringify(accesCache)); } catch (e) {}
+    toast(plan && PLANS[plan] ? "Accès offert : " + PLANS[plan].name : "Accès offert retiré");
+    logEvent(plan ? "accès offert" : "accès retiré", email, plan && PLANS[plan] ? PLANS[plan].name : "");
+    render();
+    return true;
+  } catch (e) {
+    toast(e.message === "Jeton administrateur invalide" ? e.message : "Enregistrement impossible : " + e.message, true);
+    return false;
+  }
 }
 function vAdminLog(){
   const filtered = logs.filter(e => ui.logFilter === "all" || e.type === ui.logFilter);
@@ -2803,20 +2872,6 @@ function onEditUser(f){
   users[email] = { ...(users[email] || { email }), firstName: v("first"), lastName: v("last"), phone: v("phone") };
   saveUsers(); closeModal(); toast("Compte mis à jour"); render();
 }
-function setPlanFor(email, plan){
-  if (plan && PLANS[plan]){
-    const prev = subs[email];
-    const same = prev && prev.plan === plan;
-    subs[email] = { plan, since: same ? prev.since : Date.now(), ack: same ? !!prev.ack : false };
-    logEvent("offre", email, PLANS[plan].name);
-    toast("Offre : " + PLANS[plan].name);
-  } else {
-    delete subs[email];
-    logEvent("résiliation", email, "par l'administrateur");
-    toast("Abonnement résilié");
-  }
-  saveSubs(); render();
-}
 
 /* =====================================================================
    EFFETS & ÉVÉNEMENTS
@@ -2881,7 +2936,12 @@ const ACTIONS = {
     logEvent("résiliation", k, "par l'utilisateur");
     delete subs[k]; saveSubs(); toast("Abonnement résilié"); go("/tarifs");
   }, "Résilier"),
-  "cancel-sub-admin": el => askConfirm("Résilier cet abonnement ?", "L'utilisateur perdra l'accès au panel.", () => setPlanFor(el.dataset.email, null), "Résilier"),
+  "access-apply": () => {
+    const email = (($("#acc-email") || {}).value || "").trim();
+    const plan = ($("#acc-plan") || {}).value || null;
+    if (!email || !email.includes("@")) return toast("Saisissez un e-mail valide", true);
+    setAccess(email, plan).then(ok => { if (ok) { const i = $("#acc-email"); if (i) i.value = ""; } });
+  },
   "edit-user":     el => openEditUser(el.dataset.email),
   "delete-user":   el => askConfirm("Supprimer ce compte ?", "Le compte, son offre, ses conversations et ses fichiers seront effacés.", () => {
     const k = el.dataset.email;
@@ -2934,7 +2994,7 @@ document.addEventListener("change", e => {
   const el = e.target;
   if (el.id === "fileInput"){ importFiles(el.files); el.value = ""; return; }
   if (el.dataset.ack !== undefined){ updateAckState(); return; }
-  if (el.dataset.change === "plan-select"){ setPlanFor(el.dataset.email, el.value); return; }
+  if (el.dataset.change === "plan-select"){ setAccess(el.dataset.email, el.value || null); return; }
   if (el.dataset.change === "admin-filter"){ ui.adminFilter = el.value; ui.page = 1; fillAdminUsers(); return; }
   if (el.dataset.change === "log-filter"){ ui.logFilter = el.value; render(); }
 });
@@ -3175,8 +3235,15 @@ async function fillStripeSubs(){
     const d = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(d.error || "Erreur");
     stripeCache = d.subs || [];
-    try { sessionStorage.setItem("karat_stripe_subs", JSON.stringify(stripeCache)); } catch (e) {}
-    st.textContent = `${stripeCache.length} abonné${stripeCache.length > 1 ? "s" : ""} actif${stripeCache.length > 1 ? "s" : ""} chargé${stripeCache.length > 1 ? "s" : ""} depuis Stripe.`;
+    accesCache = d.acces || {};
+    try {
+      sessionStorage.setItem("karat_stripe_subs", JSON.stringify(stripeCache));
+      sessionStorage.setItem("karat_acces", JSON.stringify(accesCache));
+    } catch (e) {}
+    const nb = stripeRows().length;
+    st.textContent = d.stripeOk === false
+      ? "Accès offerts chargés. Stripe est injoignable : les abonnés payants ne sont pas affichés."
+      : `${nb} compte${nb > 1 ? "s" : ""} chargé${nb > 1 ? "s" : ""} (payants Stripe et accès offerts).`;
     fillSubs();
   } catch (e) {
     st.textContent = e.message === "Jeton administrateur invalide" ? e.message : "Chargement impossible, vérifiez la configuration Stripe.";
@@ -3256,7 +3323,7 @@ document.addEventListener("change", e => {
 
 render();
 showAnnoncesOnOpen();
-if (session && !planOf(session.email)) syncPlan().then(ok => { if (ok) render(); });
+if (session) syncPlan().then(() => render());
 
 </script>
 </body>
