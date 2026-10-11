@@ -2,9 +2,11 @@
 // Les fonctions « arrière-plan » de Netlify peuvent travailler jusqu'à 15 minutes (une fonction normale s'arrête après 10 secondes).
 // Le site appelle cette fonction, qui renvoie tout de suite 202, puis écrit la réponse sur Netlify Blobs ;
 // le site la récupère ensuite avec ai-result.js.
-// Variables : ANTHROPIC_API_KEY, ANTHROPIC_MODEL, et NETLIFY_TOKEN + SITE_ID (stockage des réponses).
+// Variables : ANTHROPIC_API_KEY, ANTHROPIC_MODEL (Essentiel et Pro, défaut claude-sonnet-5-5),
+// ANTHROPIC_MODEL_EXPERT (Expert, défaut claude-opus-5-5), et NETLIFY_TOKEN + SITE_ID (stockage des réponses).
 
 const { getStore } = require("@netlify/blobs");
+const { planFor } = require("./_shared/acces");
 
 const aiStore = () => (process.env.NETLIFY_TOKEN && process.env.SITE_ID)
   ? getStore({ name: "karat-ai", siteID: process.env.SITE_ID, token: process.env.NETLIFY_TOKEN })
@@ -30,7 +32,12 @@ exports.handler = async (event) => {
 
   const fail = (msg) => store.setJSON(id, { status: "error", error: msg });
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  const model = process.env.ANTHROPIC_MODEL || "claude-sonnet-5-5";
+  // Modèle selon l'offre : Expert = modèle le plus avancé ; Essentiel et Pro = modèle standard
+  let plan = null;
+  try { plan = await planFor(data.email); } catch (e) { plan = null; }
+  const model = (plan === "expert" || plan === "admin")
+    ? (process.env.ANTHROPIC_MODEL_EXPERT || "claude-opus-5-5")
+    : (process.env.ANTHROPIC_MODEL || "claude-sonnet-5-5");
   if (!apiKey) { await fail("Clé API non configurée"); return { statusCode: 200, body: "" }; }
   if (!Array.isArray(data.messages)) { await fail("Requête invalide"); return { statusCode: 200, body: "" }; }
 
