@@ -1703,8 +1703,7 @@ const ROUTES = [
   { re: /^\/admin\/journal$/,        fn: vAdminLog,       admin: true },
   { re: /^\/app\/images$/,            fn: vImages,         app: true },
   { re: /^\/admin\/annonces$/,         fn: vAdminAnnonces,   admin: true },
-  { re: /^\/app\/tickets$/,             fn: vTickets,        app: true },
-  { re: /^\/admin\/tickets$/,           fn: vAdminTickets,   admin: true },
+  { re: /^\/app\/support$/,             fn: vSupport,        app: true },
   { re: /^\/admin\/reglages$/,       fn: vAdminSettings,  admin: true }
 ];
 
@@ -1753,8 +1752,6 @@ function afterRender(path){
   if (path === "/admin/abonnements") fillSubs();
   if (path === "/admin/journal"){ const s = $("[data-change='log-filter']"); if (s) s.value = ui.logFilter; }
   if (path === "/admin/annonces") fillAnnonceList();
-  if (path === "/app/tickets") fillMyTickets();
-  if (path === "/admin/tickets") fillAdminTickets();
 }
 
 /* =====================================================================
@@ -1784,7 +1781,7 @@ function pubFooter(){
     <div class="wrap between wrap-x">
       <span class="logo" style="font-size:14px"><i style="width:20px;height:20px;border-radius:6px;flex-basis:20px"></i>KARAT</span>
       <span class="mono">© 2026 KARAT</span>
-      <span class="row"><a href="#/">Mentions légales</a><a href="#/">Confidentialité</a><a href="#/">CGV</a></span>
+      <span class="row"><a href="#/">Mentions légales</a><a href="#/">Confidentialité</a><a href="#/">CGV</a><a href="mailto:karatsupport@gmail.com">Contact</a></span>
     </div></footer>`;
 }
 function appShell(path, content){
@@ -1805,7 +1802,7 @@ function appShell(path, content){
       ${link("/app/fichiers", "file", "Fichiers", myFiles().length)}
       ${link("/app/modules", "grid", "Modules")}
       ${link("/app/images", "image", "Images")}
-      ${link("/app/tickets", "ticket", "Tickets")}
+      ${link("/app/support", "mail", "Support")}
       ${link("/app/offre", "card", "Abonnement")}
       ${adm ? `<div class="group">Administration</div>
         ${link("/admin", "shield", "Vue d'ensemble")}
@@ -1813,7 +1810,6 @@ function appShell(path, content){
         ${link("/admin/abonnements", "card", "Abonnements", allRows().filter(r => r.plan).length)}
         ${link("/admin/journal", "list", "Journal")}
         ${link("/admin/annonces", "bell", "Annonces")}
-        ${link("/admin/tickets", "ticket", "Tickets")}
         ${link("/admin/reglages", "settings", "Réglages")}` : ""}
       <div class="foot">
         <div class="plan-block">
@@ -3076,103 +3072,29 @@ document.addEventListener("click", e => {
 });
 
 /* =====================================================================
-   TICKETS DE SUPPORT : écrits par les utilisateurs, traités par l'administrateur
+   SUPPORT : contact par e-mail
    ===================================================================== */
-Object.assign(ICON, { ticket: '<path d="M3 8a2 2 0 0 0 2-2h14a2 2 0 0 0 2 2v1.5a2.5 2.5 0 0 0 0 5V16a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-1.5a2.5 2.5 0 0 0 0-5z"/><path d="M14 6v12"/>' });
-const TK_URL = "/.netlify/functions/tickets";
-const tkStatus = t => t.status === "ouvert" ? '<span class="badge warn">En cours</span>' : '<span class="badge ok">Traité</span>';
-async function tkCall(url, opts = {}){
-  const r = await fetch(url, { cache: "no-store", ...opts, headers: { "Content-Type": "application/json", ...(opts.headers || {}) } });
-  const d = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(d.error || "Erreur");
-  return d;
-}
-function vTickets(){
-  return appShell("/app/tickets", pageHead("Aide", "Tickets", "Décrivez votre problème : l'équipe KARAT vous répond ici.") +
-    `<div class="card" style="max-width:680px;margin-bottom:24px">
-      <div class="field" style="margin-bottom:14px"><label for="tk-subject">SUJET</label><input id="tk-subject" class="input" maxlength="120" placeholder="Ex : Impossible de payer" /></div>
-      <div class="field" style="margin-bottom:16px"><label for="tk-message">MESSAGE</label><textarea id="tk-message" class="textarea" rows="5" maxlength="2000" placeholder="Décrivez le problème le plus précisément possible"></textarea></div>
-      <button class="btn btn-accent" data-action="ticket-send">Envoyer le ticket</button>
-    </div>
-    <div id="tkList"><div class="muted small">Chargement de vos tickets…</div></div>`);
-}
-function tkCardUser(t){
-  return `<div class="card flat" style="margin-bottom:12px">
-    <div class="between"><b>${esc(t.subject)}</b>${tkStatus(t)}</div>
-    <p class="muted small" style="margin-top:6px">${fmtDate(t.createdAt)}</p>
-    <p style="margin-top:10px;white-space:pre-wrap">${esc(t.message)}</p>
-    ${t.reply ? `<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--line)"><b class="small">Réponse de KARAT</b><p style="margin-top:6px;white-space:pre-wrap">${esc(t.reply)}</p></div>` : ""}
-  </div>`;
-}
-async function fillMyTickets(){
-  const box = $("#tkList"); if (!box || !session) return;
-  try {
-    const d = await tkCall(TK_URL + "?email=" + enc(session.email));
-    const list = [...d.tickets].sort((a, b) => b.createdAt - a.createdAt);
-    box.innerHTML = list.map(tkCardUser).join("") || `<div class="empty"><div class="ico">${svg("file")}</div><b>Aucun ticket</b>Vos demandes apparaîtront ici.</div>`;
-  } catch (e) { box.innerHTML = `<p class="muted small">Impossible de charger vos tickets pour le moment.</p>`; }
-}
-function vAdminTickets(){
-  return appShell("/admin/tickets", pageHead("Administration", "Tickets", "Demandes envoyées depuis le site") +
-    `<div class="card" style="max-width:680px;margin-bottom:24px">
-      <div class="field" style="margin-bottom:14px"><label for="tk-token">JETON ADMINISTRATEUR</label><input id="tk-token" class="input" type="password" value="${esc(adminToken())}" placeholder="Votre jeton" /></div>
-      <button class="btn btn-accent" data-action="tk-load">Charger les tickets</button>
-    </div>
-    <div id="tkList"></div>`);
-}
-async function fillAdminTickets(){
-  const box = $("#tkList"); if (!box) return;
-  const tok = adminToken();
-  if (!tok){ box.innerHTML = `<p class="muted small">Saisissez le jeton administrateur puis cliquez sur Charger.</p>`; return; }
-  try {
-    const d = await tkCall(TK_URL + "?all=1", { headers: { "x-admin-token": tok } });
-    const list = [...d.tickets].sort((a, b) => (a.status === "ouvert" ? 0 : 1) - (b.status === "ouvert" ? 0 : 1) || b.createdAt - a.createdAt);
-    box.innerHTML = list.map(t => `<div class="card flat" style="margin-bottom:12px">
-      <div class="between"><div><b>${esc(t.subject)}</b><p class="muted small" style="margin-top:4px">${esc(t.name || "")} · ${esc(t.email)} · ${fmtDate(t.createdAt)}</p></div>${tkStatus(t)}</div>
-      <p style="margin-top:12px;white-space:pre-wrap">${esc(t.message)}</p>
-      ${t.reply ? `<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--line)"><b class="small">Votre réponse</b><p style="margin-top:6px;white-space:pre-wrap">${esc(t.reply)}</p></div>` : ""}
-      <div style="margin-top:14px">
-        <textarea id="rp-${esc(t.id)}" class="textarea" rows="3" placeholder="Votre réponse à l'utilisateur"></textarea>
-        <div class="row" style="margin-top:10px;gap:8px;flex-wrap:wrap">
-          <button class="btn btn-accent btn-sm" data-action="ticket-reply" data-id="${esc(t.id)}">Répondre et marquer traité</button>
-          <button class="btn btn-line btn-sm" data-action="ticket-toggle" data-id="${esc(t.id)}">${t.status === "ouvert" ? "Marquer traité" : "Rouvrir"}</button>
-          <button class="btn btn-ghost btn-sm" data-action="ticket-del" data-id="${esc(t.id)}">Supprimer</button>
-        </div>
+Object.assign(ICON, { mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>' });
+const SUPPORT_EMAIL = "karatsupport@gmail.com";
+function vSupport(){
+  const sujet = enc("Demande KARAT");
+  const corps = enc("Bonjour,\n\nCompte KARAT : " + (session ? session.email : "") + "\n\nMon problème :\n\n");
+  return appShell("/app/support", pageHead("Aide", "Support", "Une question, un problème ou une demande ? Écrivez-nous.") +
+    `<div class="card" style="max-width:640px">
+      <div class="card-h"><h3>Contacter l'équipe KARAT</h3></div>
+      <p class="muted" style="margin-top:8px;line-height:1.6">Décrivez votre problème par e-mail et indiquez l'adresse de votre compte : cela nous permet de répondre plus vite.</p>
+      <div class="field" style="margin-top:20px"><label for="support-mail">ADRESSE E-MAIL</label>
+        <div class="row" style="gap:10px"><input id="support-mail" class="input" readonly value="${SUPPORT_EMAIL}" /><button class="btn btn-line" data-action="support-copy">Copier</button></div>
       </div>
-    </div>`).join("") || `<div class="empty"><div class="ico">${svg("file")}</div><b>Aucun ticket</b>Les demandes des utilisateurs apparaîtront ici.</div>`;
-  } catch (e) { toast(e.message === "Jeton administrateur invalide" ? e.message : "Chargement impossible", true); box.innerHTML = ""; }
-}
-async function tkAdminAct(body){
-  try {
-    await tkCall(TK_URL, { method: "POST", headers: { "x-admin-token": adminToken() }, body: JSON.stringify(body) });
-    fillAdminTickets();
-  } catch (e) { toast(e.message, true); }
+      <a class="btn btn-accent" style="margin-top:18px" href="mailto:${SUPPORT_EMAIL}?subject=${sujet}&body=${corps}">Écrire un e-mail</a>
+    </div>`);
 }
 Object.assign(ACTIONS, {
-  "ticket-send": async () => {
-    const subject = ($("#tk-subject") || {}).value?.trim() || "";
-    const message = ($("#tk-message") || {}).value?.trim() || "";
-    if (!subject || !message) return toast("Ajoutez un sujet et un message", true);
-    try {
-      await tkCall(TK_URL, { method: "POST", body: JSON.stringify({ email: session.email, name: displayName(me()), subject, message }) });
-      toast("Ticket envoyé");
-      render();
-    } catch (e) { toast(e.message, true); }
-  },
-  "tk-load": () => {
-    const v = ($("#tk-token") || {}).value?.trim() || "";
-    try { sessionStorage.setItem("karat_admin_token", v); } catch (e) {}
-    fillAdminTickets();
-  },
-  "ticket-reply": el => {
-    const txt = ($("#rp-" + el.dataset.id) || {}).value?.trim() || "";
-    if (!txt) return toast("Écrivez une réponse", true);
-    tkAdminAct({ action: "reply", id: el.dataset.id, reply: txt });
-  },
-  "ticket-toggle": el => tkAdminAct({ action: "status", id: el.dataset.id }),
-  "ticket-del": el => askConfirm("Supprimer ce ticket ?", "Il disparaîtra définitivement.", () => tkAdminAct({ action: "delete", id: el.dataset.id })),
+  "support-copy": () => {
+    try { navigator.clipboard.writeText(SUPPORT_EMAIL); toast("Adresse copiée"); }
+    catch (e) { toast("Copie impossible : sélectionnez l'adresse", true); }
+  }
 });
-
 
 render();
 showAnnoncesOnOpen();
