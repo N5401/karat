@@ -1523,6 +1523,15 @@ h1,.page-head h1,.h-xl{font-family:var(--display);font-weight:600;letter-spacing
 .composer,.inbox{min-width:0;max-width:100%}
 .main,.chat{max-width:100%;overflow-x:hidden}
 
+/* Bouton jaune « joindre » (images, fichiers) et zone de saisie d'une seule ligne */
+.inbox{align-items:center!important;flex-wrap:nowrap!important;width:100%;box-sizing:border-box;min-width:0}
+.inbox:has(.img-tray){flex-wrap:wrap!important}
+.inbox .attach-btn{width:36px!important;height:36px!important;min-width:36px!important;flex:0 0 36px!important;border-radius:50%!important;background:var(--accent)!important;color:#0b0b0b!important;border:0!important;display:grid!important;place-items:center!important;padding:0!important;box-shadow:none!important;opacity:1!important}
+.inbox .attach-btn svg{stroke:#0b0b0b!important}
+.inbox .attach-btn:hover{background:#e4ff6b!important}
+.inbox textarea{background:transparent!important;border:0!important;box-shadow:none!important;outline:none!important;min-width:0!important;flex:1 1 0!important;width:auto!important;font-size:15px!important;line-height:1.4!important;padding:8px 6px!important}
+.inbox .send{flex:0 0 36px!important}
+
 </style>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 
@@ -2345,8 +2354,8 @@ function vChat(m){
       <input type="file" id="chatFile" multiple accept="image/*,.txt,.md,.csv,.json,.js,.ts,.py,.html,.css,.xml,.yaml,.yml,.sql,.log,.pdf" hidden />
       <div class="inbox">
         ${(ui.pendingImg || []).length ? `<div class="img-tray">${ui.pendingImg.map((im, i) => `<div class="img-thumb"><img src="${im.thumb}" alt="${esc(im.name)}"><button type="button" data-action="img-remove" data-idx="${i}" aria-label="Retirer ${esc(im.name)}"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>`).join("")}</div>` : ""}
-        <button type="button" class="btn btn-ghost btn-icon" data-action="pick-file" title="Joindre un fichier" aria-label="Joindre un fichier"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
-        <textarea id="input" rows="1" placeholder="Posez votre question ou décrivez votre tâche…" aria-label="Message" data-enter></textarea>
+        <button type="button" class="btn btn-icon attach-btn" data-action="pick-file" title="Joindre un fichier" aria-label="Joindre un fichier"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+        <textarea id="input" rows="1" placeholder="Posez votre question…" aria-label="Message" data-enter></textarea>
         <button class="send" id="sendBtn" type="submit" aria-label="Envoyer" ${ui.typing ? "disabled" : ""}>${ic("send")}</button>
       </div>
       <div class="hint"><span>Entrée pour envoyer · Maj + Entrée pour un saut de ligne</span><span>${esc(MODES[mode].sub)}</span></div>
@@ -3300,31 +3309,4 @@ async function handleChatFiles(list){
     } else if (/\.pdf$/i.test(file.name) || file.type === "application/pdf"){
       if (file.size > 1.5 * 1024 * 1024){ toast(`« ${file.name} » dépasse 1,5 Mo`, true); continue; }
       if (ui.pendingFiles.filter(f => f.pdf).length >= 2){ toast("2 PDF maximum par message", true); continue; }
-      try { ui.pendingFiles.push({ name: file.name, content: null, pdf: await readDataURL(file) }); }
-      catch (e) { toast(`« ${file.name} » est illisible`, true); }
-    } else if (isTextLike(file)){
-      if (file.size > 300 * 1024){ toast(`« ${file.name} » dépasse 300 Ko`, true); continue; }
-      try { ui.pendingFiles.push({ name: file.name, content: await readText(file), pdf: null }); }
-      catch (e) { toast(`« ${file.name} » est illisible`, true); }
-    } else {
-      toast(`« ${file.name} » : format non lu. Joignez du texte, un PDF ou une image.`, true);
-    }
-  }
-  rerenderKeepDraft();
-  const ni = $("#input"); if (ni && draft && !ni.value) ni.value = draft;
-}
-document.addEventListener("change", e => {
-  if (e.target && e.target.id === "chatFile"){
-    const picked = Array.from(e.target.files || []);
-    e.target.value = "";
-    handleChatFiles(picked);
-  }
-});
-
-render();
-showAnnoncesOnOpen();
-if (session) syncPlan().then(() => render());
-
-</script>
-</body>
-</html>
+      try { ui.pendingFiles.push({
