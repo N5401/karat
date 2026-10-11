@@ -5,6 +5,11 @@
 
 const { getStore } = require("@netlify/blobs");
 
+// Connexion au stockage : avec NETLIFY_TOKEN (jeton personnel Netlify) si il est défini, sinon automatique
+const annStore = () => (process.env.NETLIFY_TOKEN && process.env.SITE_ID)
+  ? getStore({ name: "karat-annonces", siteID: process.env.SITE_ID, token: process.env.NETLIFY_TOKEN })
+  : getStore("karat-annonces");
+
 const json = (statusCode, body) => ({
   statusCode,
   headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" },
@@ -12,7 +17,7 @@ const json = (statusCode, body) => ({
 });
 
 exports.handler = async (event) => {
-  const store = getStore("karat-annonces");
+  const store = annStore();
   const now = Date.now();
   let list = (await store.get("liste", { type: "json" })) || [];
 
