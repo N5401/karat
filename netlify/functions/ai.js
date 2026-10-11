@@ -34,15 +34,19 @@ exports.handler = async (event) => {
   messages = messages.slice(-20);
   if (!messages.length) return json(400, { error: "Aucun message" });
 
-  // Images jointes au dernier message (au format data:image/...;base64,...)
+  // Images et PDF joints au dernier message
   const imgs = (Array.isArray(data.images) ? data.images : [])
     .filter(x => typeof x === "string" && /^data:image\/(jpeg|png|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(x))
     .slice(0, 4);
-  if (imgs.length){
+  const pdfs = (Array.isArray(data.pdfs) ? data.pdfs : [])
+    .filter(x => typeof x === "string" && /^data:application\/pdf;base64,[A-Za-z0-9+/=]+$/.test(x))
+    .slice(0, 2);
+  if (imgs.length || pdfs.length){
     const last = messages[messages.length - 1];
     if (last.role === "user"){
       last.content = [
         ...imgs.map(d => ({ type: "image", source: { type: "base64", media_type: d.slice(5, d.indexOf(";")), data: d.slice(d.indexOf(",") + 1) } })),
+        ...pdfs.map(d => ({ type: "document", source: { type: "base64", media_type: "application/pdf", data: d.slice(d.indexOf(",") + 1) } })),
         { type: "text", text: last.content },
       ];
     }
