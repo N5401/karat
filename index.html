@@ -1506,6 +1506,17 @@ h1,.page-head h1,.h-xl{font-family:var(--display);font-weight:600;letter-spacing
   .hint span:last-child{display:none}
 }
 
+/* Vignettes des images dans la zone de saisie (style ChatGPT) */
+.inbox{flex-wrap:wrap}
+.inbox:has(.img-tray){border-radius:22px!important}
+.img-tray{flex-basis:100%;order:-1;display:flex;flex-wrap:wrap;gap:10px;padding:8px 8px 6px}
+.img-thumb{position:relative;width:96px;height:96px;border-radius:16px;overflow:hidden;background:#111;border:1px solid rgba(255,255,255,.08);flex:0 0 auto}
+.img-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.img-thumb button{position:absolute;top:6px;right:6px;width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,.72);color:#fff;border:0;display:grid;place-items:center;cursor:pointer;padding:0}
+.img-thumb button:hover{background:rgba(0,0,0,.9)}
+.msg-imgs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;justify-content:flex-end}
+.msg-imgs img{width:200px;max-width:70vw;border-radius:14px;display:block;border:1px solid var(--line)}
+
 </style>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 
@@ -2283,8 +2294,9 @@ function msgHTML(m){
   const t = fmtTime(m.at);
   if (m.role === "user"){
     const att = m.files && m.files.length ? `<span class="att">${ic("paperclip")} ${m.files.map(esc).join(", ")}</span><br>` : "";
+    const pics = m.thumbs && m.thumbs.length ? `<div class="msg-imgs">${m.thumbs.map(t => `<img src="${t}" alt="Image jointe">`).join("")}</div>` : "";
     return `<div class="msg me"><div class="who">${esc(initial(displayName(me()) || session.email))}</div>
-      <div><div class="bubble">${att}${esc(m.text)}</div><div class="msg-meta" style="justify-content:flex-end">${t}</div></div></div>`;
+      <div><div class="bubble">${pics}${att}${esc(m.text)}</div><div class="msg-meta" style="justify-content:flex-end">${t}</div></div></div>`;
   }
   return `<div class="msg ai"><div class="who">K</div>
     <div><div class="bubble">${renderMd(m.text)}</div>
@@ -2319,11 +2331,11 @@ function vChat(m){
     </div>
     <div class="msgs" id="msgs" aria-live="polite">${body}</div>
     <form class="composer" id="composer">
-      ${(ui.pendingImg || []).length ? `<div class="chips-att">${ui.pendingImg.map((im, i) => `<span class="chip"><img src="${im.data}" alt="" style="width:22px;height:22px;border-radius:5px;object-fit:cover;margin-right:4px">${esc(im.name)}<button type="button" data-action="img-remove" data-idx="${i}" aria-label="Retirer ${esc(im.name)}">${svg("x")}</button></span>`).join("")}</div>` : ""}
       ${attached.length ? `<div class="chips-att">${attached.map(f => `<span class="chip">${ic("paperclip")} ${esc(f.name)}<button type="button" data-action="detach" data-id="${f.id}" aria-label="Retirer ${esc(f.name)}">${svg("x")}</button></span>`).join("")}</div>` : ""}
       <input type="file" id="chatFile" multiple accept="image/*,.txt,.md,.csv,.json,.js,.ts,.py,.html,.css,.xml,.yaml,.yml,.sql,.log,.pdf" hidden />
       <div class="inbox">
-        <button type="button" class="btn btn-ghost btn-icon" data-action="pick-file" title="Joindre un fichier" aria-label="Joindre un fichier">${ic("paperclip")}</button>
+        ${(ui.pendingImg || []).length ? `<div class="img-tray">${ui.pendingImg.map((im, i) => `<div class="img-thumb"><img src="${im.thumb}" alt="${esc(im.name)}"><button type="button" data-action="img-remove" data-idx="${i}" aria-label="Retirer ${esc(im.name)}"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>`).join("")}</div>` : ""}
+        <button type="button" class="btn btn-ghost btn-icon" data-action="pick-file" title="Joindre un fichier" aria-label="Joindre un fichier"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
         <textarea id="input" rows="1" placeholder="Posez votre question ou décrivez votre tâche…" aria-label="Message" data-enter></textarea>
         <button class="send" id="sendBtn" type="submit" aria-label="Envoyer" ${ui.typing ? "disabled" : ""}>${ic("send")}</button>
       </div>
@@ -2365,7 +2377,7 @@ async function sendMessage(override){
     ? `Fichier « ${f.name} » :\n${f.content.slice(0, 8000)}`
     : `Fichier « ${f.name} » (contenu non lisible par le navigateur)`).join("\n\n");
 
-  conv.messages.push({ role: "user", text, files: attached.map(f => f.name).concat(imgs.map(i => i.name)), at: Date.now() });
+  conv.messages.push({ role: "user", text, files: attached.map(f => f.name), thumbs: imgs.map(i => i.thumb), at: Date.now() });
   conv.updatedAt = Date.now();
   ui.attached = [];
   ui.pendingImg = [];
@@ -3184,54 +3196,19 @@ function shrinkImage(file){
   return new Promise((res, rej) => {
     const url = URL.createObjectURL(file);
     const img = new Image();
-    img.onload = () => {
-      const s = Math.min(1, 1280 / Math.max(img.naturalWidth, img.naturalHeight));
+    const draw = (maxSide, quality) => {
+      const s = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
       const c = document.createElement("canvas");
       c.width = Math.round(img.naturalWidth * s); c.height = Math.round(img.naturalHeight * s);
       const ctx = c.getContext("2d");
       ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, c.width, c.height);
       ctx.drawImage(img, 0, 0, c.width, c.height);
-      URL.revokeObjectURL(url);
-      res(c.toDataURL("image/jpeg", 0.85));
+      return c.toDataURL("image/jpeg", quality);
     };
-    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error("image illisible")); };
-    img.src = url;
-  });
-}
-async function handleChatFiles(list){
-  const draft = ($("#input") || {}).value || "";
-  for (const file of Array.from(list || [])){
-    if (/^image\//.test(file.type)){
-      if (ui.pendingImg.length >= 4){ toast("4 images maximum par message", true); break; }
-      try { ui.pendingImg.push({ name: file.name, data: await shrinkImage(file) }); }
-      catch (e) { toast(`« ${file.name} » est illisible`, true); }
-    } else {
-      if (file.size > 2 * 1024 * 1024){ toast(`« ${file.name} » dépasse 2 Mo`, true); continue; }
-      let content = null;
-      if (isTextLike(file) && file.size <= 300 * 1024){ try { content = await readText(file); } catch (e) {} }
-      const k = emailOf(session.email);
-      if (!files[k]) files[k] = [];
-      const entry = { id: uid(), name: file.name, size: file.size, type: file.type, content, createdAt: Date.now() };
-      files[k].push(entry);
-      ui.attached = [...new Set([...ui.attached, entry.id])];
-      saveFiles();
-    }
-  }
-  rerenderKeepDraft();
-  const ni = $("#input"); if (ni && draft && !ni.value) ni.value = draft;
-}
-document.addEventListener("change", e => {
-  if (e.target && e.target.id === "chatFile"){
-    const files = e.target.files;
-    e.target.value = "";
-    handleChatFiles(files);
-  }
-});
-
-render();
-showAnnoncesOnOpen();
-if (session && !planOf(session.email)) syncPlan().then(ok => { if (ok) render(); });
-
-</script>
-</body>
-</html>
+    img.onload = () => {
+      const data = draw(1280, 0.85);
+      const thumb = draw(240, 0.7);
+      URL.revokeObjectURL(url);
+      res({ data, thumb });
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error("image illisible")
