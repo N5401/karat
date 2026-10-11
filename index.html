@@ -2366,11 +2366,11 @@ function vChat(m){
     </form>
   </div>`);
 }
-async function askAI(conv, ctx, images, pdfs){
+async function askAI(conv, ctx, images, pdfs, names){
   const history = conv.messages.map(m => ({ role: m.role === "user" ? "user" : "assistant", content: m.text }));
   if (ctx && history.length) history[history.length - 1].content = ctx + "\n\n" + history[history.length - 1].content;
   if (CONFIG.AI_ENDPOINT){
-    const r = await fetch(CONFIG.AI_ENDPOINT, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: conv.mode, messages: history, images: images || [], pdfs: pdfs || [] }) });
+    const r = await fetch(CONFIG.AI_ENDPOINT, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: conv.mode, messages: history, images: images || [], pdfs: pdfs || [], imageNames: (names && names.images) || [], pdfNames: (names && names.pdfs) || [] }) });
     const d = await r.json();
     if (!r.ok || !d.reply) throw new Error(d.error || "Erreur IA");
     return d.reply;
@@ -2388,17 +2388,32 @@ async function sendMessage(override){
   const docs = (ui.pendingFiles || []).slice();
   if (!typed && !imgs.length && !docs.length) return;
   if (!hasAccess()) return go("/tarifs");
-  const text = typed || "Analyse ce que je t'ai joint et dis-moi l'essentiel.";
+  const text = typed || "Analyse chaque fichier joint et dis-moi l'essentiel de chacun.";
 
+  // Contexte texte : 30 000 caractères par fichier, 150 000 au total
+  let budget = 150000;
+  const ctxParts = [];
+  for (const f of docs.filter(f => f.content != null)){
+    if (budget <= 0) break;
+    const piece = f.content.slice(0, Math.min(30000, budget));
+    budget -= piece.length;
+    ctxParts.push(`Fichier « ${f.name} » :\n${piece}`);
+  }
+  const ctx = ctxParts.join("\n\n");
+  const pdfDocs = docs.filter(f => f.pdf);
+  const pdfs = pdfDocs.map(f => f.pdf);
+  const imgNames = imgs.map(i => i.name);
+  const pdfNames = pdfDocs.map(f => f.name);
+
+  // Taille totale envoyée au serveur (limite Netlify ≈ 6 Mo) : on prévient avant d'envoyer
+  const payload = imgs.reduce((n, i) => n + i.data.length, 0) + pdfs.reduce((n, d) => n + d.length, 0) + ctx.length;
+  if (payload > 5000000){ toast("Trop de contenu dans ce message : retirez quelques fichiers", true); return; }
   let conv = ui.convId ? convById(ui.convId) : null;
   if (!conv){
     conv = { id: uid(), title: text.slice(0, 48), mode: ui.mode, createdAt: Date.now(), messages: [] };
     myChats().unshift(conv);
     ui.convId = conv.id;
   }
-  const textFiles = docs.filter(f => f.content != null);
-  const ctx = textFiles.map(f => `Fichier « ${f.name} » :\n${f.content.slice(0, 8000)}`).join("\n\n");
-  const pdfs = docs.filter(f => f.pdf).map(f => f.pdf);
 
   conv.messages.push({ role: "user", text, files: docs.map(f => f.name), thumbs: imgs.map(i => i.thumb), at: Date.now() });
   conv.updatedAt = Date.now();
@@ -2411,7 +2426,7 @@ async function sendMessage(override){
   if (location.hash === "#/app/chat/" + conv.id) render();
 
   let reply;
-  try{ reply = await askAI(conv, ctx, imgs.map(i => i.data), pdfs); }
+  try{ reply = await askAI(conv, ctx, imgs.map(i => i.data), pdfs, { images: imgNames, pdfs: pdfNames }); }
   catch(e){ reply = "Erreur de connexion au moteur. Réessayez."; }
   conv.messages.push({ role: "ai", text: reply, at: Date.now() });
   conv.updatedAt = Date.now();
@@ -3284,7 +3299,7 @@ function shrinkImage(file){
       return c.toDataURL("image/jpeg", quality);
     };
     img.onload = () => {
-      const data = draw(1280, 0.85);
+      const data = draw(1024, 0.8);
       const thumb = draw(240, 0.7);
       URL.revokeObjectURL(url);
       res({ data, thumb });
@@ -3313,21 +3328,59 @@ function copyText(txt){
 function readDataURL(file){
   return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); });
 }
+// Lecture du texte d'un PDF (pdf.js chargé à la demande depuis cdnjs)
+let pdfLibPromise = null;
+function loadPdfJs(){
+  if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+  if (pdfLibPromise) return pdfLibPromise;
+  pdfLibPromise = new Promise((res, rej) => {
+    const sc = document.createElement("script");
+    sc.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+    sc.onload = () => {
+      const lib = window.pdfjsLib;
+      if (!lib) return rej(new Error("pdf.js absent"));
+      lib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+      res(lib);
+    };
+    sc.onerror = () => rej(new Error("pdf.js injoignable"));
+    document.head.appendChild(sc);
+  });
+  pdfLibPromise.catch(() => { pdfLibPromise = null; });
+  return pdfLibPromise;
+}
+async function extractPdf(file){
+  const lib = await loadPdfJs();
+  const doc = await lib.getDocument({ data: await file.arrayBuffer() }).promise;
+  let out = "";
+  for (let i = 1; i <= doc.numPages && out.length < 60000; i++){
+    const page = await doc.getPage(i);
+    const tc = await page.getTextContent();
+    out += tc.items.map(it => it.str).join(" ") + "\n";
+  }
+  return { text: out.trim(), pages: doc.numPages };
+}
+const MAX_IMAGES = 12, MAX_PDFS = 10, MAX_PDF_SCAN_BYTES = 2.5 * 1024 * 1024;
 async function handleChatFiles(list){
   const draft = ($("#input") || {}).value || "";
   for (const file of Array.from(list || [])){
     if (/^image\//.test(file.type) || /\.(jpe?g|png|webp|gif|heic|heif)$/i.test(file.name)){
-      if (ui.pendingImg.length >= 4){ toast("4 images maximum par message", true); break; }
+      if (ui.pendingImg.length >= MAX_IMAGES){ toast(`${MAX_IMAGES} images maximum par message`, true); break; }
       try { const im = await shrinkImage(file); ui.pendingImg.push({ name: file.name, data: im.data, thumb: im.thumb }); }
       catch (e) { toast(`« ${file.name} » n'a pas pu être lue. Essayez une photo JPG ou PNG.`, true); }
     } else if (/\.pdf$/i.test(file.name) || file.type === "application/pdf"){
-      if (file.size > 2.5 * 1024 * 1024){ toast(`« ${file.name} » dépasse 2,5 Mo`, true); continue; }
-      const pdfs = ui.pendingFiles.filter(f => f.pdf);
-      if (pdfs.length >= 2){ toast("2 PDF maximum par message", true); continue; }
-      const totalPdf = pdfs.reduce((n, f) => n + (f.size || 0), 0) + file.size;
-      if (totalPdf > 3.5 * 1024 * 1024){ toast("Les PDF joints dépassent 3,5 Mo au total", true); continue; }
-      try { ui.pendingFiles.push({ name: file.name, content: null, size: file.size, pdf: await readDataURL(file) }); }
-      catch (e) { toast(`« ${file.name} » est illisible`, true); }
+      if (ui.pendingFiles.filter(f => f.isPdf).length >= MAX_PDFS){ toast(`${MAX_PDFS} PDF maximum par message`, true); break; }
+      let item = null;
+      try {
+        const r = await extractPdf(file);
+        if (r.text.length >= 40) item = { name: file.name, content: r.text, pdf: null, size: file.size, pages: r.pages, isPdf: true };
+      } catch (e) { item = null; }
+      if (!item){
+        // PDF scanné ou lecture impossible : on envoie le PDF tel quel à l'IA
+        if (file.size > MAX_PDF_SCAN_BYTES){ toast(`« ${file.name} » est un scan trop lourd (2,5 Mo max)`, true); continue; }
+        try { item = { name: file.name, content: null, pdf: await readDataURL(file), size: file.size, isPdf: true }; }
+        catch (e) { toast(`« ${file.name} » est illisible`, true); continue; }
+      }
+      ui.pendingFiles.push(item);
     } else if (isTextLike(file)){
       if (file.size > 300 * 1024){ toast(`« ${file.name} » dépasse 300 Ko`, true); continue; }
       try { ui.pendingFiles.push({ name: file.name, content: await readText(file), pdf: null }); }
