@@ -34,7 +34,8 @@ exports.handler = async (event) => {
   messages = messages.slice(-20);
   if (!messages.length) return json(400, { error: "Aucun message" });
 
-  const system = MODES[data.mode] || "Tu es KARAT, un assistant IA sobre et utile. Réponds en français.";
+  const FORMAT = "\n\nMise en forme : quand tu donnes du code, mets-le dans un bloc entouré de trois apostrophes inversées, avec sur la première ligne le langage puis le nom exact du fichier à créer (exemple : html index.html). Un fichier par bloc. Utilise des paragraphes courts et des listes simples, sans titres inutiles.";
+  const system = (MODES[data.mode] || "Tu es KARAT, un assistant IA sobre et utile. Réponds en français.") + FORMAT;
 
   try {
     const r = await fetch("https://api.anthropic.com/v1/messages", {
