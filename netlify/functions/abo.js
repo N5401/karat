@@ -1,10 +1,25 @@
-// KARAT — abonnements vérifiés directement auprès de Stripe (aucun stockage nécessaire).
-// GET ?email=...           -> {plan: "essentiel" | "pro" | "expert" | null}   (utilisateur)
-// GET ?admin=1             -> {subs: [...]} tous les abonnements actifs      (administrateur, en-tête x-admin-token)
-// Variables Netlify : STRIPE_SECRET_KEY (clé restreinte, lecture) et ADMIN_TOKEN.
+// KARAT — abonnements et accès.
+// GET  ?email=...        -> {plan, source}  (utilisateur : accès offert par l'administrateur, sinon abonnement Stripe)
+// GET  ?admin=1          -> {subs, acces, stripeOk}  (administrateur, en-tête x-admin-token)
+// POST {email, plan}     -> {acces}  (administrateur : offre un accès gratuit ; plan null = retire l'accès offert)
+// Variables Netlify : STRIPE_SECRET_KEY (clé restreinte, lecture), ADMIN_TOKEN,
+//                     NETLIFY_TOKEN et SITE_ID (stockage des accès offerts, déjà utilisés par les annonces).
+
+const { getStore } = require("@netlify/blobs");
 
 const PRICE_TO_PLAN = { 799: "essentiel", 1899: "pro", 3999: "expert" };
+const PLAN_NAMES = ["essentiel", "pro", "expert"];
 const ACTIVE = s => s.status === "active" || s.status === "trialing";
+
+// Stockage des accès offerts : une seule liste {email: {plan, at}}
+const accesStore = () => (process.env.NETLIFY_TOKEN && process.env.SITE_ID)
+  ? getStore({ name: "karat-acces", siteID: process.env.SITE_ID, token: process.env.NETLIFY_TOKEN })
+  : getStore("karat-acces");
+
+async function readAcces(){
+  try { return (await accesStore().get("liste", { type: "json" })) || {}; }
+  catch (e) { console.error("KARAT acces lecture:", e.message); return null; }
+}
 
 const json = (statusCode, body) => ({
   statusCode,
@@ -37,51 +52,85 @@ function planOf(s){
 }
 
 exports.handler = async (event) => {
-  if (event.httpMethod !== "GET") return json(405, { error: "Méthode non autorisée" });
+  const method = event.httpMethod;
+  if (method !== "GET" && method !== "POST") return json(405, { error: "Méthode non autorisée" });
+  const headers = event.headers || {};
   const q = event.queryStringParameters || {};
   const key = process.env.STRIPE_SECRET_KEY;
-  if (!key) return json(500, { error: "Clé Stripe non configurée" });
-
-  // Mode administrateur : liste de tous les abonnés
-  if (q.admin){
-    const headers = event.headers || {};
+  const isAdmin = () => {
     const token = headers["x-admin-token"] || headers["X-Admin-Token"] || "";
-    if (!process.env.ADMIN_TOKEN || token !== process.env.ADMIN_TOKEN)
-      return json(401, { error: "Jeton administrateur invalide" });
+    return !!process.env.ADMIN_TOKEN && token === process.env.ADMIN_TOKEN;
+  };
+
+  // Administrateur : offrir ou retirer un accès
+  if (method === "POST"){
+    if (!isAdmin()) return json(401, { error: "Jeton administrateur invalide" });
+    let data;
+    try { data = JSON.parse(event.body || "{}"); } catch { return json(400, { error: "Requête invalide" }); }
+    const email = String(data.email || "").trim().toLowerCase();
+    if (!email || !email.includes("@")) return json(400, { error: "E-mail requis" });
+    const plan = data.plan || null;
+    if (plan && !PLAN_NAMES.includes(plan)) return json(400, { error: "Offre inconnue" });
+    const acces = await readAcces();
+    if (acces === null) return json(503, { error: "Stockage des accès indisponible" });
+    if (plan) acces[email] = { plan, at: Date.now() };
+    else delete acces[email];
     try {
-      const subs = (await fetchSubs(key))
-        .filter(ACTIVE)
-        .map(s => {
-          const c = s.customer && typeof s.customer === "object" ? s.customer : {};
-          return {
-            email: String(c.email || "").toLowerCase(),
-            name: c.name || "",
-            plan: planOf(s),
-            status: s.status,
-            since: (s.start_date || s.created || 0) * 1000,
-          };
-        })
-        .filter(x => x.plan);
-      return json(200, { subs });
+      await accesStore().setJSON("liste", acces);
     } catch (e) {
-      console.error("KARAT abo admin:", e.message);
-      return json(502, { error: "Stripe injoignable" });
+      console.error("KARAT acces écriture:", e.message);
+      return json(503, { error: "Enregistrement impossible" });
     }
+    return json(200, { acces });
   }
 
-  // Mode utilisateur : son propre abonnement
+  // Administrateur : liste des abonnés payants (Stripe) et des accès offerts
+  if (q.admin){
+    if (!isAdmin()) return json(401, { error: "Jeton administrateur invalide" });
+    const acces = (await readAcces()) || {};
+    let subs = [], stripeOk = true;
+    if (key){
+      try {
+        subs = (await fetchSubs(key))
+          .filter(ACTIVE)
+          .map(s => {
+            const c = s.customer && typeof s.customer === "object" ? s.customer : {};
+            return {
+              email: String(c.email || "").toLowerCase(),
+              name: c.name || "",
+              plan: planOf(s),
+              status: s.status,
+              since: (s.start_date || s.created || 0) * 1000,
+            };
+          })
+          .filter(x => x.plan && x.email);
+      } catch (e) {
+        console.error("KARAT abo admin:", e.message);
+        stripeOk = false;
+      }
+    } else {
+      stripeOk = false;
+    }
+    return json(200, { subs, acces, stripeOk });
+  }
+
+  // Utilisateur : son propre accès
   const email = String(q.email || "").trim().toLowerCase();
   if (!email) return json(400, { error: "Email requis" });
+  const acces = await readAcces();
+  const offert = acces && acces[email];
+  if (offert && PLAN_NAMES.includes(offert.plan)) return json(200, { plan: offert.plan, source: "offert" });
+  if (!key) return json(500, { error: "Clé Stripe non configurée" });
   try {
     const subs = await fetchSubs(key);
     for (const s of subs){
       const c = s.customer && typeof s.customer === "object" ? s.customer : {};
       if (String(c.email || "").toLowerCase() === email && ACTIVE(s)){
         const plan = planOf(s);
-        if (plan) return json(200, { plan });
+        if (plan) return json(200, { plan, source: "payant" });
       }
     }
-    return json(200, { plan: null });
+    return json(200, { plan: null, source: null });
   } catch (e) {
     console.error("KARAT abo:", e.message);
     return json(502, { error: "Vérification impossible" });
