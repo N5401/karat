@@ -1493,7 +1493,7 @@ const CONFIG = {
     pro:       "https://buy.stripe.com/cNi28j89ifxweaF9Gz5c401",
     expert:    "https://buy.stripe.com/bJe28j0GQclk5E93ib5c402"
   },
-  VERIFY_ENDPOINT: "",   // serveur qui confirme l'abonnement après paiement (webhook Stripe)
+  VERIFY_ENDPOINT: "/.netlify/functions/abo",   // serveur qui confirme l'abonnement après paiement (webhook Stripe)
   AI_ENDPOINT: "/.netlify/functions/ai"        // moteur IA réel : POST {mode, messages} -> {reply}
 };
 
@@ -2185,21 +2185,26 @@ function startPlan(plan){
   toast("Offre " + PLANS[plan].name + " activée (test)");
   go("/app/chat");
 }
-async function verifyPayment(plan){
-  if (!CONFIG.VERIFY_ENDPOINT){ toast("Paiement reçu. Activation dès la vérification serveur."); return; }
+async function syncPlan(){
+  if (!session || !CONFIG.VERIFY_ENDPOINT) return false;
   try{
-    const r = await fetch(CONFIG.VERIFY_ENDPOINT, {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: session.email, plan })
-    });
+    const r = await fetch(CONFIG.VERIFY_ENDPOINT + "?email=" + enc(session.email), { cache: "no-store" });
     const j = await r.json();
-    if (j.active){
-      subs[emailOf(session.email)] = { plan, since: Date.now(), ack: false };
+    if (!j.plan || !PLANS[j.plan]) return false;
+    const k = emailOf(session.email);
+    const prev = subs[k];
+    if (!prev || prev.plan !== j.plan){
+      subs[k] = { plan: j.plan, since: Date.now(), ack: prev ? !!prev.ack : false };
       saveSubs();
-      logEvent("abonnement", session.email, PLANS[plan].name + " (Stripe)");
-      go("/app/chat");
-    } else toast("Paiement en cours de confirmation…");
-  }catch(e){ toast("Vérification impossible, réessayez", true); }
+      logEvent("abonnement", session.email, PLANS[j.plan].name + " (Stripe)");
+    }
+    return true;
+  }catch(e){ return false; }
+}
+async function verifyPayment(plan){
+  const ok = await syncPlan();
+  if (ok){ toast("Offre " + PLANS[plan].name + " activée"); go("/app/chat"); }
+  else toast("Paiement en cours de confirmation, réessayez dans une minute", true);
 }
 (function handleReturn(){
   const paid = new URLSearchParams(location.search).get("paid");
@@ -3097,6 +3102,7 @@ Object.assign(ACTIONS, {
 
 render();
 showAnnoncesOnOpen();
+if (session && !planOf(session.email)) syncPlan().then(ok => { if (ok) render(); });
 
 </script>
 </body>
