@@ -1733,8 +1733,7 @@ function render(){
     if (!session) return go("/connexion?next=" + enc(path));
     if (!hasAccess()){ toast("Choisissez une offre pour ouvrir le panel", true); return go("/tarifs"); }
   }
-  if (route.app && !admin && !acked(session.email)) return go("/bienvenue");
-  if (route.onboard && (admin || acked(session.email))) return go("/app/chat");
+  if (route.onboard) return go("/app/chat");
   if (path === "/connexion" && session) return go(q.get("next") || "/app/chat");
 
   const m = path.match(route.re);
@@ -2171,7 +2170,7 @@ function confirmAck(){
 function startPlan(plan){
   if (!session) return go("/connexion?next=" + enc("/tarifs"));
   if (isAdmin(session.email)){ toast("Compte administrateur : accès complet inclus"); return go("/app/chat"); }
-  if (planOf(session.email) === plan) return go(acked(session.email) ? "/app/chat" : "/bienvenue");
+  if (planOf(session.email) === plan) return go("/app/chat");
   const link = CONFIG.PAYMENT_LINKS[plan];
   if (link){
     const url = new URL(link);
@@ -2184,7 +2183,7 @@ function startPlan(plan){
   saveSubs();
   logEvent("abonnement", session.email, PLANS[plan].name + " (test)");
   toast("Offre " + PLANS[plan].name + " activée (test)");
-  go("/bienvenue");
+  go("/app/chat");
 }
 async function verifyPayment(plan){
   if (!CONFIG.VERIFY_ENDPOINT){ toast("Paiement reçu. Activation dès la vérification serveur."); return; }
@@ -2198,7 +2197,7 @@ async function verifyPayment(plan){
       subs[emailOf(session.email)] = { plan, since: Date.now(), ack: false };
       saveSubs();
       logEvent("abonnement", session.email, PLANS[plan].name + " (Stripe)");
-      go("/bienvenue");
+      go("/app/chat");
     } else toast("Paiement en cours de confirmation…");
   }catch(e){ toast("Vérification impossible, réessayez", true); }
 }
@@ -3080,13 +3079,13 @@ function vSupport(){
   const sujet = enc("Demande KARAT");
   const corps = enc("Bonjour,\n\nCompte KARAT : " + (session ? session.email : "") + "\n\nMon problème :\n\n");
   return appShell("/app/support", pageHead("Aide", "Support", "Une question, un problème ou une demande ? Écrivez-nous.") +
-    `<div class="card" style="max-width:640px">
-      <div class="card-h"><h3>Contacter l'équipe KARAT</h3></div>
+    `<div class="card" style="max-width:640px;border-color:rgba(140,247,255,.35)">
+      <div class="card-h"><h3 style="color:#8cf7ff">Contacter l'équipe KARAT</h3></div>
       <p class="muted" style="margin-top:8px;line-height:1.6">Décrivez votre problème par e-mail et indiquez l'adresse de votre compte : cela nous permet de répondre plus vite.</p>
       <div class="field" style="margin-top:20px"><label for="support-mail">ADRESSE E-MAIL</label>
-        <div class="row" style="gap:10px"><input id="support-mail" class="input" readonly value="${SUPPORT_EMAIL}" /><button class="btn btn-line" data-action="support-copy">Copier</button></div>
+        <div class="row" style="gap:10px"><input id="support-mail" class="input" readonly value="${SUPPORT_EMAIL}" /><button class="btn btn-line" style="border-color:#8cf7ff;color:#8cf7ff" data-action="support-copy">Copier</button></div>
       </div>
-      <a class="btn btn-accent" style="margin-top:18px" href="mailto:${SUPPORT_EMAIL}?subject=${sujet}&body=${corps}">Écrire un e-mail</a>
+      <a class="btn" style="margin-top:18px;background:#8cf7ff;color:#0a0a0a" href="mailto:${SUPPORT_EMAIL}?subject=${sujet}&body=${corps}">Écrire un e-mail</a>
     </div>`);
 }
 Object.assign(ACTIONS, {
