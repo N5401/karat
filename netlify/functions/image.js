@@ -23,7 +23,7 @@ exports.handler = async (event) => {
     const r = await fetch("https://api.openai.com/v1/images/generations", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: "Bearer " + apiKey },
-      body: JSON.stringify({ model: "gpt-image-1", prompt, size: "1024x1024", n: 1 }),
+      body: JSON.stringify({ model: "gpt-image-1", prompt, size: "1024x1024", quality: "low", n: 1 }),
     });
     const result = await r.json().catch(() => ({}));
     if (!r.ok || !result.data || !result.data[0] || !result.data[0].b64_json) {
