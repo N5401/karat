@@ -14,11 +14,11 @@
    KARAT — design system
    ===================================================================== */
 :root{
-  --bg:#07070a; --bg2:#0b0b0f; --panel:#0f0f14; --panel2:#15151c; --raised:#1c1c25;
+  --bg:#0b0b0b; --bg2:#0e0e0e; --panel:#141414; --panel2:#1a1a1a; --raised:#222222;
   --line:rgba(255,255,255,.07); --line2:rgba(255,255,255,.13);
-  --text:#f5f5f2; --muted:#9d9daa; --dim:#5b5b68;
+  --text:#f2f2ef; --muted:#a3a39c; --dim:#66665f;
   --accent:#d7ff3f; --accent2:#8cf7ff; --accent-ink:#0a0a0a;
-  --ok:#7ee787; --warn:#ffd166; --danger:#ff7b72;
+  --ok:#8fd694; --warn:#e6c07b; --danger:#e88a80;
   --r:18px; --r-sm:12px;
   --display:'Space Grotesk',system-ui,sans-serif;
   --sans:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
@@ -120,7 +120,7 @@ img{display:block;max-width:100%}
 .table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--panel)}
 .tbl{width:100%;border-collapse:collapse;font-size:13.5px}
 .tbl th{text-align:left;font-family:var(--mono);font-size:10.5px;letter-spacing:.07em;color:var(--dim);padding:14px 16px;border-bottom:1px solid var(--line);font-weight:500;white-space:nowrap;text-transform:uppercase;background:rgba(255,255,255,.015)}
-.tbl td{padding:13px 16px;border-bottom:1px solid var(--line);color:#d8d8de;white-space:nowrap;vertical-align:middle}
+.tbl td{padding:13px 16px;border-bottom:1px solid var(--line);color:#dcdcd6;white-space:nowrap;vertical-align:middle}
 .tbl tr:last-child td{border-bottom:0}
 .tbl tbody tr{transition:background .15s}
 .tbl tbody tr:hover td{background:rgba(255,255,255,.02)}
@@ -134,7 +134,7 @@ img{display:block;max-width:100%}
 /* ---------- Barres ---------- */
 .bars{display:flex;align-items:flex-end;gap:6px;height:150px;padding-top:10px}
 .bars .b{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:8px;height:100%}
-.bars .b i{width:100%;border-radius:6px 6px 3px 3px;background:linear-gradient(180deg,var(--raised),#16161d);min-height:3px;transition:height .6s var(--ease)}
+.bars .b i{width:100%;border-radius:6px 6px 3px 3px;background:linear-gradient(180deg,var(--raised),#1d1d1d);min-height:3px;transition:height .6s var(--ease)}
 .bars .b.hi i{background:linear-gradient(180deg,var(--accent),#9fcf1f)}
 .bars .b span{font-family:var(--mono);font-size:10px;color:var(--dim)}
 .hbar{display:grid;grid-template-columns:110px 1fr 70px;align-items:center;gap:12px;font-size:13.5px;margin-top:14px}
@@ -262,7 +262,7 @@ details.faq p{color:var(--muted);margin-top:12px;max-width:720px}
 
 /* ---------- Shell application & admin ---------- */
 .shell{display:grid;grid-template-columns:260px minmax(0,1fr);min-height:100vh;position:relative;z-index:1}
-.side{position:sticky;top:0;height:100vh;background:rgba(11,11,15,.85);backdrop-filter:blur(14px);border-right:1px solid var(--line);padding:22px 16px;display:flex;flex-direction:column;gap:4px;overflow-y:auto}
+.side{position:sticky;top:0;height:100vh;background:rgba(11,11,11,.85);backdrop-filter:blur(14px);border-right:1px solid var(--line);padding:22px 16px;display:flex;flex-direction:column;gap:4px;overflow-y:auto}
 .side .logo{padding:4px 10px 22px}
 .side .group{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;color:var(--dim);text-transform:uppercase;padding:18px 12px 8px}
 .side a.nav-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;font-size:14px;color:var(--muted);position:relative;transition:background .15s,color .15s}
@@ -456,7 +456,7 @@ details.faq p{color:var(--muted);margin-top:12px;max-width:720px}
    REFONTE PRO — couche finale (remplace les rendus précédents)
    ===================================================================== */
 :root{
-  --bg:#06060a; --panel:#0d0d13; --panel2:#13131b; --raised:#1a1a24;
+  --bg:#06060a; --panel:#0d0d13; --panel2:#181818; --raised:#1a1a24;
   --line:rgba(255,255,255,.06); --line2:rgba(255,255,255,.11);
   --accent:#d7ff3f; --accent-ink:#0b0b0b;
   --shadow-lg:0 30px 80px -30px rgba(0,0,0,.7);
@@ -534,13 +534,13 @@ h1.h-xl{font-size:clamp(46px,6.6vw,88px);letter-spacing:-.05em;line-height:.95}
 .auth-card .seg{border-radius:14px}
 
 /* Application */
-.side{background:rgba(9,9,13,.9);backdrop-filter:blur(20px);padding:24px 18px;border-right:1px solid var(--line)}
+.side{background:rgba(11,11,11,.9);backdrop-filter:blur(20px);padding:24px 18px;border-right:1px solid var(--line)}
 .side .logo{padding:4px 10px 28px}
 .side .group{font-size:10px;padding:22px 12px 8px}
 .side a.nav-item{padding:11px 13px;border-radius:13px;font-weight:500;font-size:14px}
 .side a.nav-item:hover{background:rgba(255,255,255,.035)}
 .side a.nav-item.on{background:linear-gradient(90deg,rgba(215,255,63,.1),rgba(255,255,255,.03));color:var(--text);box-shadow:inset 0 0 0 1px rgba(215,255,63,.12)}
-.side .me-card{border-radius:16px;background:rgba(19,19,27,.8)}
+.side .me-card{border-radius:16px;background:rgba(22,22,22,.8)}
 .main{padding:40px 48px 70px}
 .page-head h1{font-size:36px}
 .page-head p{font-size:15px}
@@ -554,8 +554,8 @@ h1.h-xl{font-size:clamp(46px,6.6vw,88px);letter-spacing:-.05em;line-height:.95}
 .msg.ai .bubble{background:rgba(26,26,36,.9);border:1px solid var(--line)}
 .msg.me .bubble{background:linear-gradient(180deg,#f3f3ef,#e4e4df)}
 .welcome .big{border-radius:22px;background:linear-gradient(180deg,rgba(215,255,63,.12),rgba(215,255,63,.03));border-color:rgba(215,255,63,.25)}
-.sugg button{border-radius:999px;background:rgba(19,19,27,.9);padding:10px 16px}
-.composer{padding:16px 20px;background:rgba(9,9,13,.6)}
+.sugg button{border-radius:999px;background:rgba(22,22,22,.9);padding:10px 16px}
+.composer{padding:16px 20px;background:rgba(11,11,11,.6)}
 .inbox{border-radius:18px;background:rgba(6,6,10,.8);padding:8px 8px 8px 14px}
 .send{border-radius:14px}
 
@@ -584,7 +584,7 @@ h1.h-xl{font-size:clamp(46px,6.6vw,88px);letter-spacing:-.05em;line-height:.95}
   .main{padding:26px 18px 60px}
   .hero{padding:64px 0 80px}
   .section{padding:84px 0}
-  .side{background:rgba(9,9,13,.95)}
+  .side{background:rgba(11,11,11,.95)}
 }
 @media (max-width:560px){
   .plan{padding:26px}
@@ -1046,8 +1046,411 @@ body{font-size:15px}
 .logo i{width:30px;height:30px;flex:0 0 30px;border-radius:0;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' width='512' height='512'%3E  %3Crect width='64' height='64' rx='16' fill='%23d7ff3f'/%3E  %3Cg fill='none' stroke='%230b0b0b' stroke-width='6.5' stroke-linecap='round' stroke-linejoin='round'%3E    %3Cpath d='M21 16 V48'/%3E    %3Cpath d='M43 17 L27 32 L46 47'/%3E  %3C/g%3E  %3Cpath d='M46 6.5 L47.6 11.4 L52.5 13 L47.6 14.6 L46 19.5 L44.4 14.6 L39.5 13 L44.4 11.4 Z' fill='%230b0b0b' transform='translate(5,-3)'/%3E%3C/svg%3E") center/contain no-repeat;box-shadow:none}
 .logo i::after{display:none}
 
+/* ===== Finitions interface ===== */
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+img{max-width:100%;height:auto}
+.btn{transition:background .2s,color .2s,border-color .2s,transform .15s,box-shadow .2s}
+.btn:active{transform:scale(.98)}
+.card{transition:border-color .2s,transform .2s}
+.card:hover{border-color:var(--line2)}
+
+/* ===== Format téléphone (écrans jusqu'à 600 px) ===== */
+@media (max-width:600px){
+  .wrap{padding-left:16px;padding-right:16px}
+  .topbar .pubnav,.topbar .row .btn-ghost{display:none}
+  .hero{padding:44px 0 36px}
+  .h-xl{font-size:clamp(34px,10vw,44px);line-height:1.05;letter-spacing:-.02em}
+  .lead{font-size:16px;line-height:1.55}
+  .ctas{flex-direction:column;align-items:stretch;gap:10px}
+  .ctas .btn{width:100%;justify-content:center;min-height:52px}
+  .proof{grid-template-columns:1fr 1fr;gap:14px}
+  .console{display:none}
+  .section{padding-top:56px;padding-bottom:56px}
+  .head{flex-direction:column;align-items:flex-start;gap:12px}
+  .grid.g4,.grid.g2,.plans,.steps,.bento{grid-template-columns:1fr!important}
+  .plan{padding:24px}
+  .cta-band{flex-direction:column;align-items:flex-start;gap:20px;padding:24px}
+  .cta-band .btn{width:100%;justify-content:center}
+  .shell{flex-direction:column}
+  .side{width:100%;position:static;height:auto}
+  .main{padding:20px 16px}
+  .page-head{flex-direction:column;align-items:flex-start;gap:14px}
+}
+
+/* =====================================================================
+   INTERFACE PRO (panel) : sombre, sobre, un seul accent, sans blanc
+   ===================================================================== */
+html,body{background:#0b0b0b}
+body{scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.12) transparent}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.10);border-radius:8px;border:2px solid transparent;background-clip:padding-box}
+::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.18);background-clip:padding-box}
+
+.shell{background:#0b0b0b}
+.side{background:#0e0e0e;backdrop-filter:none;border-right:1px solid rgba(255,255,255,.06)}
+.side .logo{font-family:var(--display);letter-spacing:.01em}
+.side a.nav-item{color:#a3a39c;border-radius:10px;padding:9px 12px}
+.side a.nav-item:hover{background:rgba(255,255,255,.03);color:#eaeaea}
+.side a.nav-item.on{background:rgba(215,255,63,.07);color:#f2f2f2;box-shadow:none}
+.side a.nav-item.on::before{background:var(--accent);width:2px}
+.side a.nav-item .count{background:rgba(255,255,255,.05);border-radius:6px;padding:1px 6px}
+.side .group{color:#4d4d59}
+.side .plan-block,.side .me-card{background:#161616;border:1px solid rgba(255,255,255,.06);box-shadow:none}
+.side .avatar{background:rgba(215,255,63,.12);color:var(--accent);border:1px solid rgba(215,255,63,.22);font-size:12px}
+
+.main{background:#0b0b0b}
+.card{background:#131313;border:1px solid rgba(255,255,255,.06);box-shadow:0 1px 0 rgba(255,255,255,.02) inset}
+.card:hover{border-color:rgba(255,255,255,.1)}
+
+/* Conversation */
+.chat-top{background:#0e0e0e;border-bottom:1px solid rgba(255,255,255,.06)}
+.chat-top .title{color:#f2f2f2}
+.msg .who{background:#1a1a1a;color:var(--accent);border:1px solid rgba(215,255,63,.18);font-family:var(--mono);font-size:11px}
+.msg.me .who{background:rgba(215,255,63,.10);color:var(--accent);border:1px solid rgba(215,255,63,.28)}
+.msg.me .bubble{background:#17171f;color:#f0f0ee;border:1px solid rgba(255,255,255,.07)}
+.msg.ai .bubble{background:#0f0f15;color:#e8e8e6;border:1px solid rgba(255,255,255,.06)}
+.msg .meta{color:#4f4f5b}
+
+.composer{background:#0e0e0e;border-top:1px solid rgba(255,255,255,.06)}
+.inbox{background:#0c0c11;border:1px solid rgba(255,255,255,.09);border-radius:14px}
+.inbox:focus-within{border-color:rgba(215,255,63,.5);box-shadow:0 0 0 3px rgba(215,255,63,.08)}
+.send{background:var(--accent);color:#0a0a0a;box-shadow:0 6px 18px -8px rgba(215,255,63,.6)}
+.send:hover{background:#e4ff6b}
+.send:disabled{background:#222222;color:#4d4d59;box-shadow:none;opacity:1}
+
+/* Boutons secondaires sobres */
+.btn-line{background:#141414;border-color:rgba(255,255,255,.10);color:#e9e9e9}
+.btn-line:hover{border-color:rgba(215,255,63,.4);color:#fff}
+.btn-ghost:hover{background:rgba(255,255,255,.04)}
+
+/* Sélecteur de module */
+.inbox textarea,.textarea,.input,.select{background:#0c0c11;border-color:rgba(255,255,255,.09);color:#f0f0f0}
+.input:focus,.select:focus,.textarea:focus{border-color:rgba(215,255,63,.5)}
+.select{background-color:#0c0c11}
+
+/* Mobile : barre latérale horizontale sobre */
+@media (max-width:900px){
+  .side{background:#0e0e0e}
+}
+
+/* =====================================================================
+   KARAT PANEL v3 — refonte de l'interface (sombre, dense, lisible)
+   ===================================================================== */
+:root{
+  --p-bg:#0b0b0b; --p-side:#0d0d0d; --p-card:#111111; --p-card2:#161616; --p-hover:#1d1d1d;
+  --p-line:rgba(255,255,255,.06); --p-line2:rgba(255,255,255,.10);
+  --p-text:#f2f2ef; --p-sub:#a3a39c; --p-mute:#6b6b64;
+  --p-accent:#d7ff3f; --p-accent-soft:rgba(215,255,63,.10); --p-accent-line:rgba(215,255,63,.28);
+  --p-radius:16px; --p-radius-sm:11px;
+}
+
+/* Fond de l'espace connecté : léger halo citron en haut */
+.shell{background:var(--p-bg);min-height:100vh}
+.main{position:relative;padding:34px 44px 56px;max-width:none}
+.main::before{content:"";position:absolute;inset:0 0 auto 0;height:340px;pointer-events:none;
+  background:radial-gradient(900px 260px at 20% -10%,rgba(215,255,63,.055),transparent 70%);z-index:0}
+.main > *{position:relative;z-index:1}
+@keyframes kIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.main > *{animation:kIn .35s var(--ease) both}
+
+/* Barre latérale */
+.side{width:264px;padding:22px 16px 18px;background:var(--p-side);border-right:1px solid var(--p-line);gap:2px}
+.side .logo{padding:6px 10px 24px;font-size:17px;gap:10px}
+.side .logo i{width:28px;height:28px;border-radius:9px}
+.side .group{font-size:10px;padding:20px 12px 8px;color:#55555f;letter-spacing:.16em}
+.side a.nav-item{padding:9px 12px;border-radius:var(--p-radius-sm);font-size:13.5px;font-weight:500;gap:11px;color:var(--p-sub)}
+.side a.nav-item svg{width:17px;height:17px;opacity:.85}
+.side a.nav-item:hover{background:var(--p-hover);color:var(--p-text)}
+.side a.nav-item.on{background:var(--p-accent-soft);color:var(--p-text);box-shadow:inset 0 0 0 1px rgba(215,255,63,.12)}
+.side a.nav-item.on svg{color:var(--p-accent);opacity:1}
+.side a.nav-item.on::before{left:-16px;top:9px;bottom:9px;width:3px;border-radius:0 3px 3px 0}
+.side a.nav-item .count{font-size:10.5px;padding:2px 7px;border-radius:999px;background:rgba(255,255,255,.05);color:var(--p-mute)}
+.side .foot{padding-top:16px;gap:10px}
+.side .plan-block{padding:14px 14px 12px;border-radius:14px;background:linear-gradient(180deg,#121218,#131313);border:1px solid var(--p-line2)}
+.side .plan-block .label{font-size:10px;color:var(--p-mute)}
+.side .plan-block b{display:block;font-size:14px;margin:4px 0 6px;font-family:var(--display)}
+.side .plan-block a{font-size:12.5px;color:var(--p-accent);font-weight:500}
+.side .me-card{padding:11px;border-radius:14px;background:var(--p-card2);border:1px solid var(--p-line)}
+.side .me-card b{font-size:13px}
+.side .me-card span{font-size:10.5px;color:var(--p-mute)}
+.side .btn-ghost{color:var(--p-sub);justify-content:flex-start;padding-left:10px}
+.side .btn-ghost:hover{color:var(--p-text);background:var(--p-hover)}
+
+/* En-têtes de page */
+.page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap;padding-bottom:26px;margin-bottom:28px;border-bottom:1px solid var(--p-line)}
+.page-head h1{font-family:var(--display);font-size:30px;font-weight:700;letter-spacing:-.03em;line-height:1.15}
+.page-head p{color:var(--p-sub);font-size:14px;margin-top:8px;max-width:620px}
+.crumb{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--p-mute);margin-bottom:10px}
+
+/* Cartes */
+.card{background:linear-gradient(180deg,#141414,#0f0f0f);border:1px solid var(--p-line);border-radius:var(--p-radius);padding:22px;box-shadow:0 1px 0 rgba(255,255,255,.025) inset,0 18px 40px -28px rgba(0,0,0,.8)}
+.card:hover{border-color:var(--p-line2)}
+.card-h{margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--p-line)}
+.card-h h3{font-family:var(--display);font-size:15px;font-weight:600;letter-spacing:-.01em}
+.kpi{padding:20px 22px;position:relative;overflow:hidden}
+.kpi::after{content:"";position:absolute;right:-30px;top:-30px;width:90px;height:90px;border-radius:50%;background:radial-gradient(circle,rgba(215,255,63,.10),transparent 70%)}
+.kpi .k-v{font-size:32px}
+.grid{gap:16px}
+
+/* Boutons */
+.btn{height:40px;padding:0 16px;border-radius:12px;font-size:13.5px;font-weight:600;letter-spacing:-.005em;gap:8px}
+.btn-sm{height:32px;padding:0 12px;font-size:12.5px;border-radius:10px}
+.btn-line{background:#141414;border:1px solid var(--p-line2);color:var(--p-text)}
+.btn-line:hover{border-color:var(--p-accent-line);background:var(--p-hover)}
+.btn-ghost{color:var(--p-sub)}
+.btn-ghost:hover{color:var(--p-text);background:rgba(255,255,255,.04)}
+.btn-danger{background:rgba(255,123,114,.08);color:#ff9d96;border:1px solid rgba(255,123,114,.25)}
+.btn-danger:hover{background:rgba(255,123,114,.14)}
+.btn:disabled{opacity:.4;pointer-events:none}
+.btn svg{width:16px;height:16px}
+
+/* Badges et étiquettes */
+.badge{height:22px;padding:0 9px;border-radius:999px;font-size:10px;letter-spacing:.08em;font-weight:600}
+.label{font-size:10.5px;letter-spacing:.14em;color:var(--p-mute)}
+.muted{color:var(--p-sub)}
+.dim{color:var(--p-mute)}
+
+/* Champs */
+.field label,.field .lab{font-size:10.5px;letter-spacing:.12em;color:var(--p-mute);font-weight:500}
+.input,.select,.textarea{height:42px;border-radius:var(--p-radius-sm);background:#0b0b10;border:1px solid var(--p-line2);color:var(--p-text);font-size:13.5px;transition:border-color .2s,box-shadow .2s,background .2s}
+.input:hover,.select:hover,.textarea:hover{border-color:rgba(255,255,255,.16)}
+.input:focus,.select:focus,.textarea:focus{background:#0d0d13;border-color:var(--p-accent-line);box-shadow:0 0 0 4px rgba(215,255,63,.07)}
+.textarea{padding:12px 14px;min-height:96px}
+
+/* Segments (onglets de module) */
+.seg{background:#0b0b10;border:1px solid var(--p-line);border-radius:12px;padding:3px;gap:2px}
+.seg button,.seg a{height:32px;padding:0 13px;border-radius:9px;font-size:12.5px;font-weight:500}
+.seg button.on,.seg a.on{background:#1a1a22;color:var(--p-text);box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 2px 8px rgba(0,0,0,.4)}
+
+/* Tableaux */
+.table-wrap{border:1px solid var(--p-line);border-radius:var(--p-radius);overflow:auto;background:#0f0f0f}
+.tbl{font-size:13px}
+.tbl th{background:#0f0f0f;position:sticky;top:0;padding:13px 16px;border-bottom:1px solid var(--p-line)}
+.tbl td{padding:14px 16px;border-bottom:1px solid var(--p-line)}
+.tbl tbody tr:hover td{background:rgba(255,255,255,.015)}
+.avatar{background:var(--p-accent-soft);color:var(--p-accent);border:1px solid var(--p-accent-line);font-weight:700}
+
+/* Chat */
+.chat-top{padding:16px 24px;background:rgba(10,10,13,.85);backdrop-filter:blur(10px);border-bottom:1px solid var(--p-line);position:sticky;top:0;z-index:5}
+.chat-top .title{font-size:14px;color:var(--p-text)}
+.msgs{padding:28px 24px;gap:22px}
+.msg{max-width:min(760px,88%);gap:12px}
+.msg.me{max-width:min(640px,80%)}
+.msg .who{width:32px;height:32px;flex:0 0 32px;border-radius:10px;font-size:11px;background:#1a1a1a;border:1px solid rgba(215,255,63,.18);color:var(--p-accent)}
+.msg.me .who{background:var(--p-accent-soft);border-color:var(--p-accent-line);color:var(--p-accent)}
+.msg .bubble{padding:13px 16px;border-radius:14px;font-size:14.5px;line-height:1.62;letter-spacing:-.003em}
+.msg.ai .bubble{background:#151515;border:1px solid var(--p-line);border-top-left-radius:4px;box-shadow:0 10px 30px -22px rgba(0,0,0,.9)}
+.msg.me .bubble{background:#1f1f1f;border:1px solid var(--p-line2);border-top-right-radius:4px}
+.msg .meta{font-size:10px;letter-spacing:.04em;margin-top:8px;display:flex;align-items:center;gap:8px}
+.msg .meta .btn-ghost{height:22px;padding:0 6px;font-size:11px}
+.typing{color:var(--p-mute)}
+.composer{padding:16px 24px 20px;background:linear-gradient(180deg,rgba(7,7,9,0),var(--p-bg) 40%);border-top:0}
+.composer .hint,.composer > div:last-child{max-width:820px;margin-left:auto;margin-right:auto}
+.inbox{max-width:820px;margin:0 auto;border-radius:18px;background:#0d0d12;border:1px solid var(--p-line2);padding:9px 9px 9px 14px;box-shadow:0 22px 50px -30px rgba(0,0,0,.9)}
+.inbox textarea{font-size:14.5px;padding:10px 6px}
+.send{width:40px;height:40px;flex:0 0 40px;border-radius:12px}
+.sugg{border-radius:999px;border:1px solid var(--p-line2);background:#141414;font-size:12.5px;padding:7px 13px;color:var(--p-sub);transition:all .15s}
+.sugg:hover{color:var(--p-text);border-color:var(--p-accent-line)}
+
+/* Modules */
+.mod{padding:24px;display:flex;flex-direction:column;gap:12px}
+.mod .mi,.mode-card .mi{width:44px;height:44px;border-radius:12px;background:var(--p-accent-soft);border:1px solid var(--p-accent-line);display:grid;place-items:center;color:var(--p-accent)}
+.mod h3{font-family:var(--display);font-size:17px;font-weight:600}
+.mod p{color:var(--p-sub);font-size:13.5px;line-height:1.6}
+.mod ul{list-style:none;display:grid;gap:7px;font-size:13px;color:var(--p-sub);margin:4px 0 6px}
+.mod ul li::before{content:"";display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--p-accent);margin-right:10px;vertical-align:middle}
+.mod .btn{margin-top:auto;align-self:flex-start}
+
+/* Abonnement */
+.plan-status{background:linear-gradient(180deg,#141414,#0f0f0f);border:1px solid var(--p-line);border-radius:var(--p-radius);padding:22px 24px;display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.plan-status b{font-family:var(--display);font-size:18px;letter-spacing:-.02em}
+
+/* Listes et vides */
+.empty{border:1px dashed var(--p-line2);border-radius:var(--p-radius);background:rgba(255,255,255,.012);padding:60px 24px}
+.empty .ico{color:var(--p-mute)}
+.pager{color:var(--p-mute);font-size:12.5px}
+
+/* Modales */
+.veil{background:rgba(3,3,6,.72);backdrop-filter:blur(14px);animation:kFade .2s ease both}
+.sheet{background:#141414;border:1px solid var(--p-line2);border-radius:22px;padding:30px;box-shadow:0 40px 90px -30px rgba(0,0,0,.95);animation:kPop .28s var(--ease) both;position:relative}
+.sheet h2{font-size:22px}
+@keyframes kFade{from{opacity:0}to{opacity:1}}
+@keyframes kPop{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:none}}
+.sheet .x{background:rgba(255,255,255,.04);border-radius:10px}
+.sheet .x:hover{background:rgba(255,255,255,.08)}
+
+/* Notifications */
+.toast-wrap{gap:10px;bottom:24px}
+.toast{background:#121218;border:1px solid var(--p-line2);border-radius:14px;padding:13px 16px;font-size:13.5px;color:var(--p-text);box-shadow:0 20px 40px -18px rgba(0,0,0,.9)}
+
+/* Liens & séparateurs */
+hr{border:0;border-top:1px solid var(--p-line)}
+::selection{background:rgba(215,255,63,.25);color:#fff}
+
+/* Téléphone (panel) */
+@media (max-width:900px){
+  .side{width:100%;padding:12px;background:var(--p-side)}
+  .main{padding:22px 18px 40px}
+  .msgs{padding:18px 14px}
+  .msg{max-width:94%}
+}
+@media (max-width:600px){
+  .page-head h1{font-size:24px}
+  .page-head{padding-bottom:20px;margin-bottom:22px}
+  .grid.g4,.grid.g3{grid-template-columns:1fr!important}
+  .plan-status{flex-direction:column;align-items:flex-start}
+  .chat-top{padding:12px 14px}
+  .inbox{border-radius:16px}
+  .sheet{padding:22px}
+}
+
+/* =====================================================================
+   KARAT v4 — version finale : sobre, sans effets décoratifs, chat encadré
+   ===================================================================== */
+/* Retrait de tous les effets d'ambiance */
+.aurora,body::after,body::before,.main::before,.kpi::after{display:none!important;content:none!important}
+.composer{background:transparent!important;box-shadow:none!important}
+.card,.sheet,.chat,.inbox,.plan-status,.side .plan-block,.side .me-card{box-shadow:none!important}
+.welcome .big{background:#1a1a1a!important;border:1px solid var(--p-line2)!important;color:var(--p-text)!important;box-shadow:none!important;border-radius:16px!important}
+.sugg{border:0!important;background:none!important;box-shadow:none!important;border-radius:0!important;padding:0!important;max-width:620px;margin-left:auto;margin-right:auto}
+.sugg button{background:#141414!important;border:1px solid var(--p-line2)!important;border-radius:10px!important;padding:9px 14px!important;font-size:13px!important;color:var(--p-sub)!important;box-shadow:none!important}
+.sugg button:hover{color:var(--p-text)!important;border-color:rgba(255,255,255,.18)!important;background:#1a1a1a!important}
+
+/* Chat : un vrai cadre carré dans la zone principale */
+.main{padding:28px 36px 28px!important}
+.main > .chat{height:calc(100vh - 56px)!important;min-height:0!important;max-height:none;display:flex;flex-direction:column;margin:0;border-radius:14px!important;border:1px solid var(--p-line2)!important;background:#0f0f0f!important;overflow:hidden}
+.chat-top{flex:0 0 auto;min-height:60px;padding:0 20px!important;height:60px;background:#0f0f0f!important;border-bottom:1px solid var(--p-line)!important;position:relative!important;top:auto!important}
+.chat-top .title{font-size:14px;font-weight:600}
+.msgs{flex:1 1 auto;min-height:0;overflow-y:auto;padding:26px 28px!important;background:#0f0f0f}
+.composer{flex:0 0 auto;padding:14px 20px 16px!important;border-top:1px solid var(--p-line)!important;background:#0f0f0f!important}
+.inbox{max-width:none!important;margin:0!important;border-radius:12px!important;background:#0b0b0b!important;border:1px solid var(--p-line2)!important;padding:6px 6px 6px 10px!important}
+.inbox:focus-within{border-color:var(--p-accent-line)!important}
+.hint{max-width:none!important;margin:8px 4px 0!important}
+.hint span{font-size:10.5px;color:var(--p-mute)}
+.send{width:36px!important;height:36px!important;flex:0 0 36px!important;border-radius:10px!important;box-shadow:none!important}
+.btn-icon{width:36px;height:36px;padding:0;justify-content:center}
+
+/* Bulles : sobres, sans dégradé */
+.msg .bubble{box-shadow:none!important}
+.msg.ai .bubble{background:#161616!important;border:1px solid var(--p-line)!important}
+.msg.me .bubble{background:#1f1f1f!important;border:1px solid var(--p-line2)!important}
+
+/* Sidebar et pages : fond uni */
+.shell,.main,.side{background:#0b0b0b!important}
+.side{border-right:1px solid var(--p-line)!important}
+.side a.nav-item.on{background:rgba(215,255,63,.08)!important;box-shadow:none!important}
+.side .plan-block{background:#131313!important}
+
+@media (max-width:900px){
+  .main{padding:16px!important}
+  .main > .chat{height:calc(100vh - 150px)!important;min-height:440px!important}
+  .chat-top{height:auto;min-height:56px;padding:10px 14px!important;flex-wrap:wrap}
+}
+
+
+/* =====================================================================
+   KARAT — palette de marque : noir du logo (#0b0b0b) + citron (#d7ff3f)
+   Neutres chauds, citron réservé aux actions et à l'état actif.
+   ===================================================================== */
+:root{
+  --bg:#0b0b0b; --bg2:#0e0e0e; --panel:#111111; --panel2:#161616; --raised:#1d1d1d;
+  --line:rgba(255,255,255,.07); --line2:rgba(255,255,255,.12);
+  --text:#f2f2ef; --muted:#a3a39c; --dim:#6b6b64;
+  --accent:#d7ff3f; --accent-ink:#0b0b0b;
+  --ok:#8fd694; --warn:#e6c07b; --danger:#e88a80;
+}
+body,.shell,.main,.side{background:#0b0b0b}
+
+/* =====================================================================
+   KARAT — style produit sobre (inspiration : fond noir chaud, titres
+   en phrase, boutons en pilule par paires, bordures très discrètes)
+   ===================================================================== */
+:root{
+  --bg:#0f0e0b; --panel:#15140f; --panel2:#1a1914; --raised:#23221c;
+  --line:rgba(255,246,228,.07); --line2:rgba(255,246,228,.12);
+  --text:#f4f1ea; --muted:#a8a396; --dim:#6e6a5e;
+}
+html,body,.shell,.main,.side{background:var(--bg)!important}
+body{font-feature-settings:"ss01","cv11";letter-spacing:-.005em}
+
+/* Titres : grands, serrés, en phrase */
+h1,.page-head h1,.h-xl{font-family:var(--display);font-weight:600;letter-spacing:-.035em;color:var(--text)}
+.page-head h1{font-size:34px;line-height:1.1}
+.page-head p{font-size:15px;color:var(--muted);max-width:640px}
+.crumb{font-family:var(--sans);text-transform:none;letter-spacing:0;font-size:13px;color:var(--dim)}
+.label{font-family:var(--sans);text-transform:none;letter-spacing:0;font-size:12.5px;color:var(--dim);font-weight:500}
+
+/* Barre latérale : sans bordure forte, navigation épurée */
+.side{border-right:1px solid var(--line)!important;padding:20px 14px!important}
+.side .group{font-family:var(--sans);text-transform:none;letter-spacing:0;font-size:12px;color:var(--dim);font-weight:500;padding:22px 12px 8px}
+.side a.nav-item{border-radius:9px;color:var(--muted);font-size:13.5px;font-weight:450}
+.side a.nav-item:hover{background:rgba(255,246,228,.04);color:var(--text)}
+.side a.nav-item.on{background:rgba(255,246,228,.07);color:var(--text);box-shadow:none}
+.side a.nav-item.on::before{display:none}
+.side .logo{font-size:16px}
+
+/* Cartes : bordure à peine visible, grands rayons, beaucoup d'air */
+.card,.plan,.sheet,.table-wrap{background:var(--panel)!important;border:1px solid var(--line)!important;border-radius:16px!important}
+.card:hover{border-color:var(--line2)!important}
+.card-h{border-bottom:1px solid var(--line)}
+.card-h h3{font-family:var(--display);font-weight:600;font-size:15px}
+
+/* Boutons en pilule : principal (plein) + secondaire (contour), avec flèche */
+.btn{border-radius:999px!important;height:40px;padding:0 18px;font-weight:550;font-size:14px}
+.btn-sm{height:34px;padding:0 14px;font-size:13px}
+.btn-accent{background:var(--accent)!important;color:var(--accent-ink)!important;box-shadow:none!important}
+.btn-accent:hover{background:#e3ff6a!important;transform:none}
+.btn-line{background:transparent!important;border:1px solid var(--line2)!important;color:var(--text)!important}
+.btn-line:hover{background:rgba(255,246,228,.05)!important;border-color:rgba(255,246,228,.22)!important}
+.btn-ghost{color:var(--muted)!important}
+.btn-ghost:hover{color:var(--text)!important;background:rgba(255,246,228,.05)!important}
+.btn-danger{border-radius:999px!important}
+
+/* Badges et pastilles */
+.badge{border-radius:999px;background:rgba(255,246,228,.06);color:var(--muted);border:1px solid var(--line);font-family:var(--sans);font-size:11.5px;letter-spacing:0;text-transform:none;font-weight:500}
+.badge.accent{background:var(--accent);color:var(--accent-ink);border-color:transparent}
+
+/* Champs */
+.input,.select,.textarea{border-radius:12px!important;background:var(--panel)!important;border:1px solid var(--line2)!important;font-size:14px}
+.input:focus,.select:focus,.textarea:focus{border-color:rgba(215,255,63,.5)!important;box-shadow:0 0 0 4px rgba(215,255,63,.08)!important}
+
+/* Tableaux */
+.tbl th{font-family:var(--sans);text-transform:none;letter-spacing:0;font-size:12.5px;color:var(--dim);font-weight:500;background:var(--panel)!important}
+.tbl td{color:#e4e0d6}
+
+/* Chat : cadre généreux, saisie en pilule */
+.main > .chat{border-radius:18px!important;background:var(--panel)!important;border:1px solid var(--line)!important}
+.chat-top{background:var(--panel)!important;border-bottom:1px solid var(--line)!important}
+.chat-top .title{font-family:var(--display);font-weight:600;font-size:14.5px}
+.msgs{background:var(--panel)!important}
+.msg .bubble{font-size:15px;line-height:1.65}
+.msg.ai .bubble{background:transparent!important;border:0!important;padding:4px 0!important;color:#ece8de}
+.msg.me .bubble{background:var(--raised)!important;border:0!important;border-radius:18px 18px 4px 18px!important}
+.msg .who{background:transparent!important;border:1px solid var(--line2)!important;color:var(--text)!important;font-family:var(--sans);font-size:12px}
+.msg.me .who{background:var(--raised)!important;border:0!important;color:var(--text)!important}
+.inbox{border-radius:999px!important;padding:6px 6px 6px 18px!important;background:var(--bg)!important;border:1px solid var(--line2)!important}
+.inbox textarea{font-size:15px!important}
+.inbox:focus-within{border-color:rgba(255,246,228,.22)!important;box-shadow:none!important}
+.send{border-radius:999px!important;background:var(--accent)!important;color:var(--accent-ink)!important;width:38px!important;height:38px!important}
+.hint span{font-family:var(--sans);font-size:11.5px;color:var(--dim)}
+.sugg button{border-radius:999px!important;background:transparent!important;border:1px solid var(--line2)!important;color:var(--muted)!important;font-size:13.5px!important;padding:9px 16px!important}
+.sugg button:hover{color:var(--text)!important;background:rgba(255,246,228,.04)!important}
+
+/* Modales et notifications */
+.veil{background:rgba(8,7,5,.72)!important}
+.sheet{border-radius:20px!important;padding:32px!important}
+.toast{border-radius:12px!important;background:var(--raised)!important;border:1px solid var(--line2)!important;font-size:14px}
+
+/* Mobile */
+@media (max-width:600px){
+  .page-head h1{font-size:28px}
+  .side{padding:12px!important}
+}
+
 </style>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+
 </head>
 <body>
 <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
@@ -1110,6 +1513,8 @@ const ONBOARD_RULES = [
 /* ---------- Icônes ---------- */
 const ICON = {
   home: '<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
+  bell: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
+  image: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/>',
   chat: '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/>',
   clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   file: '<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/>',
@@ -1225,6 +1630,8 @@ function currentPlan(){
   return planOf(session.email);
 }
 const hasAccess = () => { const p = currentPlan(); return p === "admin" || !!(p && PLANS[p]); };
+// Abonné payant (ou admin) : on masque les promos d'abonnement et les rappels de paiement
+const promoHidden = () => !!session && hasAccess();
 const me = () => (session && users[emailOf(session.email)]) || {};
 const displayName = u => `${u.firstName || ""} ${u.lastName || ""}`.trim() || (session ? session.name : "") || "";
 const planLabel = () => { const p = currentPlan(); return p === "admin" ? "Administrateur" : p ? PLANS[p].name : "Sans offre"; };
@@ -1263,6 +1670,8 @@ const ROUTES = [
   { re: /^\/admin\/utilisateurs$/,   fn: vAdminUsers,     admin: true },
   { re: /^\/admin\/abonnements$/,    fn: vAdminSubs,      admin: true },
   { re: /^\/admin\/journal$/,        fn: vAdminLog,       admin: true },
+  { re: /^\/app\/images$/,            fn: vImages,         app: true },
+  { re: /^\/admin\/annonces$/,         fn: vAdminAnnonces,   admin: true },
   { re: /^\/admin\/reglages$/,       fn: vAdminSettings,  admin: true }
 ];
 
@@ -1310,6 +1719,7 @@ function afterRender(path){
   if (path === "/admin/utilisateurs"){ const s = $("[data-change='admin-filter']"); if (s) s.value = ui.adminFilter; fillAdminUsers(); }
   if (path === "/admin/abonnements") fillSubs();
   if (path === "/admin/journal"){ const s = $("[data-change='log-filter']"); if (s) s.value = ui.logFilter; }
+  if (path === "/admin/annonces") fillAnnonceList();
 }
 
 /* =====================================================================
@@ -1359,12 +1769,14 @@ function appShell(path, content){
       ${link("/app/historique", "clock", "Historique", myChats().length)}
       ${link("/app/fichiers", "file", "Fichiers", myFiles().length)}
       ${link("/app/modules", "grid", "Modules")}
+      ${link("/app/images", "image", "Images")}
       ${link("/app/offre", "card", "Abonnement")}
       ${adm ? `<div class="group">Administration</div>
         ${link("/admin", "shield", "Vue d'ensemble")}
         ${link("/admin/utilisateurs", "users", "Utilisateurs", Object.keys(users).length)}
         ${link("/admin/abonnements", "card", "Abonnements", allRows().filter(r => r.plan).length)}
         ${link("/admin/journal", "list", "Journal")}
+        ${link("/admin/annonces", "bell", "Annonces")}
         ${link("/admin/reglages", "settings", "Réglages")}` : ""}
       <div class="foot">
         <div class="plan-block">
@@ -1415,8 +1827,10 @@ function vLanding(){
     <h1 class="h-xl">Analysez <span class="strike">moins</span>.<br/>Décidez <span class="acc">plus vite.</span></h1>
     <p class="lead">KARAT réunit l'analyse de fichiers, le code, la rédaction et les données dans un seul panel sobre et rapide.</p>
     <div class="ctas">
-      <a class="btn btn-accent" href="#/tarifs">Voir les offres ${ic("arrow")}</a>
-      <a class="btn btn-line" href="#/connexion?tab=signup">Créer un compte</a>
+      ${promoHidden()
+        ? `<a class="btn btn-accent" href="#/app/chat">Ouvrir le panel ${ic("arrow")}</a>`
+        : `<a class="btn btn-accent" href="#/tarifs">Voir les offres ${ic("arrow")}</a>
+           <a class="btn btn-line" href="#/connexion?tab=signup">Créer un compte</a>`}
     </div>
     <div class="proof">
       <div><b>4</b><span>modules métiers</span></div>
@@ -1471,7 +1885,7 @@ function vLanding(){
     </div>
   </div></section>
 
-  <section class="section" id="offres" style="padding-top:0"><div class="wrap">
+  <section class="section" id="offres" style="padding-top:0;${promoHidden() ? "display:none" : ""}"><div class="wrap">
     <div class="head">
       <div><div class="label">Tarifs</div><h2 class="h-l" style="margin-top:14px;max-width:560px">Une offre pour chaque usage.</h2></div>
       <p>TTC, sans engagement. Résiliable depuis votre espace.</p>
@@ -1488,12 +1902,12 @@ function vLanding(){
     <details class="faq"><summary>Pourquoi dois-je valider des règles après le paiement ?</summary><p>Avant le premier accès au panel, nous vous présentons les règles d'utilisation. Vous les validez une fois pour toutes.</p></details>
   </div></section>
 
-  <section class="section" style="padding-top:0"><div class="wrap">
+  ${promoHidden() ? "" : `<section class="section" style="padding-top:0"><div class="wrap">
     <div class="cta-band">
       <div><div class="label">Prêt ?</div><h2 class="h-l" style="margin-top:12px;font-size:36px">Commencez avec 7,99 € par mois.</h2><p class="muted" style="margin-top:10px">Sans engagement, résiliable depuis votre espace.</p></div>
       <a class="btn btn-accent" href="#/tarifs">Voir les offres ${ic("arrow")}</a>
     </div>
-  </div></section>
+  </div></section>`}
   ${pubFooter()}`;
 }
 
@@ -1501,6 +1915,7 @@ function planCard(key){
   const p = PLANS[key];
   const hot = key === "pro";
   const cur = currentPlan() === key;
+  if (promoHidden() && !cur) return "";
   return `<div class="plan ${hot ? "hot" : ""}">
     ${hot ? `<span class="ribbon">POPULAIRE</span>` : ""}
     <div class="pname">${p.name}</div>
@@ -1964,7 +2379,7 @@ function vSubscription(){
       ? `<div class="plan-status">
           <div><div class="label">Offre active</div><b>${PLANS[p].name} · ${PLANS[p].price} / mois</b>
             <p class="muted small" style="margin-top:6px">Active depuis le ${fmtDay(sub.since)} · prochain renouvellement le ${fmtDay(addMonths(sub.since, 1))}</p></div>
-          <div class="row wrap-x"><a class="btn btn-line btn-sm" href="#/tarifs">Changer d'offre</a><button class="btn btn-ghost btn-sm" data-action="cancel-sub">Résilier</button></div>
+          <div class="row wrap-x">${promoHidden() ? "" : `<a class="btn btn-line btn-sm" href="#/tarifs">Changer d'offre</a>`}<button class="btn btn-ghost btn-sm" data-action="cancel-sub">Résilier</button></div>
         </div>`
       : `<div class="plan-status"><div><div class="label">Statut</div><b>Aucune offre active</b><p class="muted small" style="margin-top:6px">Choisissez une offre pour accéder au panel.</p></div><a class="btn btn-accent btn-sm" href="#/tarifs">Voir les offres</a></div>`;
   const features = p ? `<div class="card" style="margin-top:18px"><div class="card-h"><h3>Inclus dans votre offre</h3></div>
@@ -2426,12 +2841,130 @@ document.addEventListener("drop", e => {
   e.preventDefault(); d.classList.remove("over");
   importFiles(e.dataTransfer.files);
 });
+/* =====================================================================
+   ANNONCES : affichées à l'ouverture du site, gérées par l'administrateur
+   ===================================================================== */
+const adminToken = () => { try { return sessionStorage.getItem("karat_admin_token") || ""; } catch (e) { return ""; } };
+async function fetchAnnonces(){
+  try {
+    const r = await fetch("/.netlify/functions/annonces", { cache: "no-store" });
+    const d = await r.json();
+    return Array.isArray(d.annonces) ? d.annonces : [];
+  } catch (e) { return []; }
+}
+async function showAnnoncesOnOpen(){
+  const list = await fetchAnnonces();
+  if (!list.length) return;
+  let seen = "";
+  try { seen = sessionStorage.getItem("karat_ann_seen") || ""; } catch (e) {}
+  const seenIds = seen.split(",");
+  const fresh = list.filter(a => !seenIds.includes(a.id));
+  if (!fresh.length) return;
+  try { sessionStorage.setItem("karat_ann_seen", list.map(a => a.id).join(",")); } catch (e) {}
+  openModal(`<div class="sheet" role="dialog" aria-modal="true" aria-label="Annonces">
+    <button class="x" data-action="close-modal" aria-label="Fermer">${svg("x")}</button>
+    <div class="label">Annonce</div>
+    ${fresh.map(a => `<h3 style="margin-top:12px">${esc(a.title)}</h3>${a.text ? `<p class="muted" style="margin-top:6px;white-space:pre-line">${esc(a.text)}</p>` : ""}`).join("")}
+    <div class="row" style="margin-top:22px;justify-content:flex-end"><button class="btn btn-accent" data-action="close-modal">Compris</button></div>
+  </div>`);
+}
+function vAdminAnnonces(){
+  const opts = [[1, "1 heure"], [6, "6 heures"], [24, "24 heures"], [72, "3 jours"], [168, "7 jours"]]
+    .map(([h, l]) => `<option value="${h}" ${h === 24 ? "selected" : ""}>${l}</option>`).join("");
+  return appShell("/admin/annonces", pageHead("Administration", "Annonces", "Affichées à l'ouverture du site, puis retirées automatiquement à la fin de leur durée.") +
+    `<div class="grid g2" style="align-items:start">
+      <div class="card">
+        <div class="card-h"><h3>Nouvelle annonce</h3></div>
+        <div class="field" style="margin-bottom:14px"><label for="ann-title">TITRE</label><input id="ann-title" class="input" maxlength="120" placeholder="Ex : Maintenance ce soir" /></div>
+        <div class="field" style="margin-bottom:14px"><label for="ann-text">MESSAGE</label><textarea id="ann-text" class="textarea" rows="4" maxlength="600" placeholder="Votre message (facultatif)"></textarea></div>
+        <div class="field" style="margin-bottom:14px"><label for="ann-hours">DURÉE D'AFFICHAGE</label><select id="ann-hours" class="select" style="width:100%;height:44px">${opts}</select></div>
+        <div class="field" style="margin-bottom:18px"><label for="ann-token">JETON ADMINISTRATEUR</label><input id="ann-token" class="input" type="password" value="${esc(adminToken())}" placeholder="Votre jeton" /></div>
+        <button class="btn btn-accent" data-action="ann-create">Publier l'annonce</button>
+      </div>
+      <div class="card" id="ann-list"><div class="card-h"><h3>Annonces en cours</h3></div><p class="muted small">Chargement…</p></div>
+    </div>`);
+}
+async function fillAnnonceList(){
+  const box = $("#ann-list"); if (!box) return;
+  const list = await fetchAnnonces();
+  const rows = list.length ? list.map(a => {
+    const left = Math.max(0, Math.round((a.until - Date.now()) / 3600e3));
+    return `<div class="between" style="padding:12px 0;border-bottom:1px solid var(--line);gap:12px">
+      <div style="min-width:0"><b>${esc(a.title)}</b><div class="dim small">${left} h restantes</div></div>
+      <button class="btn btn-danger btn-sm" data-action="ann-del" data-id="${esc(a.id)}">Retirer</button></div>`;
+  }).join("") : `<p class="muted small">Aucune annonce en cours.</p>`;
+  box.innerHTML = `<div class="card-h"><h3>Annonces en cours</h3></div>${rows}`;
+}
+
+/* =====================================================================
+   GÉNÉRATION D'IMAGES (abonnés payants)
+   ===================================================================== */
+function vImages(){
+  return appShell("/app/images", pageHead("Espace", "Génération d'images", "Décrivez l'image souhaitée, KARAT la génère pour vous.") +
+    `<div class="card" style="max-width:720px">
+      <div class="field" style="margin-bottom:16px"><label for="img-prompt">DESCRIPTION</label><textarea id="img-prompt" class="textarea" rows="3" maxlength="1000" placeholder="Ex : un logo minimaliste vert citron sur fond noir"></textarea></div>
+      <button class="btn btn-accent" data-action="img-generate">Générer l'image</button>
+      <div id="img-out" style="margin-top:22px"></div>
+    </div>`);
+}
+
+Object.assign(ACTIONS, {
+  "ann-create": async () => {
+    const title = ($("#ann-title")?.value || "").trim();
+    const text = ($("#ann-text")?.value || "").trim();
+    const hours = Number($("#ann-hours")?.value) || 24;
+    const token = ($("#ann-token")?.value || "").trim();
+    if (!title) return toast("Ajoutez un titre", true);
+    if (!token) return toast("Jeton administrateur requis", true);
+    try { sessionStorage.setItem("karat_admin_token", token); } catch (e) {}
+    const r = await fetch("/.netlify/functions/annonces", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({ title, text, hours })
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) return toast(d.error || "Publication impossible", true);
+    toast("Annonce publiée");
+    $("#ann-title").value = ""; $("#ann-text").value = "";
+    fillAnnonceList();
+  },
+  "ann-del": async el => {
+    const token = ($("#ann-token")?.value || "").trim() || adminToken();
+    const r = await fetch("/.netlify/functions/annonces", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-admin-token": token },
+      body: JSON.stringify({ action: "delete", id: el.dataset.id })
+    });
+    if (!r.ok) return toast("Retrait impossible", true);
+    toast("Annonce retirée");
+    fillAnnonceList();
+  },
+  "img-generate": async () => {
+    const prompt = ($("#img-prompt")?.value || "").trim();
+    const out = $("#img-out");
+    if (!prompt) return toast("Décrivez l'image souhaitée", true);
+    out.innerHTML = `<p class="muted small">Génération en cours, cela peut prendre quelques secondes…</p>`;
+    try {
+      const r = await fetch("/.netlify/functions/image", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt })
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || !d.image) throw new Error(d.error || "Erreur");
+      out.innerHTML = `<img src="${d.image}" alt="${esc(prompt)}" style="width:100%;max-width:520px;border-radius:14px;border:1px solid var(--line)">
+        <div style="margin-top:14px"><a class="btn btn-line btn-sm" href="${d.image}" download="karat-image.png">Télécharger</a></div>`;
+    } catch (e) {
+      out.innerHTML = `<p class="muted small">La génération a échoué. Réessayez dans un instant.</p>`;
+    }
+  }
+});
+
 document.addEventListener("click", e => {
   const d = e.target.closest && e.target.closest("#drop");
   if (d && !e.target.closest("button")) $("#fileInput")?.click();
 });
 
 render();
+showAnnoncesOnOpen();
 
 </script>
 </body>
