@@ -1621,7 +1621,7 @@ let subs  = normSubs(store.get("karat_subs", {}));
 let chats = store.get("karat_chats", {});
 let files = store.get("karat_files", {});
 let logs  = store.get("karat_logs", []);
-const ui  = { mode: "general", attached: [], convId: null, typing: false, adminFilter: "all", adminQ: "", sort: { key: "createdAt", dir: -1 }, page: 1, logFilter: "all" };
+const ui  = { mode: "general", attached: [], pendingImg: [], convId: null, typing: false, adminFilter: "all", adminQ: "", sort: { key: "createdAt", dir: -1 }, page: 1, logFilter: "all" };
 const PAGE = 10;
 let pendingOk = null;
 
@@ -2319,7 +2319,9 @@ function vChat(m){
     </div>
     <div class="msgs" id="msgs" aria-live="polite">${body}</div>
     <form class="composer" id="composer">
+      ${(ui.pendingImg || []).length ? `<div class="chips-att">${ui.pendingImg.map((im, i) => `<span class="chip"><img src="${im.data}" alt="" style="width:22px;height:22px;border-radius:5px;object-fit:cover;margin-right:4px">${esc(im.name)}<button type="button" data-action="img-remove" data-idx="${i}" aria-label="Retirer ${esc(im.name)}">${svg("x")}</button></span>`).join("")}</div>` : ""}
       ${attached.length ? `<div class="chips-att">${attached.map(f => `<span class="chip">${ic("paperclip")} ${esc(f.name)}<button type="button" data-action="detach" data-id="${f.id}" aria-label="Retirer ${esc(f.name)}">${svg("x")}</button></span>`).join("")}</div>` : ""}
+      <input type="file" id="chatFile" multiple accept="image/*,.txt,.md,.csv,.json,.js,.ts,.py,.html,.css,.xml,.yaml,.yml,.sql,.log,.pdf" hidden />
       <div class="inbox">
         <button type="button" class="btn btn-ghost btn-icon" data-action="pick-file" title="Joindre un fichier" aria-label="Joindre un fichier">${ic("paperclip")}</button>
         <textarea id="input" rows="1" placeholder="Posez votre question ou décrivez votre tâche…" aria-label="Message" data-enter></textarea>
@@ -2329,11 +2331,11 @@ function vChat(m){
     </form>
   </div>`);
 }
-async function askAI(conv, ctx){
+async function askAI(conv, ctx, images){
   const history = conv.messages.map(m => ({ role: m.role === "user" ? "user" : "assistant", content: m.text }));
   if (ctx && history.length) history[history.length - 1].content = ctx + "\n\n" + history[history.length - 1].content;
   if (CONFIG.AI_ENDPOINT){
-    const r = await fetch(CONFIG.AI_ENDPOINT, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: conv.mode, messages: history }) });
+    const r = await fetch(CONFIG.AI_ENDPOINT, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: conv.mode, messages: history, images: images || [] }) });
     const d = await r.json();
     if (!r.ok || !d.reply) throw new Error(d.error || "Erreur IA");
     return d.reply;
@@ -2346,9 +2348,11 @@ async function askAI(conv, ctx){
 async function sendMessage(override){
   if (ui.typing) return;
   const input = $("#input");
-  const text = (override ?? (input ? input.value : "")).trim();
-  if (!text) return;
+  const typed = (override ?? (input ? input.value : "")).trim();
+  const imgs = (ui.pendingImg || []).slice();
+  if (!typed && !imgs.length) return;
   if (!hasAccess()) return go("/tarifs");
+  const text = typed || "Décris cette image et réponds à ce qu'elle montre.";
 
   let conv = ui.convId ? convById(ui.convId) : null;
   if (!conv){
@@ -2361,16 +2365,17 @@ async function sendMessage(override){
     ? `Fichier « ${f.name} » :\n${f.content.slice(0, 8000)}`
     : `Fichier « ${f.name} » (contenu non lisible par le navigateur)`).join("\n\n");
 
-  conv.messages.push({ role: "user", text, files: attached.map(f => f.name), at: Date.now() });
+  conv.messages.push({ role: "user", text, files: attached.map(f => f.name).concat(imgs.map(i => i.name)), at: Date.now() });
   conv.updatedAt = Date.now();
   ui.attached = [];
+  ui.pendingImg = [];
   ui.typing = true;
   saveChats();
   go(`/app/chat/${conv.id}`);
   if (location.hash === "#/app/chat/" + conv.id) render();
 
   let reply;
-  try{ reply = await askAI(conv, ctx); }
+  try{ reply = await askAI(conv, ctx, imgs.map(i => i.data)); }
   catch(e){ reply = "Erreur de connexion au moteur. Réessayez."; }
   conv.messages.push({ role: "ai", text: reply, at: Date.now() });
   conv.updatedAt = Date.now();
@@ -2649,47 +2654,58 @@ function fillAdminUsers(){
     th("Dernière connexion", "lastLogin"), `<th>Mode</th>`, th("Offre", "plan"), `<th></th>`
   ].join("");
 }
-function vAdminSubs(){
-  const rows = allRows();
+let stripeCache = null;
+try { stripeCache = JSON.parse(sessionStorage.getItem("karat_stripe_subs") || "null"); } catch (e) { stripeCache = null; }
+function stripeRows(){
+  return (stripeCache || []).map(x => {
+    const parts = String(x.name || "").trim().split(" ");
+    return { email: x.email, firstName: parts[0] || "", lastName: parts.slice(1).join(" "), plan: x.plan, since: x.since, ack: true, stripe: true };
+  });
+}
+const subSource = () => stripeCache ? stripeRows() : allRows();
+function subKpisHTML(rows){
   const paying = rows.filter(r => r.plan && PLANS[r.plan]);
   const mrr = paying.reduce((s, r) => s + PLANS[r.plan].num, 0);
   const arpu = paying.length ? mrr / paying.length : 0;
+  return `${kpi("Abonnés actifs", paying.length)}
+      ${kpi("Revenu mensuel", money(mrr), "MRR estimé")}
+      ${kpi("Revenu moyen / abonné", money(arpu), "ARPU")}
+      ${kpi("Projection annuelle", money(mrr * 12), "sur la base actuelle")}`;
+}
+function vAdminSubs(){
+  const rows = subSource();
   return appShell("/admin/abonnements", pageHead("Administration", "Abonnements", "Qui paie, quelle offre, et depuis quand.",
     `<div class="search">${ic("search")}<input class="input" placeholder="Rechercher un abonné…" aria-label="Rechercher un abonné" data-input="sub-search" /></div>`) +
     `<div class="card" style="margin-bottom:18px">
       <div class="card-h"><h3>Abonnés en direct (Stripe)</h3></div>
       <p class="muted small" style="margin:6px 0 14px">Tous les abonnements actifs, quel que soit l'appareil du client.</p>
       <div class="row" style="gap:10px;flex-wrap:wrap"><input id="stripe-token" class="input" type="password" style="max-width:320px" value="${esc(adminToken())}" placeholder="Jeton administrateur" /><button class="btn btn-accent" data-action="stripe-load">Charger</button></div>
-      <div id="stripeList" style="margin-top:16px"></div>
-    </div>` +
-    `<div class="grid g4" style="margin-bottom:18px">
-      ${kpi("Abonnés actifs", paying.length)}
-      ${kpi("Revenu mensuel", money(mrr), "MRR estimé")}
-      ${kpi("Revenu moyen / abonné", money(arpu), "ARPU")}
-      ${kpi("Projection annuelle", money(mrr * 12), "sur la base actuelle")}
+      <p id="stripeStatus" class="muted small" style="margin-top:12px"></p>
     </div>
+    <div class="grid g4" id="subKpis" style="margin-bottom:18px">${subKpisHTML(rows)}</div>
     <div class="table-wrap"><table class="tbl">
       <thead><tr><th>Abonné</th><th>E-mail</th><th>Offre</th><th>Montant</th><th>Depuis</th><th>Validation</th><th></th></tr></thead>
       <tbody id="subBody"></tbody>
-    </table></div>
-    <p class="muted small" style="margin-top:14px">Abonnements enregistrés dans ce navigateur. Pour la liste complète, utilisez le bloc Stripe ci-dessus.</p>`);
+    </table></div>`);
 }
 function fillSubs(){
   const body = $("#subBody"); if (!body) return;
+  const source = subSource();
+  const kp = $("#subKpis"); if (kp) kp.innerHTML = subKpisHTML(source);
   const q = (($("[data-input='sub-search']") || {}).value || "").trim().toLowerCase();
-  const list = allRows().filter(r => r.plan && PLANS[r.plan] && (!q || (r.email + " " + rowName(r)).toLowerCase().includes(q)));
+  const list = source.filter(r => r.plan && PLANS[r.plan] && (!q || (r.email + " " + rowName(r)).toLowerCase().includes(q)));
   body.innerHTML = list.map(r => `<tr>
       <td><div class="who-cell"><span class="avatar sm">${esc(initial(rowName(r)))}</span><b>${esc(rowName(r))}</b></div></td>
       <td>${esc(r.email)}</td>
-      <td><select class="select" data-change="plan-select" data-email="${esc(r.email)}" aria-label="Changer l'offre">
+      <td>${r.stripe ? esc(PLANS[r.plan].name) : `<select class="select" data-change="plan-select" data-email="${esc(r.email)}" aria-label="Changer l'offre">
         <option value="">Résilier</option>
         ${Object.keys(PLANS).map(p => `<option value="${p}" ${r.plan === p ? "selected" : ""}>${PLANS[p].name}</option>`).join("")}
-      </select></td>
+      </select>`}</td>
       <td>${PLANS[r.plan].price}</td>
       <td>${fmtDay(r.since)}</td>
-      <td>${r.ack ? `<span class="badge ok">VALIDÉ</span>` : `<span class="badge warn">EN ATTENTE</span>`}</td>
-      <td><button class="btn btn-ghost btn-sm" data-action="cancel-sub-admin" data-email="${esc(r.email)}">Résilier</button></td>
-    </tr>`).join("") || `<tr><td colspan="7"><div class="empty"><b>Aucun abonné</b>Les abonnés apparaîtront ici dès qu'une offre est active.</div></td></tr>`;
+      <td>${r.stripe ? '<span class="badge ok">STRIPE</span>' : (r.ack ? `<span class="badge ok">VALIDÉ</span>` : `<span class="badge warn">EN ATTENTE</span>`)}</td>
+      <td>${r.stripe ? "" : `<button class="btn btn-ghost btn-sm" data-action="cancel-sub-admin" data-email="${esc(r.email)}">Résilier</button>`}</td>
+    </tr>`).join("") || `<tr><td colspan="7"><div class="empty"><b>Aucun abonné</b>Chargez la liste Stripe ci-dessus pour voir tous les abonnés.</div></td></tr>`;
 }
 function vAdminLog(){
   const filtered = logs.filter(e => ui.logFilter === "all" || e.type === ui.logFilter);
@@ -2825,20 +2841,8 @@ const ACTIONS = {
   },
   "new-chat":      () => { ui.convId = null; ui.attached = []; go("/app/chat"); },
   "suggest":       el => sendMessage(el.dataset.text),
-  "pick-file":     () => {
-    const list = myFiles();
-    if (!list.length){ toast("Aucun fichier : ajoutez-en dans l'onglet Fichiers"); return; }
-    openModal(`<div class="sheet wide" role="dialog" aria-modal="true">
-      <button class="x" data-action="close-modal" aria-label="Fermer">${svg("x")}</button>
-      <h2>Joindre un fichier</h2><p class="sub">Il sera envoyé avec votre prochain message.</p>
-      <div class="card flat" style="padding:0;margin-top:18px;max-height:360px;overflow:auto">
-        ${list.map(f => `<div class="file" style="cursor:pointer" data-action="attach-pick" data-id="${f.id}" role="button" tabindex="0">
-          <span class="fi">${esc((f.name.split(".").pop() || "FILE").slice(0, 4).toUpperCase())}</span>
-          <div class="fn"><b>${esc(f.name)}</b><span>${fmtSize(f.size)}</span></div>
-          ${f.content ? `<span class="badge ok">LU PAR L'IA</span>` : `<span class="badge">NON LU</span>`}
-        </div>`).join("")}
-      </div></div>`);
-  },
+  "pick-file":     () => { const f = $("#chatFile"); if (f) f.click(); },
+  "img-remove":    el => { ui.pendingImg.splice(+el.dataset.idx, 1); rerenderKeepDraft(); },
   "attach-pick":   el => { if (!ui.attached.includes(el.dataset.id)) ui.attached.push(el.dataset.id); closeModal(); render(); },
   "detach":        el => { ui.attached = ui.attached.filter(x => x !== el.dataset.id); render(); },
   "file-attach":   el => { ui.attached = [...new Set([...ui.attached, el.dataset.id])]; ui.convId = null; toast("Fichier joint"); go("/app/chat"); },
@@ -3145,28 +3149,20 @@ Object.assign(ACTIONS, {
 
 /* ---------- Abonnés en direct depuis Stripe (administrateur) ---------- */
 async function fillStripeSubs(){
-  const box = $("#stripeList"); if (!box) return;
+  const st = $("#stripeStatus"); if (!st) return;
   const tok = adminToken();
-  if (!tok){ box.innerHTML = `<p class="muted small">Saisissez le jeton administrateur puis cliquez sur Charger.</p>`; return; }
-  box.innerHTML = `<p class="muted small">Chargement…</p>`;
+  if (!tok){ st.textContent = "Saisissez le jeton administrateur puis cliquez sur Charger."; return; }
+  st.textContent = "Chargement…";
   try {
     const r = await fetch("/.netlify/functions/abo?admin=1", { cache: "no-store", headers: { "x-admin-token": tok } });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(d.error || "Erreur");
-    const list = [...d.subs].sort((a, b) => b.since - a.since);
-    const total = list.reduce((s, x) => s + (PLANS[x.plan] ? PLANS[x.plan].num : 0), 0);
-    box.innerHTML = `<p class="small" style="margin-bottom:12px"><b>${list.length}</b> abonné${list.length > 1 ? "s" : ""} actif${list.length > 1 ? "s" : ""} · revenu mensuel ${money(total)}</p>
-      <div class="table-wrap"><table class="tbl">
-        <thead><tr><th>Nom</th><th>E-mail</th><th>Offre</th><th>Depuis</th><th>Statut</th></tr></thead>
-        <tbody>${list.map(x => `<tr>
-          <td>${esc(x.name || "—")}</td><td>${esc(x.email)}</td>
-          <td>${PLANS[x.plan] ? esc(PLANS[x.plan].name) : "—"}</td>
-          <td>${fmtDay(x.since)}</td>
-          <td>${x.status === "trialing" ? '<span class="badge warn">ESSAI</span>' : '<span class="badge ok">ACTIF</span>'}</td>
-        </tr>`).join("") || `<tr><td colspan="5"><div class="empty"><b>Aucun abonné</b>Les abonnés payants apparaîtront ici.</div></td></tr>`}</tbody>
-      </table></div>`;
+    stripeCache = d.subs || [];
+    try { sessionStorage.setItem("karat_stripe_subs", JSON.stringify(stripeCache)); } catch (e) {}
+    st.textContent = `${stripeCache.length} abonné${stripeCache.length > 1 ? "s" : ""} actif${stripeCache.length > 1 ? "s" : ""} chargé${stripeCache.length > 1 ? "s" : ""} depuis Stripe.`;
+    fillSubs();
   } catch (e) {
-    box.innerHTML = `<p class="muted small">${esc(e.message === "Jeton administrateur invalide" ? e.message : "Chargement impossible, vérifiez la configuration Stripe")}</p>`;
+    st.textContent = e.message === "Jeton administrateur invalide" ? e.message : "Chargement impossible, vérifiez la configuration Stripe.";
   }
 }
 Object.assign(ACTIONS, {
@@ -3174,6 +3170,61 @@ Object.assign(ACTIONS, {
     const v = ($("#stripe-token") || {}).value?.trim() || "";
     try { sessionStorage.setItem("karat_admin_token", v); } catch (e) {}
     fillStripeSubs();
+  }
+});
+
+/* ---------- Pièces jointes du chat : images (réduites) et fichiers ---------- */
+function rerenderKeepDraft(){
+  const draft = ($("#input") || {}).value || "";
+  render();
+  const ni = $("#input");
+  if (ni){ ni.value = draft; ni.dispatchEvent(new Event("input", { bubbles: true })); }
+}
+function shrinkImage(file){
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const s = Math.min(1, 1280 / Math.max(img.naturalWidth, img.naturalHeight));
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.naturalWidth * s); c.height = Math.round(img.naturalHeight * s);
+      const ctx = c.getContext("2d");
+      ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, c.width, c.height);
+      ctx.drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      res(c.toDataURL("image/jpeg", 0.85));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error("image illisible")); };
+    img.src = url;
+  });
+}
+async function handleChatFiles(list){
+  const draft = ($("#input") || {}).value || "";
+  for (const file of Array.from(list || [])){
+    if (/^image\//.test(file.type)){
+      if (ui.pendingImg.length >= 4){ toast("4 images maximum par message", true); break; }
+      try { ui.pendingImg.push({ name: file.name, data: await shrinkImage(file) }); }
+      catch (e) { toast(`« ${file.name} » est illisible`, true); }
+    } else {
+      if (file.size > 2 * 1024 * 1024){ toast(`« ${file.name} » dépasse 2 Mo`, true); continue; }
+      let content = null;
+      if (isTextLike(file) && file.size <= 300 * 1024){ try { content = await readText(file); } catch (e) {} }
+      const k = emailOf(session.email);
+      if (!files[k]) files[k] = [];
+      const entry = { id: uid(), name: file.name, size: file.size, type: file.type, content, createdAt: Date.now() };
+      files[k].push(entry);
+      ui.attached = [...new Set([...ui.attached, entry.id])];
+      saveFiles();
+    }
+  }
+  rerenderKeepDraft();
+  const ni = $("#input"); if (ni && draft && !ni.value) ni.value = draft;
+}
+document.addEventListener("change", e => {
+  if (e.target && e.target.id === "chatFile"){
+    const files = e.target.files;
+    e.target.value = "";
+    handleChatFiles(files);
   }
 });
 
