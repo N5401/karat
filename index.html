@@ -1802,6 +1802,33 @@ h1,.page-head h1,.h-xl{font-family:var(--display);font-weight:600;letter-spacing
   .kg-steps{grid-template-columns:1fr}
 }
 
+/* =====================================================================
+   AVIS : défilement sur l'accueil et administration
+   ===================================================================== */
+.avis-sec .avis-head-r{display:flex;flex-direction:column;align-items:flex-end;gap:14px}
+.avis-head-r p{font-size:16px}
+.avis-note{font-family:var(--display);font-size:22px;color:var(--accent)}
+.avis-rail{position:relative;overflow:hidden;padding:8px 0 12px;-webkit-mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent)}
+.avis-track{display:flex;gap:20px;width:max-content;animation:avisScroll 30s linear infinite}
+.avis-rail:hover .avis-track{animation-play-state:paused}
+@keyframes avisScroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.avis-card{flex:0 0 340px;width:340px;min-height:210px;padding:24px;border-radius:20px;border:1px solid var(--line);background:linear-gradient(180deg,var(--panel2),var(--panel));display:flex;flex-direction:column;gap:14px}
+.avis-empty{overflow:visible;-webkit-mask-image:none;mask-image:none}
+.avis-empty .avis-card{width:100%;max-width:520px;flex:none;gap:10px;justify-content:center}
+.avis-card-cta b{font-family:var(--display);font-size:22px;line-height:1.2}
+.avis-stars-ro i{font-style:normal;color:var(--dim);font-size:18px;letter-spacing:1px}
+.avis-stars-ro i.on{color:var(--accent)}
+.avis-text{font-size:16px;line-height:1.55;color:var(--text)}
+.avis-by{margin-top:auto;display:flex;justify-content:space-between;gap:10px;align-items:baseline;flex-wrap:wrap}
+.avis-pick{display:flex;gap:6px;margin-top:6px}
+.avis-pick-star{font-size:40px;line-height:1;background:none;border:0;color:var(--dim);cursor:pointer;padding:4px 2px}
+.avis-pick-star.on{color:var(--accent)}
+.avis-row{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;padding:14px 0;border-bottom:1px solid var(--line)}
+.avis-bilan{display:flex;gap:36px;flex-wrap:wrap}
+.avis-bilan b{display:block;font-family:var(--display);font-size:30px;margin-top:4px}
+@media (max-width:900px){.avis-sec .avis-head-r{align-items:flex-start}}
+@media (prefers-reduced-motion:reduce){.avis-track{animation:none}.avis-rail{overflow-x:auto}}
+
 </style>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 
@@ -1829,7 +1856,8 @@ const CONFIG = {
   VERIFY_ENDPOINT: "/.netlify/functions/abo",   // serveur qui confirme l'abonnement après paiement (webhook Stripe)
   AI_ENDPOINT: "/.netlify/functions/ai-background",  // moteur IA réel (réponses longues, en arrière-plan)
   AI_RESULT: "/.netlify/functions/ai-result",        // récupère la réponse une fois prête
-  USAGE_ENDPOINT: "/.netlify/functions/usage"        // messages restants aujourd'hui
+  USAGE_ENDPOINT: "/.netlify/functions/usage",       // messages restants aujourd'hui
+  AVIS_ENDPOINT: "/.netlify/functions/avis"          // avis des utilisateurs (lecture publique, dépôt connecté)
 };
 
 const PLANS = {
@@ -2040,6 +2068,7 @@ const ROUTES = [
   { re: /^\/admin\/journal$/,        fn: vAdminLog,       admin: true },
   { re: /^\/app\/images$/,            fn: vImages,         app: true },
   { re: /^\/admin\/annonces$/,         fn: vAdminAnnonces,   admin: true },
+  { re: /^\/admin\/avis$/,              fn: vAdminAvis,        admin: true },
   { re: /^\/app\/support$/,             fn: vSupport,        app: true },
   { re: /^\/admin\/reglages$/,       fn: vAdminSettings,  admin: true }
 ];
@@ -2090,6 +2119,8 @@ function afterRender(path){
   if (path === "/admin/abonnements"){ fillSubs(); if (adminToken()) fillStripeSubs(); }
   if (path === "/admin/journal"){ const s = $("[data-change='log-filter']"); if (s) s.value = ui.logFilter; }
   if (path === "/admin/annonces") fillAnnonceList();
+  if (path === "/") startAvis();
+  if (path === "/admin/avis") fillAdminAvis();
 }
 
 /* =====================================================================
@@ -2149,6 +2180,7 @@ function appShell(path, content){
         ${link("/admin/abonnements", "card", "Abonnements", allRows().filter(r => r.plan).length)}
         ${link("/admin/journal", "list", "Journal")}
         ${link("/admin/annonces", "bell", "Annonces")}
+        ${link("/admin/avis", "star", "Avis")}
         ${link("/admin/reglages", "settings", "Réglages")}` : ""}
       <div class="foot">
         <div class="plan-block">
@@ -2288,6 +2320,8 @@ function vLanding(){
       <article class="lp-feat lp-f5"><span class="k">05 — Confidentialité</span><h3>Isolé par compte</h3><p>Vos conversations ne sont visibles que de vous.</p></article>
     </div>
   </div></section>
+
+  ${avisSection()}
 
   ${offres}
 
@@ -3452,6 +3486,236 @@ function vAdminAnnonces(){
       <div class="card" id="ann-list"><div class="card-h"><h3>Annonces en cours</h3></div><p class="muted small">Chargement…</p></div>
     </div>`);
 }
+/* =====================================================================
+   AVIS : défilement sur l'accueil, dépôt par les comptes, modération admin
+   ===================================================================== */
+Object.assign(ICON, { star: '<path d="M12 3l2.8 5.8 6.2.9-4.5 4.4 1.1 6.3L12 17.3 6.4 20.4l1.1-6.3L3 9.7l6.2-.9z"/>' });
+const avisState = { count: 0, average: null, avis: [] };
+const avisUI = { q: "", draft: { stars: 0, text: "" }, timer: null, sig: null };
+const avisDate = at => new Date(at).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+const avisNote = n => Number(n).toFixed(1).replace(".", ",");
+const avisStars = n => `<span class="avis-stars-ro" aria-label="${n} sur 5">${[1, 2, 3, 4, 5].map(i => `<i class="${i <= n ? "on" : ""}">★</i>`).join("")}</span>`;
+const avisSignature = () => avisState.avis.map(a => a.id).join(",") + "|" + avisState.count;
+
+function avisSummary(){
+  if (!avisState.count) return `<span class="muted">Pas encore d'avis</span>`;
+  return `<b class="avis-note">${avisNote(avisState.average)} / 5</b> <span class="muted">· ${avisState.count} avis</span>`;
+}
+function avisCard(a){
+  return `<article class="avis-card">
+    ${avisStars(a.stars)}
+    <p class="avis-text">« ${esc(a.text)} »</p>
+    <div class="avis-by"><b>${esc(a.who)}</b><span class="dim small">${avisDate(a.at)}</span></div>
+  </article>`;
+}
+function avisRail(){
+  if (!avisState.count) return `<div class="avis-rail avis-empty"><article class="avis-card avis-card-cta">
+      <b>Soyez le premier à laisser un avis.</b>
+      <p class="muted small">Votre retour aide les prochains utilisateurs à décider.</p>
+    </article></div>`;
+  const items = avisState.avis.map(avisCard).join("");
+  const dur = Math.max(18, avisState.avis.length * 7);
+  return `<div class="avis-rail" aria-label="Avis des utilisateurs"><div class="avis-track" style="animation-duration:${dur}s">${items}${items}</div></div>`;
+}
+function avisSection(){
+  return `<section class="lp-sec avis-sec" id="avis"><div class="lp-wrap">
+    <div class="lp-sec-head">
+      <div><div class="lp-kicker">Avis</div><h2 class="lp-h2">Ce que pensent les utilisateurs.</h2></div>
+      <div class="avis-head-r">
+        <p id="avis-summary">${avisSummary()}</p>
+        <button class="btn btn-line btn-sm" data-action="avis-open">Laisser un avis</button>
+      </div>
+    </div>
+    <div id="avis-block">${avisRail()}</div>
+  </div></section>`;
+}
+
+// Lecture de la liste (publique) puis mise à jour de l'écran
+async function fetchAvis(){
+  try {
+    const r = await fetch(CONFIG.AVIS_ENDPOINT, { cache: "no-store" });
+    if (!r.ok) return false;
+    const d = await r.json();
+    avisState.count = d.count || 0;
+    avisState.average = d.average;
+    avisState.avis = Array.isArray(d.avis) ? d.avis : [];
+  } catch (e) { return false; }
+  paintAvis();
+  return true;
+}
+// Ne redessine la liste que si elle a changé, pour que le défilement ne saute pas
+function paintAvis(force){
+  const sig = avisSignature();
+  if (!force && sig === avisUI.sig) return;
+  avisUI.sig = sig;
+  const block = $("#avis-block"); if (block) block.innerHTML = avisRail();
+  const sum = $("#avis-summary"); if (sum) sum.innerHTML = avisSummary();
+}
+function startAvis(){
+  fetchAvis();
+  clearInterval(avisUI.timer);
+  // Les nouveaux avis apparaissent seuls : la liste est relue chaque minute tant que l'accueil est ouvert
+  avisUI.timer = setInterval(() => {
+    if (currentRoute().path !== "/") return clearInterval(avisUI.timer);
+    fetchAvis();
+  }, 60000);
+}
+
+// Formulaire : étoiles + description
+function openAvisForm(){
+  if (!session){ toast("Connectez-vous pour laisser un avis", true); return go("/connexion?next=/"); }
+  avisUI.draft = { stars: 0, text: "" };
+  renderAvisForm();
+}
+function renderAvisForm(){
+  const d = avisUI.draft;
+  openModal(`<div class="sheet" role="dialog" aria-modal="true" aria-label="Laisser un avis">
+    <button class="x" data-action="close-modal" aria-label="Fermer">${svg("x")}</button>
+    <div class="label">Votre avis</div>
+    <h2>Notez KARAT</h2>
+    <p class="sub">Un avis par compte toutes les 6 heures. Il est publié tout de suite sur la page d'accueil.</p>
+    <div class="avis-pick" role="group" aria-label="Nombre d'étoiles">
+      ${[1, 2, 3, 4, 5].map(i => `<button type="button" class="avis-pick-star ${i <= d.stars ? "on" : ""}" data-action="avis-star" data-v="${i}" aria-label="${i} étoile${i > 1 ? "s" : ""}" aria-pressed="${i === d.stars}">★</button>`).join("")}
+    </div>
+    <div class="field" style="margin-top:14px"><label for="avis-text">VOTRE AVIS</label>
+      <textarea id="avis-text" class="textarea" rows="4" maxlength="400" placeholder="Ce qui vous aide, ce qui pourrait être mieux…">${esc(d.text)}</textarea></div>
+    <div class="modal-actions">
+      <button class="btn btn-line" data-action="close-modal">Annuler</button>
+      <button class="btn btn-accent" data-action="avis-send">Publier mon avis</button>
+    </div>
+  </div>`);
+}
+async function sendAvis(){
+  const text = ($("#avis-text")?.value || "").trim();
+  const stars = avisUI.draft.stars;
+  if (!stars) return toast("Choisissez un nombre d'étoiles", true);
+  if (text.length < 10) return toast("Votre avis doit faire au moins 10 caractères", true);
+  const btn = document.querySelector("[data-action='avis-send']");
+  if (btn) btn.disabled = true;
+  try {
+    const r = await fetch(CONFIG.AVIS_ENDPOINT, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: session.email, name: displayName(me()), stars, text })
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok){ if (btn) btn.disabled = false; return toast(d.error || "Avis non publié, réessayez", true); }
+    avisState.count = d.count; avisState.average = d.average; avisState.avis = d.avis || [];
+    avisUI.draft = { stars: 0, text: "" };
+    closeModal();
+    toast("Merci, votre avis est publié");
+    paintAvis(true);
+  } catch (e) {
+    if (btn) btn.disabled = false;
+    toast("Impossible d'envoyer l'avis pour le moment", true);
+  }
+}
+
+// Administration : bilan, recherche et retrait
+function vAdminAvis(){
+  return appShell("/admin/avis", pageHead("Administration", "Avis", "Tous les avis publiés. Retirez-en un en cas d'abus, de troll ou de contenu hors sujet.") +
+    `<div class="grid g2" style="align-items:start">
+      <div class="card">
+        <div class="card-h"><h3>Bilan</h3></div>
+        <div class="avis-bilan">
+          <div><span class="muted small">Note moyenne</span><b id="avis-admin-note">…</b></div>
+          <div><span class="muted small">Avis publiés</span><b id="avis-admin-count">…</b></div>
+        </div>
+        <div class="field" style="margin:20px 0 12px"><label for="avis-token">JETON ADMINISTRATEUR</label><input id="avis-token" class="input" type="password" value="${esc(adminToken())}" placeholder="Votre jeton" /></div>
+        <p class="muted small">Le jeton est celui de la variable ADMIN_TOKEN sur Netlify.</p>
+      </div>
+      <div class="card">
+        <div class="card-h"><h3>Rechercher et retirer</h3></div>
+        <input class="input" data-input="avis-search" maxlength="120" placeholder="Mot, pseudo ou nombre d'étoiles (ex : 1)" value="${esc(avisUI.q)}" />
+        <div id="avis-admin-list" style="margin-top:14px"><p class="muted small">Chargement…</p></div>
+      </div>
+    </div>`);
+}
+async function fillAdminAvis(){
+  await fetchAvis();
+  paintAdminAvis();
+}
+function paintAdminAvis(){
+  const note = $("#avis-admin-note"), cnt = $("#avis-admin-count"), box = $("#avis-admin-list");
+  if (note) note.textContent = avisState.count ? avisNote(avisState.average) + " / 5" : "—";
+  if (cnt) cnt.textContent = String(avisState.count);
+  if (!box) return;
+  const q = avisUI.q.trim().toLowerCase();
+  const rows = avisState.avis.filter(a =>
+    !q || a.text.toLowerCase().includes(q) || a.who.toLowerCase().includes(q) || String(a.stars) === q);
+  box.innerHTML = rows.length
+    ? rows.map(a => `<div class="avis-row">
+        <div style="min-width:0">${avisStars(a.stars)} <b>${esc(a.who)}</b> <span class="dim small">${avisDate(a.at)}</span>
+          <p class="avis-text small" style="margin-top:6px">« ${esc(a.text)} »</p></div>
+        <button class="btn btn-danger btn-sm" data-action="avis-del" data-id="${esc(a.id)}">Retirer</button>
+      </div>`).join("")
+    : `<p class="muted small">${q ? "Aucun avis ne correspond à cette recherche." : "Aucun avis publié pour l'instant."}</p>`;
+}
+async function removeAvis(id){
+  const tok = (($("#avis-token")?.value) || "").trim() || adminToken();
+  if (!tok) return toast("Saisissez le jeton administrateur", true);
+  try { sessionStorage.setItem("karat_admin_token", tok); } catch (e) {}
+  try {
+    const r = await fetch(CONFIG.AVIS_ENDPOINT, {
+      method: "POST", headers: { "Content-Type": "application/json", "x-admin-token": tok },
+      body: JSON.stringify({ action: "delete", id })
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) return toast(d.error || "Retrait impossible", true);
+    avisState.count = d.count; avisState.average = d.average; avisState.avis = d.avis || [];
+    toast("Avis retiré");
+    paintAdminAvis();
+    paintAvis(true);
+  } catch (e) { toast("Retrait impossible pour le moment", true); }
+}
+document.addEventListener("input", e => {
+  if (e.target && e.target.dataset && e.target.dataset.input === "avis-search"){ avisUI.q = e.target.value; paintAdminAvis(); }
+});
+
+// Annonces : publication et retrait (les boutons de la page existaient sans leurs actions)
+async function createAnnonce(){
+  const title = ($("#ann-title")?.value || "").trim();
+  const text = ($("#ann-text")?.value || "").trim();
+  const hours = +($("#ann-hours")?.value || 24);
+  const tok = (($("#ann-token")?.value) || "").trim() || adminToken();
+  if (!title) return toast("Ajoutez un titre à l'annonce", true);
+  if (!tok) return toast("Saisissez le jeton administrateur", true);
+  try { sessionStorage.setItem("karat_admin_token", tok); } catch (e) {}
+  try {
+    const r = await fetch("/.netlify/functions/annonces", {
+      method: "POST", headers: { "Content-Type": "application/json", "x-admin-token": tok },
+      body: JSON.stringify({ title, text, hours })
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) return toast(d.error || "Publication impossible", true);
+    toast("Annonce publiée");
+    render();
+  } catch (e) { toast("Publication impossible pour le moment", true); }
+}
+async function removeAnnonce(id){
+  const tok = (($("#ann-token")?.value) || "").trim() || adminToken();
+  if (!tok) return toast("Saisissez le jeton administrateur", true);
+  try {
+    const r = await fetch("/.netlify/functions/annonces", {
+      method: "POST", headers: { "Content-Type": "application/json", "x-admin-token": tok },
+      body: JSON.stringify({ action: "delete", id })
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) return toast(d.error || "Retrait impossible", true);
+    toast("Annonce retirée");
+    render();
+  } catch (e) { toast("Retrait impossible pour le moment", true); }
+}
+
+Object.assign(ACTIONS, {
+  "avis-open":  () => openAvisForm(),
+  "avis-star":  el => { avisUI.draft.text = ($("#avis-text")?.value || ""); avisUI.draft.stars = +el.dataset.v; renderAvisForm(); },
+  "avis-send":  () => sendAvis(),
+  "avis-del":   el => { const id = el.dataset.id; askConfirm("Retirer cet avis ?", "Il disparaît du site immédiatement. Cette action est définitive.", () => removeAvis(id), "Retirer"); },
+  "ann-create": () => createAnnonce(),
+  "ann-del":    el => { const id = el.dataset.id; askConfirm("Retirer cette annonce ?", "Elle ne sera plus affichée aux visiteurs.", () => removeAnnonce(id), "Retirer"); },
+});
+
+
 async function fillAnnonceList(){
   const box = $("#ann-list"); if (!box) return;
   const list = await fetchAnnonces();
