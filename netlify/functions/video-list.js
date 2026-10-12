@@ -4,7 +4,7 @@
 const { getStore } = require("@netlify/blobs");
 const { planFor, cleanEmail } = require("./_shared/acces");
 
-const ALLOWED = ["expert", "admin"];
+const ALLOWED = ["essentiel", "pro", "expert", "admin"];
 
 const blobStore = (name) => (process.env.NETLIFY_TOKEN && process.env.SITE_ID)
   ? getStore({ name, siteID: process.env.SITE_ID, token: process.env.NETLIFY_TOKEN })
@@ -22,7 +22,7 @@ exports.handler = async (event) => {
   const email = cleanEmail((event.queryStringParameters || {}).email);
   let plan = null;
   try { plan = await planFor(email); } catch (e) { return json(503, { error: "Vérification de l'offre impossible" }); }
-  if (!ALLOWED.includes(plan)) return json(403, { error: "La génération de vidéos est réservée à l'offre Expert." });
+  if (!ALLOWED.includes(plan)) return json(403, { error: "La génération de vidéos est réservée aux abonnés payants." });
 
   try {
     const list = (await blobStore("karat-videos").get("list|" + encodeURIComponent(email), { type: "json" })) || [];
