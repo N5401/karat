@@ -1765,6 +1765,43 @@ h1,.page-head h1,.h-xl{font-family:var(--display);font-weight:600;letter-spacing
   .lp-foot .lp-wrap{flex-direction:column;align-items:flex-start}
 }
 
+/* ===== DOCUMENTATION ET LIMITES D'USAGE ===== */
+.usage-hint{color:var(--accent)}
+.usage-hint:not(:empty)::after{content:" · ";color:var(--dim)}
+.kg{display:grid;grid-template-columns:230px minmax(0,1fr);gap:28px;align-items:start}
+.kg-toc{position:sticky;top:24px;display:flex;flex-direction:column;gap:4px}
+.kg-toc-btn{text-align:left;font-size:14px;color:var(--muted);padding:9px 12px;border-radius:12px;transition:background .15s,color .15s}
+.kg-toc-btn:hover{background:rgba(255,255,255,.04);color:var(--text)}
+.kg-body{display:flex;flex-direction:column;gap:18px;min-width:0}
+.kg-sec{scroll-margin-top:24px;padding:28px 30px}
+.kg-num{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--accent);margin-bottom:10px}
+.kg-sec h2{font-family:var(--display);font-size:22px;letter-spacing:-.02em;font-weight:600;margin-bottom:12px}
+.kg-sec p{color:var(--muted);font-size:15px;line-height:1.7;margin-top:12px}
+.kg-sec ul{list-style:disc;margin-top:12px;padding-left:20px;color:var(--muted);font-size:15px;line-height:1.7;display:flex;flex-direction:column;gap:6px}
+.kg-sec strong{color:var(--text);font-weight:600}
+.kg-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:18px}
+.kg-step{border:1px solid var(--line);border-radius:var(--r-sm);padding:18px;background:var(--panel)}
+.kg-step .n{font-family:var(--mono);font-size:10.5px;color:var(--accent);letter-spacing:.1em}
+.kg-step h3{font-family:var(--display);font-size:16px;margin:8px 0 4px}
+.kg-step p{margin-top:0;font-size:14px}
+.kg-table-wrap{overflow-x:auto;margin-top:18px}
+.kg-table{width:100%;border-collapse:collapse;font-size:14px;min-width:560px}
+.kg-table th,.kg-table td{text-align:left;padding:12px 10px;border-bottom:1px solid var(--line);color:var(--muted);vertical-align:top}
+.kg-table th{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-weight:500}
+.kg-table td:first-child{color:var(--text);font-weight:600}
+.kg-qa{padding:14px 0;border-bottom:1px solid var(--line)}
+.kg-qa:last-child{border-bottom:0;padding-bottom:0}
+.kg-qa b{font-family:var(--display);font-size:16px;font-weight:600}
+.kg-qa p{color:var(--muted);font-size:14.5px;line-height:1.65;margin-top:6px}
+.kg-cta{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.kg-cta h2{font-family:var(--display);font-size:22px;letter-spacing:-.02em}
+.kg-cta p{color:var(--muted);margin-top:6px;font-size:14.5px}
+@media (max-width:900px){
+  .kg{grid-template-columns:1fr}
+  .kg-toc{position:static;flex-direction:row;flex-wrap:wrap}
+  .kg-steps{grid-template-columns:1fr}
+}
+
 </style>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 
@@ -1791,13 +1828,14 @@ const CONFIG = {
   },
   VERIFY_ENDPOINT: "/.netlify/functions/abo",   // serveur qui confirme l'abonnement après paiement (webhook Stripe)
   AI_ENDPOINT: "/.netlify/functions/ai-background",  // moteur IA réel (réponses longues, en arrière-plan)
-  AI_RESULT: "/.netlify/functions/ai-result"         // récupère la réponse une fois prête
+  AI_RESULT: "/.netlify/functions/ai-result",        // récupère la réponse une fois prête
+  USAGE_ENDPOINT: "/.netlify/functions/usage"        // messages restants aujourd'hui
 };
 
 const PLANS = {
-  essentiel: { name: "Essentiel", price: "7,99 €",  num: 7.99,  desc: "Pour découvrir KARAT au quotidien.", feats: ["Assistant IA polyvalent", "3 générations d'images par jour", "Analyse de fichiers texte, PDF et images", "Historique des conversations sur 30 jours", "Support par e-mail"] },
-  pro:       { name: "Pro",       price: "18,99 €", num: 18.99, desc: "Pour les professionnels qui travaillent chaque jour.", feats: ["Tout Essentiel", "10 générations d'images par jour", "Retouche d'image à partir d'une photo de référence", "Analyse de plusieurs documents à la fois (jusqu'à 10 PDF par message)", "Réponses longues et détaillées, jusqu'à une quinzaine de pages", "Modes spécialisés : code, rédaction, analyse de données", "Historique illimité", "Support prioritaire"] },
-  expert:    { name: "Expert",    price: "39,99 €", num: 39.99, desc: "Pour les équipes et les usages intensifs.", feats: ["Tout Pro", "Images illimitées", "Modèle d'IA le plus avancé, pour les tâches complexes", "Accompagnement dédié à la mise en place"] }
+  essentiel: { name: "Essentiel", price: "7,99 €",  num: 7.99,  desc: "Pour découvrir KARAT au quotidien.", feats: ["Assistant IA polyvalent", "40 messages par jour", "3 générations d'images par jour","Analyse de fichiers texte, PDF et images", "Historique des conversations sur 30 jours", "Support par e-mail"] },
+  pro:       { name: "Pro",       price: "18,99 €", num: 18.99, desc: "Pour les professionnels qui travaillent chaque jour.", feats: ["Tout Essentiel", "150 messages par jour", "10 générations d'images par jour","Retouche d'image à partir d'une photo de référence", "Analyse de plusieurs documents à la fois (jusqu'à 10 PDF par message)", "Réponses longues et détaillées, jusqu'à une quinzaine de pages", "Modes spécialisés : code, rédaction, analyse de données", "Historique illimité", "Support prioritaire"] },
+  expert:    { name: "Expert",    price: "39,99 €", num: 39.99, desc: "Pour les équipes et les usages intensifs.", feats: ["Tout Pro", "Messages et images illimités","Modèle d'IA le plus avancé, pour les tâches complexes", "Accompagnement dédié à la mise en place"] }
 };
 
 const MODES = {
@@ -1986,6 +2024,7 @@ async function verifyPw(pw, u){ return (await hashPw(pw, u.salt)).hash === u.has
 const ROUTES = [
   { re: /^\/$/,                      fn: vLanding },
   { re: /^\/tarifs$/,                fn: vPricing },
+  { re: /^\/documentation$/,         fn: vGuide },
   { re: /^\/connexion$/,             fn: vAuth },
   { re: /^\/bienvenue$/,             fn: vOnboard,        onboard: true },
   { re: /^\/app\/chat$/,             fn: vChat,           app: true },
@@ -1994,6 +2033,7 @@ const ROUTES = [
   { re: /^\/app\/fichiers$/,         fn: vFiles,          app: true },
   { re: /^\/app\/modules$/,          fn: vModules,        app: true },
   { re: /^\/app\/offre$/,            fn: vSubscription,   app: true },
+  { re: /^\/app\/guide$/,            fn: vGuide,          app: true },
   { re: /^\/admin$/,                 fn: vAdminOverview,  admin: true },
   { re: /^\/admin\/utilisateurs$/,   fn: vAdminUsers,     admin: true },
   { re: /^\/admin\/abonnements$/,    fn: vAdminSubs,      admin: true },
@@ -2042,6 +2082,7 @@ function render(){
 function afterRender(path){
   if (path.startsWith("/app/chat")){
     const box = $("#msgs"); if (box) box.scrollTop = box.scrollHeight;
+    refreshUsage();
   }
   if (path === "/connexion") initGoogle();
   if (path === "/" || path === "/tarifs") initFX();
@@ -2060,6 +2101,7 @@ function pubHeader(path){
     <nav class="pubnav">
       <a href="#/" class="${path === "/" ? "on" : ""}">Produit</a>
       <a href="#/tarifs" class="${path === "/tarifs" ? "on" : ""}">Tarifs</a>
+      <a href="#/documentation" class="${path === "/documentation" ? "on" : ""}">Documentation</a>
     </nav>
     <div class="row">
       ${session
@@ -2097,6 +2139,7 @@ function appShell(path, content){
       ${link("/app/chat", "chat", "Chat IA")}
       ${link("/app/historique", "clock", "Historique", myChats().length)}
       ${link("/app/modules", "grid", "Modules")}
+      ${link("/app/guide", "book", "Documentation")}
       ${link("/app/images", "image", "Images")}
       ${link("/app/support", "mail", "Support")}
       ${link("/app/offre", "card", "Abonnement")}
@@ -2295,6 +2338,7 @@ function vPricing(){
       <p>TTC, sans engagement. Résiliation possible à tout moment depuis votre espace.</p>
     </div>
     <div class="plans">${["essentiel", "pro", "expert"].map(planCard).join("")}</div>
+    <p class="small muted" style="text-align:center;margin-top:22px">Essai gratuit de 24 h après la création de votre compte : 5 messages par jour, réponses courtes, sans génération d'images.</p>
   </div></section>
   <section class="section" style="padding-top:20px"><div class="wrap" style="max-width:820px">
     <div class="label">Questions fréquentes</div>
@@ -2355,7 +2399,7 @@ function startSession(s, isNew){
   session = { ...s, exp: Date.now() + 7 * 24 * 3600 * 1000 };
   store.set("karat_session", session);
   logEvent(isNew ? "inscription" : "connexion", s.email, s.provider || "mot de passe");
-  go(nextTarget());
+  go(isNew ? "/app/guide" : nextTarget());
   toast(`Bienvenue, ${s.name || s.email}`);
 }
 async function onLogin(f){
@@ -2624,7 +2668,7 @@ function vChat(m){
         <textarea id="input" rows="1" placeholder="Posez votre question…" aria-label="Message" data-enter></textarea>
         <button class="send" id="sendBtn" type="submit" aria-label="Envoyer" ${ui.typing ? "disabled" : ""}>${ic("send")}</button>
       </div>
-      <div class="hint"><span>Entrée pour envoyer · Maj + Entrée pour un saut de ligne</span><span>${esc(MODES[mode].sub)}</span></div>
+      <div class="hint"><span>Entrée pour envoyer · Maj + Entrée pour un saut de ligne</span><span><span id="usage-hint" class="usage-hint"></span>${esc(MODES[mode].sub)}</span></div>
     </form>
   </div>`);
 }
@@ -2636,7 +2680,10 @@ async function pollAI(id){
     let d = null;
     try { d = await (await fetch(CONFIG.AI_RESULT + "?id=" + enc(id), { cache: "no-store" })).json(); } catch (e) { d = null; }
     if (!d) continue;
-    if (d.status === "done") return d.reply + (d.stopped ? "\n\n[Réponse coupée : demandez « continue » pour la suite.]" : "");
+    if (d.status === "done"){
+      const txt = String(d.reply || "").trim() || "Je ne peux pas répondre à cette demande. Précisez votre besoin et je vous aide.";
+      return txt + (d.stopped ? "\n\n[Réponse coupée : demandez « continue » pour la suite.]" : "");
+    }
     if (d.status === "error") throw new Error(d.error || "Erreur IA");
   }
   throw new Error("Délai dépassé");
@@ -3524,6 +3571,167 @@ Object.assign(ACTIONS, {
   "support-copy": () => {
     try { navigator.clipboard.writeText(SUPPORT_EMAIL); toast("Adresse copiée"); }
     catch (e) { toast("Copie impossible : sélectionnez l'adresse", true); }
+  }
+});
+
+/* ---------- Limites d'usage (affichage) ---------- */
+// Doit rester identique à _shared/acces.js (MSG_QUOTA, IMAGE_QUOTA)
+const QUOTAS = {
+  gratuit:   { msgs: 5,        imgs: 0,        rep: "Brèves" },
+  essentiel: { msgs: 40,       imgs: 3,        rep: "Courtes à moyennes" },
+  pro:       { msgs: 150,      imgs: 10,       rep: "Longues, jusqu'à une quinzaine de pages" },
+  expert:    { msgs: Infinity, imgs: Infinity, rep: "Longues, avec le modèle le plus avancé" }
+};
+const fmtQ = (n, zero = "Aucune") => n === Infinity ? "Illimité" : n === 0 ? zero : String(n);
+
+// Compteur « messages restants » sous la zone de saisie du chat
+async function refreshUsage(){
+  const el = document.getElementById("usage-hint");
+  if (!el || !session) return;
+  try{
+    const plan = currentPlan() || "gratuit";
+    const r = await fetch(CONFIG.USAGE_ENDPOINT + "?email=" + enc(session.email) + "&plan=" + enc(plan), { cache: "no-store" });
+    if (!r.ok) return;
+    const u = await r.json();
+    if (u.msgLimit === undefined) return;
+    el.textContent = u.msgLimit === null ? "Messages illimités" : `Messages aujourd'hui : ${Math.max(0, u.msgLimit - u.msgUsed)} / ${u.msgLimit}`;
+  }catch(e){ el.textContent = ""; }
+}
+
+/* ---------- Documentation intégrée ---------- */
+Object.assign(ICON, { book: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>' });
+
+const KG_TOC = [
+  ["demarrer", "Bien démarrer"], ["modules", "Les modules"], ["question", "Bien poser une question"],
+  ["fichiers", "Joindre des fichiers"], ["images", "Générer des images"], ["limites", "Limites par offre"],
+  ["compte", "Compte et données"], ["abonnement", "Abonnement"], ["prudence", "Prudence et règles d'usage"],
+  ["faq", "Questions fréquentes"]
+];
+
+function vGuide(){
+  const sec = (id, n, title, body) => `<section class="card kg-sec" id="kg-${id}">
+      <div class="kg-num">${n}</div><h2>${title}</h2>${body}</section>`;
+  const qa = (q, a) => `<div class="kg-qa"><b>${q}</b><p>${a}</p></div>`;
+  const offres = [
+    ["Essai gratuit", "Gratuit, 24 h", QUOTAS.gratuit],
+    ["Essentiel", PLANS.essentiel.price + " / mois", QUOTAS.essentiel],
+    ["Pro", PLANS.pro.price + " / mois", QUOTAS.pro],
+    ["Expert", PLANS.expert.price + " / mois", QUOTAS.expert]
+  ].map(([n, p, q]) => `<tr><td>${n}</td><td>${p}</td><td>${fmtQ(q.msgs)}</td><td>${q.rep}</td><td>${fmtQ(q.imgs)}</td></tr>`).join("");
+
+  const toc = KG_TOC.map(([id, t]) => `<button type="button" class="kg-toc-btn" data-action="guide-jump" data-target="${id}">${t}</button>`).join("");
+
+  const cta = session
+    ? `<div class="card kg-cta"><div><h2>Prêt à commencer ?</h2><p>Ouvrez le chat et posez votre première question.</p></div><a class="btn btn-accent" href="#/app/chat">Ouvrir le chat ${ic("arrow")}</a></div>`
+    : `<div class="card kg-cta"><div><h2>Prêt à commencer ?</h2><p>Créez votre compte et profitez de 24 heures d'essai gratuit.</p></div><a class="btn btn-accent" href="#/connexion?tab=signup">Créer un compte ${ic("arrow")}</a></div>`;
+  const body = `<div class="kg">
+      <nav class="kg-toc" aria-label="Sommaire">${toc}</nav>
+      <div class="kg-body">
+        ${sec("demarrer", "01", "Bien démarrer", `
+          <p>KARAT est un assistant IA en français. Vous lui posez une question, vous joignez un fichier ou une image, et il répond dans la conversation.</p>
+          <div class="kg-steps">
+            <div class="kg-step"><span class="n">ÉTAPE 1</span><h3>Créez votre compte</h3><p>Avec votre e-mail et un mot de passe, ou avec Google.</p></div>
+            <div class="kg-step"><span class="n">ÉTAPE 2</span><h3>Essayez KARAT</h3><p>Pendant 24 heures, vous pouvez poser vos questions dans la limite de l'essai gratuit.</p></div>
+            <div class="kg-step"><span class="n">ÉTAPE 3</span><h3>Choisissez une offre</h3><p>Pour continuer après l'essai, choisissez Essentiel, Pro ou Expert sur la page Tarifs.</p></div>
+          </div>
+          <p>${session ? "Le menu à gauche donne accès au chat, à l'historique, aux modules, aux images, au support et à votre abonnement." : "Une fois votre compte créé, le menu donne accès au chat, à l'historique, aux modules, aux images, au support et à votre abonnement."}</p>`)}
+
+        ${sec("modules", "02", "Les modules", `
+          <p>Un module adapte la manière dont l'IA répond. Changez-le à tout moment avec les boutons au-dessus de la conversation.</p>
+          <ul>
+            <li><strong>Général</strong> : résumés, explications claires et aide à la décision.</li>
+            <li><strong>Code</strong> : débogage, refactorisation, tests et revue de code. Joignez votre fichier ou collez votre code.</li>
+            <li><strong>Rédaction</strong> : reformuler, raccourcir, adapter le ton ou rédiger un e-mail.</li>
+            <li><strong>Données</strong> : analyser un tableau CSV, repérer des tendances et proposer des graphiques.</li>
+          </ul>`)}
+
+        ${sec("question", "03", "Bien poser une question", `
+          <p>Plus votre demande est précise, plus la réponse est utile. Indiquez le contexte, le résultat attendu et le format souhaité.</p>
+          <ul>
+            <li><strong>Vague :</strong> « Aide-moi avec mon site. »</li>
+            <li><strong>Précise :</strong> « Je tiens un salon de coiffure à Lyon. Rédige une présentation de 80 mots pour ma page d'accueil, avec un ton chaleureux. »</li>
+            <li>Si une réponse s'arrête, écrivez « continue » pour recevoir la suite.</li>
+            <li>Pour reprendre une discussion, ouvrez-la depuis l'Historique.</li>
+          </ul>`)}
+
+        ${sec("fichiers", "04", "Joindre des fichiers", `
+          <p>Utilisez le bouton <strong>+</strong> à gauche de la zone de saisie. Formats acceptés : images (PNG, JPG, WEBP, GIF), PDF, et fichiers texte (TXT, MD, CSV, JSON, code).</p>
+          <ul>
+            <li>Un fichier texte est lu jusqu'à 30 000 caractères. Au-delà, la suite n'est pas prise en compte.</li>
+            <li>Vous pouvez joindre jusqu'à 10 documents dans un même message.</li>
+            <li>Un message ne peut pas dépasser environ 5 Mo de contenu joint.</li>
+            <li>Si l'IA ne peut pas lire un fichier, elle le dit dans sa réponse.</li>
+          </ul>`)}
+
+        ${sec("images", "05", "Générer des images", `
+          <p>La génération d'images est disponible à partir de l'offre Essentiel. L'essai gratuit n'en inclut pas. Ouvrez la page <strong>Images</strong> du menu, décrivez la scène souhaitée et lancez la génération.</p>
+          <ul>
+            <li>Essentiel : 3 images par jour.</li>
+            <li>Pro : 10 images par jour, et la retouche à partir d'une photo de référence.</li>
+            <li>Expert : images illimitées.</li>
+          </ul>`)}
+
+        ${sec("limites", "06", "Limites par offre", `
+          <p>Les limites sont appliquées par nos serveurs. Le nombre de messages restants s'affiche sous la zone de saisie du chat.</p>
+          <div class="kg-table-wrap"><table class="kg-table">
+            <thead><tr><th>Offre</th><th>Prix</th><th>Messages par jour</th><th>Réponses</th><th>Images par jour</th></tr></thead>
+            <tbody>${offres}</tbody>
+          </table></div>
+          <ul>
+            <li>Un message compte pour 1, même si vous joignez plusieurs fichiers.</li>
+            <li>Une réponse coupée, relancée avec « continue », compte comme un nouveau message.</li>
+            <li>Le compteur se remet à zéro chaque jour, à minuit (heure UTC).</li>
+          </ul>`)}
+
+        ${sec("compte", "07", "Compte et données", `
+          <p>Votre compte, vos conversations et votre historique sont enregistrés dans le navigateur que vous utilisez. Si vous changez d'appareil ou si vous effacez les données de navigation, l'historique n'est plus disponible.</p>
+          <ul>
+            <li>Les mots de passe ne sont jamais enregistrés en clair : ils sont transformés par un calcul de hachage.</li>
+            <li>Les paiements sont gérés par Stripe, notre prestataire de paiement. KARAT ne reçoit pas votre numéro de carte.</li>
+            <li>Pour vous déconnecter, utilisez « Se déconnecter » dans le menu. La conversation en cours est alors effacée de cet appareil.</li>
+          </ul>`)}
+
+        ${sec("abonnement", "08", "Abonnement", `
+          <p>Votre offre se gère depuis la page <strong>Abonnement</strong>, dans le menu.</p>
+          <ul>
+            <li>Pour résilier, cliquez sur « Résilier ». Votre accès reste actif jusqu'à la fin de la période payée.</li>
+            <li>Pour changer d'offre, écrivez-nous depuis la page Support.</li>
+            <li>L'essai gratuit dure 24 heures à partir de la création de votre compte. Il ne se renouvelle pas.</li>
+          </ul>`)}
+
+        ${sec("prudence", "09", "Prudence et règles d'usage", `
+          <p>L'IA peut se tromper, inventer des faits ou se contredire. Vérifiez les informations importantes avant de les utiliser : chiffres, textes juridiques, décisions financières ou médicales.</p>
+          <ul>
+            <li>Ne partagez pas de mots de passe ni de données personnelles de tiers sans leur accord.</li>
+            <li>KARAT ne fournit pas de logiciel de triche, de contournement de protections ou de piratage. Ces demandes sont refusées.</li>
+            <li>Les réponses de KARAT ne remplacent pas l'avis d'un professionnel (avocat, comptable, médecin).</li>
+          </ul>`)}
+
+        ${sec("faq", "10", "Questions fréquentes", `
+          ${qa("Pourquoi ma réponse s'arrête-t-elle ?", "Elle est plus longue que la limite de votre offre. Écrivez « continue » pour recevoir la suite.")}
+          ${qa("Pourquoi vois-je « limite atteinte » ?", "Vous avez utilisé tous vos messages du jour. Le compteur revient à zéro chaque jour. Une offre supérieure vous en donne davantage.")}
+          ${qa("Pourquoi ne puis-je pas générer d'image ?", "L'essai gratuit n'inclut pas les images. Elles sont disponibles dès l'offre Essentiel.")}
+          ${qa("Mon historique a disparu.", "L'historique est enregistré dans le navigateur. Reconnectez-vous depuis le même navigateur et le même appareil.")}
+          ${qa("Qui contacter ?", `Depuis la page Support, ou par e-mail à ${SUPPORT_EMAIL} en indiquant l'adresse de votre compte.`)}`)}
+
+        ${cta}
+      </div>
+    </div>`;
+  if (session) return appShell("/app/guide", pageHead("Aide", "Documentation", "Tout ce qu'il faut savoir pour utiliser KARAT, de la création de votre compte à vos premières réponses.") + body);
+  return `${pubHeader("/documentation")}
+  <section class="section" style="padding-top:70px"><div class="wrap">
+    <div class="head">
+      <div><div class="label">Aide</div><h2 class="h-l" style="margin-top:14px">Documentation</h2></div>
+      <p>Tout ce qu'il faut savoir pour utiliser KARAT, de la création de votre compte à vos premières réponses.</p>
+    </div>
+    ${body}
+  </div></section>
+  ${pubFooter()}`;
+}
+Object.assign(ACTIONS, {
+  "guide-jump": el => {
+    const s = document.getElementById("kg-" + el.dataset.target);
+    if (s) s.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 });
 
