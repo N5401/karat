@@ -33,8 +33,7 @@ exports.handler = async (event) => {
   // Offre et quota du jour
   let plan, quota;
   try {
-    plan = await planFor(email);
-    if (!plan) return json(403, { error: "Choisissez une offre pour générer des images." });
+    plan = (await planFor(email)) || "gratuit";   // sans offre : 1 image par jour
     quota = await imageQuota(email, plan);
   } catch (e) {
     console.error("KARAT image: offre/quota", e.message);
@@ -42,7 +41,9 @@ exports.handler = async (event) => {
   }
   if (quota.used >= quota.limit){
     return json(429, {
-      error: `Limite atteinte : ${quota.limit} images par jour avec l'offre ${PLAN_LABEL[plan] || plan}. Revenez demain ou passez à une offre supérieure.`,
+      error: plan === "gratuit"
+        ? "Limite atteinte : 1 image par jour. Passez à l'offre Essentiel à 9,99 € par mois pour 3 images par jour."
+        : `Limite atteinte : ${quota.limit} images par jour avec l'offre ${PLAN_LABEL[plan] || plan}. Revenez demain ou passez à une offre supérieure.`,
       remaining: 0,
     });
   }
