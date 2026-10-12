@@ -1,6 +1,6 @@
 // KARAT — génération d'images via l'API OpenAI (gpt-image).
 // POST {email, prompt, ref?}  ref = photo de référence optionnelle (data:image/...;base64,...)
-// Quotas par jour selon l'offre (voir _shared/acces.js) : Essentiel 3, Pro 10, Expert illimité.
+// Quotas par jour selon l'offre (voir _shared/acces.js) : Essentiel 3, Pro 5, Expert illimité.
 // Variables Netlify : OPENAI_API_KEY, STRIPE_SECRET_KEY, NETLIFY_TOKEN, SITE_ID.
 // Chaque image est facturée par OpenAI : vérifiez votre solde sur platform.openai.com.
 
