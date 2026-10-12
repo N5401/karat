@@ -43,7 +43,7 @@ exports.handler = async (event) => {
   }
 
   const data = (d && d.data) || {};
-  if (data.status === "completed") {
+  if (data.status === "completed" || data.status === "succeeded") {
     const url = Array.isArray(data.outputs) ? data.outputs[0] : null;
     return json(200, { status: "completed", url: url || null });
   }
