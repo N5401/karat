@@ -2,7 +2,7 @@
    KARAT — application
    Données : enregistrées dans ce navigateur (démo). Voir la note dans Réglages.
    ===================================================================== */
- 
+
 /* ---------- Configuration ---------- */
 const CONFIG = {
   GOOGLE_CLIENT_ID: "944959967913-jtiabnp67550tks8i0pq4pe46n0pjkns.apps.googleusercontent.com",
@@ -13,29 +13,31 @@ const CONFIG = {
     expert:    "https://buy.stripe.com/bJe28j0GQclk5E93ib5c402"
   },
   VERIFY_ENDPOINT: "/.netlify/functions/abo",   // serveur qui confirme l'abonnement après paiement (webhook Stripe)
-  AI_ENDPOINT: "/.netlify/functions/ai"        // moteur IA réel : POST {mode, messages} -> {reply}
+  AI_ENDPOINT: "/.netlify/functions/ai-background",  // moteur IA réel (réponses longues, en arrière-plan)
+  AI_RESULT: "/.netlify/functions/ai-result",        // récupère la réponse une fois prête
+  USAGE_ENDPOINT: "/.netlify/functions/usage"        // messages restants aujourd'hui
 };
- 
+
 const PLANS = {
-  essentiel: { name: "Essentiel", price: "7,99 €",  num: 7.99,  desc: "Pour découvrir KARAT au quotidien.", feats: ["Panel IA standard", "Fichiers texte et images", "Historique 30 jours", "Support e-mail"] },
-  pro:       { name: "Pro",       price: "18,99 €", num: 18.99, desc: "Pour les professionnels qui travaillent chaque jour.", feats: ["Tout Essentiel", "Modules avancés", "Gros fichiers", "Historique illimité", "Support prioritaire"] },
-  expert:    { name: "Expert",    price: "39,99 €", num: 39.99, desc: "Pour les équipes et l'automatisation à grande échelle.", feats: ["Tout Pro", "Workflows automatisés", "Accès API", "Priorité de traitement", "Accompagnement dédié"] }
+  essentiel: { name: "Essentiel", price: "7,99 €",  num: 7.99,  desc: "Pour découvrir KARAT au quotidien.", feats: ["Assistant IA polyvalent", "40 messages par jour", "3 générations d'images par jour","Analyse de fichiers texte, PDF et images", "Historique des conversations sur 30 jours", "Support par e-mail"] },
+  pro:       { name: "Pro",       price: "18,99 €", num: 18.99, desc: "Pour les professionnels qui travaillent chaque jour.", feats: ["Tout Essentiel", "150 messages par jour", "10 générations d'images par jour","Retouche d'image à partir d'une photo de référence", "Analyse de plusieurs documents à la fois (jusqu'à 10 PDF par message)", "Réponses longues et détaillées, jusqu'à une quinzaine de pages", "Modes spécialisés : code, rédaction, analyse de données", "Historique illimité", "Support prioritaire"] },
+  expert:    { name: "Expert",    price: "39,99 €", num: 39.99, desc: "Pour les équipes et les usages intensifs.", feats: ["Tout Pro", "Messages et images illimités","Modèle d'IA le plus avancé, pour les tâches complexes", "Accompagnement dédié à la mise en place"] }
 };
- 
+
 const MODES = {
   general:   { name: "Général",   icon: "chat",  desc: "Un assistant polyvalent pour répondre, comprendre et décider.", bullets: ["Résumés et synthèses", "Explications claires", "Aide à la décision"], sub: "Module général" },
   code:      { name: "Code",      icon: "code",  desc: "Débogage, refactorisation, tests et revue de code.", bullets: ["Trouver un bug", "Optimiser une fonction", "Écrire des tests"], sub: "Module développement" },
   redaction: { name: "Rédaction", icon: "edit",  desc: "Reformulation, raccourcissement et rédaction de textes.", bullets: ["Reformuler un passage", "Adapter le ton", "Résumer un texte"], sub: "Module écriture" },
   data:      { name: "Données",   icon: "grid", desc: "Analyse de tableaux, tendances et propositions de graphiques.", bullets: ["Analyser un CSV", "Repérer les tendances", "Proposer des graphiques"], sub: "Module analyse" }
 };
- 
+
 const SUGGESTIONS = {
   general:   ["Résume-moi l'essentiel d'un sujet", "Aide-moi à prendre une décision", "Explique-moi ce concept simplement"],
   code:      ["Trouve le bug dans ce code", "Optimise cette fonction", "Écris des tests unitaires"],
   redaction: ["Reformule ce paragraphe", "Raccourcis ce texte de moitié", "Rédige un e-mail professionnel"],
   data:      ["Analyse ce tableau", "Quelles tendances ressortent ?", "Propose un graphique pertinent"]
 };
- 
+
 const ONBOARD_STEPS = [
   { t: "Choisis un module", d: "Général, Code, Rédaction ou Données. Le module adapte le ton et la méthode de l'IA." },
   { t: "Pose ta question", d: "Décris le contexte et le résultat attendu. Joins un fichier si besoin." },
@@ -49,7 +51,7 @@ const ONBOARD_RULES = [
   "Je comprends que mon abonnement se renouvelle chaque mois jusqu'à sa résiliation depuis mon espace.",
   "J'accepte les conditions générales d'utilisation et la politique de confidentialité."
 ];
- 
+
 /* ---------- Icônes ---------- */
 const ICON = {
   home: '<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
@@ -84,7 +86,7 @@ const ICON = {
 };
 const svg = n => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICON[n] || ""}</svg>`;
 const ic  = n => `<span class="ico">${svg(n)}</span>`;
- 
+
 /* ---------- Stockage ---------- */
 const store = {
   get(k, d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } },
@@ -106,7 +108,7 @@ let logs  = store.get("karat_logs", []);
 const ui  = { mode: "general", attached: [], pendingImg: [], pendingFiles: [], convId: null, typing: false, adminFilter: "all", adminQ: "", sort: { key: "createdAt", dir: -1 }, page: 1, logFilter: "all" };
 const PAGE = 10;
 let pendingOk = null;
- 
+
 const saveUsers = () => store.set("karat_users", users);
 const saveSubs  = () => store.set("karat_subs", subs);
 const saveChats = () => { if (!store.set("karat_chats", chats)) toast("Stockage du navigateur plein", true); };
@@ -117,7 +119,7 @@ function logEvent(type, email, detail = ""){
   logs = logs.slice(0, 500);
   saveLogs();
 }
- 
+
 /* ---------- Outils ---------- */
 const $  = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -132,7 +134,7 @@ const fmtSize = n => n < 1024 ? n + " o" : n < 1048576 ? (n / 1024).toFixed(1) +
 const initial = s => ((s || "").trim()[0] || "?").toUpperCase();
 const money = n => n.toFixed(2).replace(".", ",") + " €";
 const addMonths = (t, n) => { const d = new Date(t); d.setMonth(d.getMonth() + n); return d.getTime(); };
- 
+
 function toast(msg, bad = false){
   const t = document.createElement("div");
   t.className = "toast" + (bad ? " bad" : "");
@@ -159,7 +161,7 @@ function download(name, content, type){
   a.href = URL.createObjectURL(blob); a.download = name; a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
- 
+
 /* ---------- Comptes & droits ---------- */
 const isAdmin = e => !!e && CONFIG.ADMIN_EMAILS.map(x => x.toLowerCase()).includes(emailOf(e));
 const planOf  = e => (subs[emailOf(e)] || {}).plan || null;
@@ -189,7 +191,7 @@ const myChats = () => { const k = emailOf(session.email); if (!chats[k]) chats[k
 const myFiles = () => { const k = emailOf(session.email); if (!files[k]) files[k] = []; return files[k]; };
 const convById = id => myChats().find(c => c.id === id) || null;
 const fileById = id => myFiles().find(f => f.id === id) || null;
- 
+
 /* ---------- Mot de passe : PBKDF2 (jamais stocké en clair) ---------- */
 const b64   = u8 => btoa(String.fromCharCode(...u8));
 const unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
@@ -201,7 +203,7 @@ async function hashPw(pw, saltB64){
   return { hash: b64(new Uint8Array(bits)), salt: b64(salt) };
 }
 async function verifyPw(pw, u){ return (await hashPw(pw, u.salt)).hash === u.hash; }
- 
+
 /* =====================================================================
    ROUTEUR & GARDES
    ===================================================================== */
@@ -216,6 +218,7 @@ const ROUTES = [
   { re: /^\/app\/fichiers$/,         fn: vFiles,          app: true },
   { re: /^\/app\/modules$/,          fn: vModules,        app: true },
   { re: /^\/app\/offre$/,            fn: vSubscription,   app: true },
+  { re: /^\/app\/guide$/,            fn: vGuide,          app: true },
   { re: /^\/admin$/,                 fn: vAdminOverview,  admin: true },
   { re: /^\/admin\/utilisateurs$/,   fn: vAdminUsers,     admin: true },
   { re: /^\/admin\/abonnements$/,    fn: vAdminSubs,      admin: true },
@@ -225,7 +228,7 @@ const ROUTES = [
   { re: /^\/app\/support$/,             fn: vSupport,        app: true },
   { re: /^\/admin\/reglages$/,       fn: vAdminSettings,  admin: true }
 ];
- 
+
 function currentRoute(){
   const raw = location.hash.replace(/^#/, "") || "/";
   const i = raw.indexOf("?");
@@ -236,7 +239,7 @@ function go(path){
   else location.hash = path;
 }
 window.addEventListener("hashchange", render);
- 
+
 function render(){
   const { path, q } = currentRoute();
   if (path === "/app/compte") return go("/app/offre");
@@ -244,7 +247,7 @@ function render(){
   const route = ROUTES.find(r => r.re.test(path));
   if (!route) return go("/");
   const admin = isAdmin(session?.email);
- 
+
   if (route.admin){
     if (!session) return go("/connexion?next=" + enc(path));
     if (!admin){ toast("Accès réservé à l'administrateur", true); return go("/app/chat"); }
@@ -255,15 +258,16 @@ function render(){
   }
   if (route.onboard) return go("/app/chat");
   if (path === "/connexion" && session) return go(q.get("next") || "/app/chat");
- 
+
   const m = path.match(route.re);
   $("#app").innerHTML = route.fn(m, q);
   afterRender(path);
 }
- 
+
 function afterRender(path){
   if (path.startsWith("/app/chat")){
     const box = $("#msgs"); if (box) box.scrollTop = box.scrollHeight;
+    refreshUsage();
   }
   if (path === "/connexion") initGoogle();
   if (path === "/" || path === "/tarifs") initFX();
@@ -272,7 +276,7 @@ function afterRender(path){
   if (path === "/admin/journal"){ const s = $("[data-change='log-filter']"); if (s) s.value = ui.logFilter; }
   if (path === "/admin/annonces") fillAnnonceList();
 }
- 
+
 /* =====================================================================
    COQUILLES
    ===================================================================== */
@@ -319,6 +323,7 @@ function appShell(path, content){
       ${link("/app/chat", "chat", "Chat IA")}
       ${link("/app/historique", "clock", "Historique", myChats().length)}
       ${link("/app/modules", "grid", "Modules")}
+      ${link("/app/guide", "book", "Documentation")}
       ${link("/app/images", "image", "Images")}
       ${link("/app/support", "mail", "Support")}
       ${link("/app/offre", "card", "Abonnement")}
@@ -358,110 +363,142 @@ const kpi = (label, value, sub = "", delta = null) => `
     ${sub ? `<div class="k-s">${sub}</div>` : ""}
     ${delta !== null ? `<div class="delta ${delta >= 0 ? "up" : "down"}">${delta >= 0 ? "▲" : "▼"} ${Math.abs(delta)} vs semaine précédente</div>` : ""}
   </div>`;
- 
+
 /* =====================================================================
    PAGES PUBLIQUES
    ===================================================================== */
 function vLanding(){
-  const words = ["Analyse multimodale", "Code", "Rédaction", "Données", "Workflows", "Temps réel", "Sécurité", "Automatisation"];
-  const track = [...words, ...words].map(w => `<span>${w}</span>`).join("");
-  const modes = Object.keys(MODES).map(k => `
-    <article class="card mode-card">
-      <div class="mi">${ic(MODES[k].icon)}</div>
+  const promo = promoHidden();
+  const modules = Object.keys(MODES).map((k, i) => `
+    <article class="lp-mod-card">
+      <div class="lp-mod-top"><span class="lp-ico">${ic(MODES[k].icon)}</span><span class="lp-num">0${i + 1}</span></div>
       <h3>${MODES[k].name}</h3>
-      <p class="d">${MODES[k].desc}</p>
-      <ul class="mode-list">${MODES[k].bullets.map(b => `<li>${b}</li>`).join("")}</ul>
+      <p>${MODES[k].desc}</p>
+      <ul>${MODES[k].bullets.map(b => `<li>${b}</li>`).join("")}</ul>
     </article>`).join("");
-  return `${pubHeader("/")}
-  <section class="hero"><div class="wrap hero-inner">
-    <span class="pill"><b>NOUVEAU</b> Panel IA multi-modules</span>
-    <h1 class="h-xl">Analysez <span class="strike">moins</span>.<br/>Décidez <span class="acc">plus vite.</span></h1>
-    <p class="lead">KARAT réunit l'analyse de fichiers, le code, la rédaction et les données dans un seul panel sobre et rapide.</p>
-    <div class="ctas">
-      ${promoHidden()
-        ? `<a class="btn btn-accent" href="#/app/chat">Ouvrir le panel ${ic("arrow")}</a>`
-        : `<a class="btn btn-accent" href="#/tarifs">Voir les offres ${ic("arrow")}</a>
-           <a class="btn btn-line" href="#/connexion?tab=signup">Créer un compte</a>`}
-    </div>
-    <div class="proof">
-      <div><b>4</b><span>modules métiers</span></div>
-      <div><b>Google</b><span>ou e-mail</span></div>
-      <div><b>Stripe</b><span>paiement sécurisé</span></div>
-      <div><b>7,99 €</b><span>offre de départ</span></div>
-    </div>
-    <div class="console" aria-hidden="true">
-      <div class="console-top"><span class="pv-dots"><i></i><i></i><i></i></span><span>karat — panel IA · module Général</span><span></span></div>
-      <div class="console-body">
-        <div class="pv-b me">Compare ces deux versions du module et résume les écarts.</div>
-        <div class="pv-b">Analyse terminée sur 4 fichiers.<br/>• 3 améliorations de performance<br/>• 1 risque de régression signalé</div>
-        <div class="pv-b me">Propose-moi un graphique pour les résultats.</div>
-        <div class="pv-b">Un diagramme en barres par version est le plus lisible ici.</div>
-      </div>
-    </div>
-  </div></section>
- 
-  <div class="marquee" aria-hidden="true"><div class="marquee-track">${track}</div></div>
- 
-  <section class="section" id="modules"><div class="wrap">
-    <div class="head">
-      <div><div class="label">Modules</div><h2 class="h-l" style="margin-top:14px;max-width:560px">Un module pour chaque type de travail.</h2></div>
-      <p>Chaque module adapte le ton, la méthode et les suggestions à votre tâche.</p>
-    </div>
-    <div class="grid g4 modes">${modes}</div>
-  </div></section>
- 
-  <section class="section" id="comment" style="padding-top:0"><div class="wrap">
-    <div class="head">
-      <div><div class="label">Démarrer</div><h2 class="h-l" style="margin-top:14px;max-width:560px">Trois étapes, moins de deux minutes.</h2></div>
-    </div>
-    <div class="steps">
-      <div class="step"><span class="n">01</span><h3>Créez votre compte</h3><p>Par e-mail ou avec Google. Votre espace est privé.</p></div>
-      <div class="step"><span class="n">02</span><h3>Choisissez une offre</h3><p>Essentiel, Pro ou Expert. Paiement sécurisé par Stripe, résiliable à tout moment.</p></div>
-      <div class="step"><span class="n">03</span><h3>Ouvrez le panel</h3><p>Lisez le rappel des règles d'utilisation, validez-le, puis commencez.</p></div>
-    </div>
-  </div></section>
- 
-  <section class="section" id="features" style="padding-top:0"><div class="wrap">
-    <div class="head">
-      <div><div class="label">Fonctionnalités</div><h2 class="h-l" style="margin-top:14px;max-width:620px">Un seul endroit pour vos fichiers, vos questions et vos résultats.</h2></div>
-      <p>Tout reste au même endroit, avec un historique consultable.</p>
-    </div>
-    <div class="bento">
-      <article class="card c-a"><span class="label">01 — Fichiers</span><h3 class="t">Joignez vos documents à la conversation</h3><p class="d">Textes, code, tableaux : chargez-les dans votre bibliothèque et utilisez-les en un clic dans vos questions.</p></article>
-      <article class="card c-b"><span class="label">02 — Historique</span><h3 class="t">Retrouvez chaque échange</h3><p class="d">Conversations classées par date, consultables à tout moment.</p>
-        <div class="chips"><span>Aujourd'hui</span><span>Hier</span><span>7 derniers jours</span></div></article>
-      <article class="card c-c"><span class="label">03 — Accès</span><h3 class="t">Compte personnel</h3><p class="d">Inscription par e-mail ou connexion Google.</p></article>
-      <article class="card c-d"><span class="label">04 — Abonnement</span><h3 class="t">Gérez votre offre</h3><p class="d">Date de renouvellement et résiliation depuis votre espace.</p></article>
-      <article class="card c-e"><span class="label">05 — Confidentialité</span><h3 class="t">Isolé par compte</h3><p class="d">Vos conversations ne sont visibles que de vous.</p></article>
-    </div>
-  </div></section>
- 
-  <section class="section" id="offres" style="padding-top:0;${promoHidden() ? "display:none" : ""}"><div class="wrap">
-    <div class="head">
-      <div><div class="label">Tarifs</div><h2 class="h-l" style="margin-top:14px;max-width:560px">Une offre pour chaque usage.</h2></div>
+
+  const offres = promo ? "" : `
+  <section class="lp-sec" id="offres"><div class="lp-wrap">
+    <div class="lp-sec-head">
+      <div><div class="lp-kicker">Tarifs</div><h2 class="lp-h2">Une offre pour chaque usage.</h2></div>
       <p>TTC, sans engagement. Résiliable depuis votre espace.</p>
     </div>
     <div class="plans">${["essentiel", "pro", "expert"].map(planCard).join("")}</div>
-  </div></section>
- 
-  <section class="section" id="faq" style="padding-top:0"><div class="wrap faq-wrap">
-    <div class="label">Questions fréquentes</div>
-    <h2 class="h-l" style="margin-top:14px;margin-bottom:34px">Vous vous posez peut-être ces questions.</h2>
-    <details class="faq"><summary>Puis-je résilier à tout moment ?</summary><p>Oui. La résiliation se fait depuis la page Abonnement, en un clic. Votre offre reste active jusqu'à la fin de la période en cours.</p></details>
-    <details class="faq"><summary>Comment le paiement fonctionne-t-il ?</summary><p>Le paiement passe par Stripe, une plateforme de paiement reconnue. KARAT ne stocke pas vos coordonnées bancaires.</p></details>
-    <details class="faq"><summary>Mes conversations sont-elles privées ?</summary><p>Oui, chaque conversation n'est visible que depuis votre compte. Dans cette version, vos données sont enregistrées dans le navigateur de l'appareil utilisé.</p></details>
-    <details class="faq"><summary>Pourquoi dois-je valider des règles après le paiement ?</summary><p>Avant le premier accès au panel, nous vous présentons les règles d'utilisation. Vous les validez une fois pour toutes.</p></details>
-  </div></section>
- 
-  ${promoHidden() ? "" : `<section class="section" style="padding-top:0"><div class="wrap">
-    <div class="cta-band">
-      <div><div class="label">Prêt ?</div><h2 class="h-l" style="margin-top:12px;font-size:36px">Commencez avec 7,99 € par mois.</h2><p class="muted" style="margin-top:10px">Sans engagement, résiliable depuis votre espace.</p></div>
+  </div></section>`;
+
+  const cta = promo ? "" : `
+  <section class="lp-sec lp-sec-tight"><div class="lp-wrap">
+    <div class="lp-cta">
+      <div><div class="lp-kicker">Prêt ?</div><h2>Commencez avec 7,99&nbsp;€ par mois.</h2><p>Sans engagement, résiliable depuis votre espace.</p></div>
       <a class="btn btn-accent" href="#/tarifs">Voir les offres ${ic("arrow")}</a>
     </div>
-  </div></section>`}
-  ${pubFooter()}`;
+  </div></section>`;
+
+  return `<div class="lp">
+  ${pubHeader("/")}
+
+  <section class="lp-hero"><div class="lp-wrap lp-hero-grid">
+    <div>
+      <span class="lp-eyebrow"><i></i>Nouveau · Panel IA multi-modules</span>
+      <h1>Analysez <span class="lp-strike">moins</span>.<br/><span class="lp-acc">Décidez plus vite.</span></h1>
+      <p class="lp-lead">KARAT réunit l'analyse de fichiers, le code, la rédaction et les données dans un seul panel sobre et rapide.</p>
+      <div class="lp-ctas">${promo
+        ? `<a class="btn btn-accent" href="#/app/chat">Ouvrir le panel ${ic("arrow")}</a>`
+        : `<a class="btn btn-accent" href="#/tarifs">Voir les offres ${ic("arrow")}</a>
+           <a class="btn btn-line" href="#/connexion?tab=signup">Créer un compte</a>`}
+      </div>
+      <div class="lp-stats">
+        <div><b>4</b><span>modules métiers</span></div>
+        <div><b>Google</b><span>ou e-mail</span></div>
+        <div><b>Stripe</b><span>paiement sécurisé</span></div>
+        <div><b>7,99 €</b><span>offre de départ</span></div>
+      </div>
+    </div>
+
+    <div class="lp-visual" aria-hidden="true">
+      <div class="lp-window">
+        <div class="lp-win-bar"><span class="lp-dots"><i></i><i></i><i></i></span><span>karat — panel IA</span><span></span></div>
+        <div class="lp-win-body">
+          <aside class="lp-win-side">
+            <small>Modules</small>
+            <span class="lp-mod on">Général</span>
+            <span class="lp-mod">Code</span>
+            <span class="lp-mod">Rédaction</span>
+            <span class="lp-mod">Données</span>
+          </aside>
+          <div class="lp-win-main">
+            <div class="lp-msg me">Compare ces deux versions du module et résume les écarts.</div>
+            <div class="lp-msg">Analyse terminée sur 4 fichiers.<br/>• 3 améliorations de performance<br/>• 1 risque de régression signalé</div>
+            <div class="lp-msg me">Propose-moi un graphique pour les résultats.</div>
+            <div class="lp-msg">Un diagramme en barres par version est le plus lisible ici.</div>
+          </div>
+        </div>
+        <div class="lp-win-input"><span>Posez votre question…</span><span class="lp-send">${ic("arrow")}</span></div>
+      </div>
+    </div>
+  </div></section>
+
+  <section class="lp-sec" id="modules"><div class="lp-wrap">
+    <div class="lp-sec-head">
+      <div><div class="lp-kicker">Modules</div><h2 class="lp-h2">Un module pour chaque type de travail.</h2></div>
+      <p>Chaque module adapte le ton, la méthode et les suggestions à votre tâche.</p>
+    </div>
+    <div class="lp-modules">${modules}</div>
+  </div></section>
+
+  <section class="lp-sec lp-sec-tight" id="comment"><div class="lp-wrap">
+    <div class="lp-sec-head">
+      <div><div class="lp-kicker">Démarrer</div><h2 class="lp-h2">Trois étapes, moins de deux minutes.</h2></div>
+    </div>
+    <div class="lp-steps">
+      <div class="lp-step"><span class="n">01</span><h3>Créez votre compte</h3><p>Par e-mail ou avec Google. Votre espace est privé.</p></div>
+      <div class="lp-step"><span class="n">02</span><h3>Choisissez une offre</h3><p>Essentiel, Pro ou Expert. Paiement sécurisé par Stripe, résiliable à tout moment.</p></div>
+      <div class="lp-step"><span class="n">03</span><h3>Ouvrez le panel</h3><p>Lisez le rappel des règles d'utilisation, validez-le, puis commencez.</p></div>
+    </div>
+  </div></section>
+
+  <section class="lp-sec" id="features"><div class="lp-wrap">
+    <div class="lp-sec-head">
+      <div><div class="lp-kicker">Fonctionnalités</div><h2 class="lp-h2">Un seul endroit pour vos fichiers, vos questions et vos résultats.</h2></div>
+      <p>Tout reste au même endroit, avec un historique consultable.</p>
+    </div>
+    <div class="lp-bento">
+      <article class="lp-feat lp-f1"><span class="k">01 — Fichiers</span><h3>Joignez vos documents à la conversation</h3><p>Textes, code, tableaux : chargez-les dans votre bibliothèque et utilisez-les en un clic dans vos questions.</p>
+        <div class="lp-chips"><span>rapport.pdf</span><span>ventes.csv</span><span>module.js</span><span>photo.png</span></div></article>
+      <article class="lp-feat lp-f2"><span class="k">02 — Historique</span><h3>Retrouvez chaque échange</h3><p>Conversations classées par date, consultables à tout moment.</p>
+        <div class="lp-chips"><span>Aujourd'hui</span><span>Hier</span><span>7 derniers jours</span></div></article>
+      <article class="lp-feat lp-f3"><span class="k">03 — Accès</span><h3>Compte personnel</h3><p>Inscription par e-mail ou connexion Google.</p></article>
+      <article class="lp-feat lp-f4"><span class="k">04 — Abonnement</span><h3>Gérez votre offre</h3><p>Date de renouvellement et résiliation depuis votre espace.</p></article>
+      <article class="lp-feat lp-f5"><span class="k">05 — Confidentialité</span><h3>Isolé par compte</h3><p>Vos conversations ne sont visibles que de vous.</p></article>
+    </div>
+  </div></section>
+
+  ${offres}
+
+  <section class="lp-sec lp-sec-tight" id="faq"><div class="lp-wrap lp-faq">
+    <div class="lp-faq-side">
+      <div class="lp-kicker">Questions fréquentes</div>
+      <h2 class="lp-h2">Vous vous posez peut-être ces questions.</h2>
+      <p>Une autre question ? Écrivez-nous à <a href="mailto:karatsupport@gmail.com">karatsupport@gmail.com</a>.</p>
+    </div>
+    <div class="lp-faq-list">
+      <details class="lp-q"><summary>Puis-je résilier à tout moment ?</summary><p>Oui. La résiliation se fait depuis la page Abonnement, en un clic. Votre offre reste active jusqu'à la fin de la période en cours.</p></details>
+      <details class="lp-q"><summary>Comment le paiement fonctionne-t-il ?</summary><p>Le paiement passe par Stripe, une plateforme de paiement reconnue. KARAT ne stocke pas vos coordonnées bancaires.</p></details>
+      <details class="lp-q"><summary>Mes conversations sont-elles privées ?</summary><p>Oui, chaque conversation n'est visible que depuis votre compte. Dans cette version, vos données sont enregistrées dans le navigateur de l'appareil utilisé.</p></details>
+      <details class="lp-q"><summary>Pourquoi dois-je valider des règles après le paiement ?</summary><p>Avant le premier accès au panel, nous vous présentons les règles d'utilisation. Vous les validez une fois pour toutes.</p></details>
+    </div>
+  </div></section>
+
+  ${cta}
+
+  <footer class="lp-foot"><div class="lp-wrap">
+    <span class="logo"><i></i>KARAT</span>
+    <small>© 2026 KARAT</small>
+    <nav><a href="#/">Mentions légales</a><a href="#/">Confidentialité</a><a href="#/">CGV</a><a href="mailto:karatsupport@gmail.com">Contact</a></nav>
+  </div></footer>
+  </div>`;
 }
- 
+
 function planCard(key){
   const p = PLANS[key];
   const hot = key === "pro";
@@ -485,6 +522,7 @@ function vPricing(){
       <p>TTC, sans engagement. Résiliation possible à tout moment depuis votre espace.</p>
     </div>
     <div class="plans">${["essentiel", "pro", "expert"].map(planCard).join("")}</div>
+    <p class="small muted" style="text-align:center;margin-top:22px">Essai gratuit de 24 h après la création de votre compte : 5 messages par jour, réponses courtes, sans génération d'images.</p>
   </div></section>
   <section class="section" style="padding-top:20px"><div class="wrap" style="max-width:820px">
     <div class="label">Questions fréquentes</div>
@@ -495,7 +533,7 @@ function vPricing(){
   </div></section>
   ${pubFooter()}`;
 }
- 
+
 function vAuth(_m, q){
   const tab = q.get("tab") === "signup" ? "signup" : "login";
   const nx = enc(q.get("next") || "/app/chat");
@@ -533,19 +571,19 @@ function vAuth(_m, q){
   </div></div>
   ${pubFooter()}`;
 }
- 
+
 /* =====================================================================
    CONNEXION
    ===================================================================== */
 const googleOn = () => !!CONFIG.GOOGLE_CLIENT_ID && !CONFIG.GOOGLE_CLIENT_ID.startsWith("REMPLACER");
 const setErr = m => { const el = $("#authErr"); if (el) el.textContent = m || ""; };
 const nextTarget = () => currentRoute().q.get("next") || "/app/chat";
- 
+
 function startSession(s, isNew){
   session = { ...s, exp: Date.now() + 7 * 24 * 3600 * 1000 };
   store.set("karat_session", session);
   logEvent(isNew ? "inscription" : "connexion", s.email, s.provider || "mot de passe");
-  go(nextTarget());
+  go(isNew ? "/app/guide" : nextTarget());
   toast(`Bienvenue, ${s.name || s.email}`);
 }
 async function onLogin(f){
@@ -624,7 +662,7 @@ function doLogout(){
   toast("Vous êtes déconnecté");
   go("/");
 }
- 
+
 /* =====================================================================
    BIENVENUE (explication obligatoire après paiement)
    ===================================================================== */
@@ -640,17 +678,17 @@ function vOnboard(){
     <div class="label">Offre ${plan ? esc(PLANS[plan].name) : ""} activée</div>
     <h1 class="h-l" style="margin-top:14px;font-size:clamp(32px,4.4vw,48px)">Bienvenue${name ? ", " + esc(name) : ""}.<br/>Avant d'accéder au panel…</h1>
     <p class="lead" style="max-width:640px">Lisez ces quelques points et validez-les. C'est une étape unique, qui garantit une utilisation sereine de KARAT.</p>
- 
+
     <h2 class="h-section" style="margin-top:44px">Comment utiliser KARAT</h2>
     <div class="ob-grid">
       ${ONBOARD_STEPS.map((s, i) => `<div class="ob-step"><span class="n">0${i + 1}</span><h4>${esc(s.t)}</h4><p>${esc(s.d)}</p></div>`).join("")}
     </div>
- 
+
     <h2 class="h-section" style="margin-top:44px">Règles d'utilisation</h2>
     <div class="ack-list">
       ${ONBOARD_RULES.map((r, i) => `<label class="ack" data-ack-row><input type="checkbox" data-ack="${i}" /> <span>${esc(r)}</span></label>`).join("")}
     </div>
- 
+
     <h2 class="h-section" style="margin-top:44px">Confirmation</h2>
     <div class="card" style="padding:26px">
       <p class="muted" style="font-size:14px">Cochez les cinq points ci-dessus, puis tapez <b style="color:var(--text)">OK</b> dans le champ pour confirmer.</p>
@@ -682,7 +720,7 @@ function confirmAck(){
   toast("Bienvenue sur KARAT");
   go("/app/chat");
 }
- 
+
 /* =====================================================================
    TARIFS & PAIEMENT
    ===================================================================== */
@@ -736,7 +774,7 @@ async function verifyPayment(plan){
   if (session) verifyPayment(paid);
   else toast("Paiement reçu. Connectez-vous pour activer votre offre.");
 })();
- 
+
 /* =====================================================================
    PANEL IA
    ===================================================================== */
@@ -764,7 +802,7 @@ function renderMd(text){
       <pre><code>${esc(code)}</code></pre></div>`;
   }).join("");
 }
- 
+
 function msgHTML(m){
   const t = fmtTime(m.at);
   if (m.role === "user"){
@@ -795,7 +833,7 @@ function vChat(m){
   const typing = ui.typing ? `<div class="msg ai"><div class="who">K</div><div class="bubble"><span class="typing"><i></i><i></i><i></i></span></div></div>` : "";
   const body = (conv || ui.typing) ? (conv ? conv.messages.map(msgHTML).join("") : "") + typing : welcomeHTML(mode);
   const attached = ui.attached.map(fileById).filter(Boolean);
- 
+
   return appShell("/app/chat", `<div class="chat">
     <div class="chat-top">
       <div class="row" style="min-width:0"><span class="badge accent">${esc(MODES[mode].name)}</span><span class="title">${conv ? esc(conv.title) : "Nouvelle conversation"}</span></div>
@@ -810,22 +848,37 @@ function vChat(m){
       <input type="file" id="chatFile" multiple accept="image/*,.txt,.md,.csv,.json,.js,.ts,.py,.html,.css,.xml,.yaml,.yml,.sql,.log,.pdf" hidden />
       <div class="inbox">
         ${(ui.pendingImg || []).length ? `<div class="img-tray">${ui.pendingImg.map((im, i) => `<div class="img-thumb"><img src="${im.thumb}" alt="${esc(im.name)}"><button type="button" data-action="img-remove" data-idx="${i}" aria-label="Retirer ${esc(im.name)}"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>`).join("")}</div>` : ""}
-        <button type="button" class="btn btn-ghost btn-icon" data-action="pick-file" title="Joindre un fichier" aria-label="Joindre un fichier"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
-        <textarea id="input" rows="1" placeholder="Posez votre question ou décrivez votre tâche…" aria-label="Message" data-enter></textarea>
+        <button type="button" class="btn btn-icon attach-btn" data-action="pick-file" title="Joindre un fichier" aria-label="Joindre un fichier"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+        <textarea id="input" rows="1" placeholder="Posez votre question…" aria-label="Message" data-enter></textarea>
         <button class="send" id="sendBtn" type="submit" aria-label="Envoyer" ${ui.typing ? "disabled" : ""}>${ic("send")}</button>
       </div>
-      <div class="hint"><span>Entrée pour envoyer · Maj + Entrée pour un saut de ligne</span><span>${esc(MODES[mode].sub)}</span></div>
+      <div class="hint"><span>Entrée pour envoyer · Maj + Entrée pour un saut de ligne</span><span><span id="usage-hint" class="usage-hint"></span>${esc(MODES[mode].sub)}</span></div>
     </form>
   </div>`);
 }
-async function askAI(conv, ctx, images, pdfs){
+// Attend la réponse d'une génération en arrière-plan (interrogation toutes les 2 secondes)
+async function pollAI(id){
+  const t0 = Date.now();
+  while (Date.now() - t0 < 10 * 60 * 1000){
+    await new Promise(r => setTimeout(r, 2000));
+    let d = null;
+    try { d = await (await fetch(CONFIG.AI_RESULT + "?id=" + enc(id), { cache: "no-store" })).json(); } catch (e) { d = null; }
+    if (!d) continue;
+    if (d.status === "done"){
+      const txt = String(d.reply || "").trim() || "Je ne peux pas répondre à cette demande. Précisez votre besoin et je vous aide.";
+      return txt + (d.stopped ? "\n\n[Réponse coupée : demandez « continue » pour la suite.]" : "");
+    }
+    if (d.status === "error") throw new Error(d.error || "Erreur IA");
+  }
+  throw new Error("Délai dépassé");
+}
+async function askAI(conv, ctx, images, pdfs, names, id){
   const history = conv.messages.map(m => ({ role: m.role === "user" ? "user" : "assistant", content: m.text }));
   if (ctx && history.length) history[history.length - 1].content = ctx + "\n\n" + history[history.length - 1].content;
   if (CONFIG.AI_ENDPOINT){
-    const r = await fetch(CONFIG.AI_ENDPOINT, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: conv.mode, messages: history, images: images || [], pdfs: pdfs || [] }) });
-    const d = await r.json();
-    if (!r.ok || !d.reply) throw new Error(d.error || "Erreur IA");
-    return d.reply;
+    const r = await fetch(CONFIG.AI_ENDPOINT, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, email: session ? session.email : "", mode: conv.mode, messages: history, images: images || [], pdfs: pdfs || [], imageNames: (names && names.images) || [], pdfNames: (names && names.pdfs) || [] }) });
+    if (!r.ok && r.status !== 202) throw new Error("Envoi impossible");
+    return pollAI(id);
   }
   await new Promise(r => setTimeout(r, 900 + Math.random() * 800));
   const last = conv.messages[conv.messages.length - 1].text;
@@ -840,18 +893,33 @@ async function sendMessage(override){
   const docs = (ui.pendingFiles || []).slice();
   if (!typed && !imgs.length && !docs.length) return;
   if (!hasAccess()) return go("/tarifs");
-  const text = typed || "Analyse ce que je t'ai joint et dis-moi l'essentiel.";
- 
+  const text = typed || "Analyse chaque fichier joint et dis-moi l'essentiel de chacun.";
+
+  // Contexte texte : 30 000 caractères par fichier, 150 000 au total
+  let budget = 150000;
+  const ctxParts = [];
+  for (const f of docs.filter(f => f.content != null)){
+    if (budget <= 0) break;
+    const piece = f.content.slice(0, Math.min(30000, budget));
+    budget -= piece.length;
+    ctxParts.push(`Fichier « ${f.name} » :\n${piece}`);
+  }
+  const ctx = ctxParts.join("\n\n");
+  const pdfDocs = docs.filter(f => f.pdf);
+  const pdfs = pdfDocs.map(f => f.pdf);
+  const imgNames = imgs.map(i => i.name);
+  const pdfNames = pdfDocs.map(f => f.name);
+
+  // Taille totale envoyée au serveur (limite Netlify ≈ 6 Mo) : on prévient avant d'envoyer
+  const payload = imgs.reduce((n, i) => n + i.data.length, 0) + pdfs.reduce((n, d) => n + d.length, 0) + ctx.length;
+  if (payload > 5000000){ toast("Trop de contenu dans ce message : retirez quelques fichiers", true); return; }
   let conv = ui.convId ? convById(ui.convId) : null;
   if (!conv){
     conv = { id: uid(), title: text.slice(0, 48), mode: ui.mode, createdAt: Date.now(), messages: [] };
     myChats().unshift(conv);
     ui.convId = conv.id;
   }
-  const textFiles = docs.filter(f => f.content != null);
-  const ctx = textFiles.map(f => `Fichier « ${f.name} » :\n${f.content.slice(0, 8000)}`).join("\n\n");
-  const pdfs = docs.filter(f => f.pdf).map(f => f.pdf);
- 
+
   conv.messages.push({ role: "user", text, files: docs.map(f => f.name), thumbs: imgs.map(i => i.thumb), at: Date.now() });
   conv.updatedAt = Date.now();
   ui.attached = [];
@@ -861,17 +929,20 @@ async function sendMessage(override){
   saveChats();
   go(`/app/chat/${conv.id}`);
   if (location.hash === "#/app/chat/" + conv.id) render();
- 
+
+  const reqId = uid() + uid();
+  store.set("karat_ai_pending", { id: reqId, conv: conv.id });
   let reply;
-  try{ reply = await askAI(conv, ctx, imgs.map(i => i.data), pdfs); }
-  catch(e){ reply = "Erreur de connexion au moteur. Réessayez."; }
+  try{ reply = await askAI(conv, ctx, imgs.map(i => i.data), pdfs, { images: imgNames, pdfs: pdfNames }, reqId); }
+  catch(e){ reply = "La réponse n'a pas pu être générée (" + (e.message || "erreur") + "). Réessayez."; }
+  store.del("karat_ai_pending");
   conv.messages.push({ role: "ai", text: reply, at: Date.now() });
   conv.updatedAt = Date.now();
   ui.typing = false;
   saveChats();
   render();
 }
- 
+
 /* =====================================================================
    HISTORIQUE, FICHIERS, MODULES
    ===================================================================== */
@@ -957,7 +1028,7 @@ function vModules(){
   return appShell("/app/modules", pageHead("Espace", "Modules", "Chaque module adapte le ton, la méthode et les réponses à votre besoin.") +
     `<div class="grid g2">${cards}</div>`);
 }
- 
+
 /* =====================================================================
    ABONNEMENT (espace utilisateur, sans modification d'identité)
    ===================================================================== */
@@ -980,7 +1051,7 @@ function vSubscription(){
     `${block}${features}
     <p class="muted small" style="margin-top:18px">La facturation est gérée par notre prestataire de paiement. Pour vos informations personnelles, contactez l'administrateur.</p>`);
 }
- 
+
 /* =====================================================================
    ADMINISTRATION
    ===================================================================== */
@@ -1113,7 +1184,7 @@ function fillAdminUsers(){
   const pages = Math.max(1, Math.ceil(sorted.length / PAGE));
   ui.page = Math.min(ui.page, pages);
   const slice = sorted.slice((ui.page - 1) * PAGE, ui.page * PAGE);
- 
+
   body.innerHTML = slice.map(r => `<tr>
     <td><div class="who-cell"><span class="avatar sm">${esc(initial(rowName(r)))}</span><b>${esc(rowName(r))}</b></div></td>
     <td>${esc(r.email)}</td>
@@ -1126,7 +1197,7 @@ function fillAdminUsers(){
       <button class="btn btn-ghost btn-icon btn-sm" data-action="edit-user" data-email="${esc(r.email)}" aria-label="Modifier">${ic("edit")}</button>
       ${r.isAdmin ? "" : `<button class="btn btn-ghost btn-icon btn-sm" data-action="delete-user" data-email="${esc(r.email)}" aria-label="Supprimer">${ic("trash")}</button>`}
     </div></td></tr>`).join("") || `<tr><td colspan="8"><div class="empty"><b>Aucun résultat</b>Modifiez la recherche ou le filtre.</div></td></tr>`;
- 
+
   const pager = $("#admPager");
   if (pager){
     pager.innerHTML = `<span class="small muted">${sorted.length} compte${sorted.length > 1 ? "s" : ""} · page ${ui.page} / ${pages}</span>
@@ -1147,7 +1218,7 @@ try { stripeCache = JSON.parse(sessionStorage.getItem("karat_stripe_subs") || "n
 let accesCache = null;
 try { accesCache = JSON.parse(sessionStorage.getItem("karat_acces") || "null"); } catch (e) { accesCache = null; }
 const accesLoaded = () => !!(stripeCache || accesCache);
- 
+
 // Offre effective d'un compte : accès offert par l'administrateur, sinon abonnement Stripe
 function effPlan(email){
   const k = emailOf(email);
@@ -1157,7 +1228,7 @@ function effPlan(email){
   const st = (stripeCache || []).find(x => x.email === k);
   return st ? st.plan : null;
 }
- 
+
 // Une ligne par compte : payant (Stripe) et/ou accès offert
 function stripeRows(){
   const acc = accesCache || {};
@@ -1236,7 +1307,7 @@ function fillSubs(){
     </tr>`).join("") || `<tr><td colspan="6"><div class="empty"><b>Aucun abonné</b>Saisissez le jeton administrateur puis cliquez sur Charger.</div></td></tr>`;
 }
 function planOpts(sel){ return Object.keys(PLANS).map(p => `<option value="${p}" ${sel === p ? "selected" : ""}>${PLANS[p].name}</option>`).join(""); }
- 
+
 // Enregistre sur le serveur un accès offert (plan) ou le retire (plan null)
 async function setAccess(email, plan){
   const tok = adminToken();
@@ -1337,7 +1408,7 @@ function onEditUser(f){
   users[email] = { ...(users[email] || { email }), firstName: v("first"), lastName: v("last"), phone: v("phone") };
   saveUsers(); closeModal(); toast("Compte mis à jour"); render();
 }
- 
+
 /* =====================================================================
    EFFETS & ÉVÉNEMENTS
    ===================================================================== */
@@ -1359,7 +1430,7 @@ function initFX(){
     el.addEventListener("pointerleave", () => { el.style.transform = ""; });
   });
 }
- 
+
 const ACTIONS = {
   "logout":        () => askConfirm("Se déconnecter ?", "Votre conversation en cours sera effacée de cet appareil.", doLogout, "Se déconnecter"),
   "close-modal":   () => closeModal(),
@@ -1367,10 +1438,7 @@ const ACTIONS = {
   "plan":          el => startPlan(el.dataset.plan),
   "ack-confirm":   () => confirmAck(),
   "copy":          el => {
-    const txt = el.dataset.text;
-    const done = () => toast("Réponse copiée");
-    if (navigator.clipboard) navigator.clipboard.writeText(txt).then(done, () => toast("Copie impossible", true));
-    else toast("Copie non disponible sur ce navigateur", true);
+    copyText(el.dataset.text || "").then(() => toast("Réponse copiée"), () => toast("Copie impossible : sélectionnez le texte et copiez-le", true));
   },
   "set-mode":      el => {
     ui.mode = el.dataset.mode;
@@ -1440,7 +1508,7 @@ const ACTIONS = {
     toast("Données réinitialisées"); go("/");
   })
 };
- 
+
 document.addEventListener("click", e => {
   if (e.target.matches && e.target.matches("[data-veil]")) return closeModal();
   const el = e.target.closest("[data-action]");
@@ -1448,13 +1516,13 @@ document.addEventListener("click", e => {
   const fn = ACTIONS[el.dataset.action];
   if (fn){ e.preventDefault(); fn(el); }
 });
- 
+
 document.addEventListener("submit", e => {
   const f = e.target;
   const handlers = { loginForm: onLogin, signupForm: onSignup, composer: () => sendMessage(), editUserForm: onEditUser };
   if (handlers[f.id]){ e.preventDefault(); handlers[f.id](f); }
 });
- 
+
 document.addEventListener("change", e => {
   const el = e.target;
   if (el.id === "fileInput"){ importFiles(el.files); el.value = ""; return; }
@@ -1463,7 +1531,7 @@ document.addEventListener("change", e => {
   if (el.dataset.change === "admin-filter"){ ui.adminFilter = el.value; ui.page = 1; fillAdminUsers(); return; }
   if (el.dataset.change === "log-filter"){ ui.logFilter = el.value; render(); }
 });
- 
+
 document.addEventListener("input", e => {
   const el = e.target;
   if (el.dataset.input === "admin-search"){ ui.adminQ = el.value; ui.page = 1; return fillAdminUsers(); }
@@ -1476,7 +1544,7 @@ document.addEventListener("input", e => {
   }
   if (el.id === "input"){ el.style.height = "auto"; el.style.height = Math.min(el.scrollHeight, 160) + "px"; }
 });
- 
+
 document.addEventListener("keydown", e => {
   if (e.target.matches && e.target.matches("[data-enter]") && e.key === "Enter" && !e.shiftKey){
     e.preventDefault(); sendMessage();
@@ -1486,7 +1554,7 @@ document.addEventListener("keydown", e => {
     e.preventDefault(); e.target.click();
   }
 });
- 
+
 document.addEventListener("dragover", e => { const d = e.target.closest && e.target.closest("[data-drop]"); if (d){ e.preventDefault(); d.classList.add("over"); } });
 document.addEventListener("dragleave", e => { const d = e.target.closest && e.target.closest("[data-drop]"); if (d) d.classList.remove("over"); });
 document.addEventListener("drop", e => {
@@ -1495,7 +1563,7 @@ document.addEventListener("drop", e => {
   e.preventDefault(); d.classList.remove("over");
   importFiles(e.dataTransfer.files);
 });
- 
+
 /* Glisser un fichier dans le chat : overlay « Ajouter », fichier joint au prochain message */
 let dragDepth = 0;
 const onChatRoute = () => !!session && currentRoute().path === "/app/chat";
@@ -1579,91 +1647,92 @@ async function fillAnnonceList(){
   }).join("") : `<p class="muted small">Aucune annonce en cours.</p>`;
   box.innerHTML = `<div class="card-h"><h3>Annonces en cours</h3></div>${rows}`;
 }
- 
+
 /* =====================================================================
    GÉNÉRATION D'IMAGES (abonnés payants)
    ===================================================================== */
 const imagesUsed = () => { const u = users[emailOf(session && session.email)]; return (u && u.imagesUsed) || 0; };
+// Quota affiché selon l'offre (le serveur fait foi)
+function imgQuotaText(){
+  if (isAdmin(session && session.email)) return "Accès illimité.";
+  const p = planOf(session && session.email);
+  if (p === "expert") return "Offre Expert : images illimitées.";
+  if (p === "pro") return "Offre Pro : 10 images par jour.";
+  if (p === "essentiel") return "Offre Essentiel : 3 images par jour.";
+  return "Choisissez une offre pour générer des images.";
+}
 function vImages(){
+  const ref = ui.imgRef
+    ? `<div class="img-tray" style="margin:0 0 14px;padding:0"><div class="img-thumb"><img src="${ui.imgRef}" alt="Photo de référence"><button type="button" data-action="img-ref-remove" aria-label="Retirer la photo de référence"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div></div>`
+    : "";
   return appShell("/app/images", pageHead("Espace", "Génération d'images", "Décrivez l'image souhaitée, KARAT la génère pour vous.") +
     `<div class="card" style="max-width:720px">
-      ${inTrial() && TRIAL_IMAGES === 0 ? `<p class="muted small" style="margin-bottom:14px">La génération d'images n'est pas incluse dans l'essai gratuit. Choisissez une offre pour y accéder.</p>` : inTrial() ? `<p class="muted small" style="margin-bottom:14px">Essai gratuit : ${Math.max(0, TRIAL_IMAGES - imagesUsed())} image(s) restante(s) sur ${TRIAL_IMAGES}.</p>` : ""}
-      <div class="field" style="margin-bottom:16px"><label for="img-prompt">DESCRIPTION</label><textarea id="img-prompt" class="textarea" rows="3" maxlength="1000" placeholder="Ex : un logo minimaliste vert citron sur fond noir"></textarea></div>
-      <button class="btn btn-accent" data-action="img-generate">Générer l'image</button>
+      <p class="muted small" style="margin-bottom:14px">${esc(imgQuotaText())}</p>
+      ${ref}
+      <div class="field" style="margin-bottom:16px"><label for="img-prompt">DESCRIPTION</label><textarea id="img-prompt" class="textarea" rows="3" maxlength="1000" placeholder="Ex : fais le même logo sur ce flyer, en vert citron"></textarea></div>
+      <div class="row" style="gap:10px;flex-wrap:wrap">
+        <button class="btn btn-accent" data-action="img-generate">Générer l'image</button>
+        <button class="btn btn-line" data-action="img-ref-pick">${ic("image")} ${ui.imgRef ? "Changer la photo" : "Ajouter une photo de référence"}</button>
+      </div>
+      <input type="file" id="imgRefFile" accept="image/*" hidden />
       <div id="img-out" style="margin-top:22px"></div>
     </div>`);
 }
- 
+
 Object.assign(ACTIONS, {
-  "ann-create": async () => {
-    const title = ($("#ann-title")?.value || "").trim();
-    const text = ($("#ann-text")?.value || "").trim();
-    const hours = Number($("#ann-hours")?.value) || 24;
-    const token = ($("#ann-token")?.value || "").trim();
-    if (!title) return toast("Ajoutez un titre", true);
-    if (!token) return toast("Jeton administrateur requis", true);
-    try { sessionStorage.setItem("karat_admin_token", token); } catch (e) {}
-    const r = await fetch("/.netlify/functions/annonces", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-admin-token": token },
-      body: JSON.stringify({ title, text, hours })
-    });
-    const d = await r.json().catch(() => ({}));
-    if (!r.ok) return toast(d.error || "Publication impossible", true);
-    toast("Annonce publiée");
-    $("#ann-title").value = ""; $("#ann-text").value = "";
-    fillAnnonceList();
-  },
-  "ann-del": async el => {
-    const token = ($("#ann-token")?.value || "").trim() || adminToken();
-    const r = await fetch("/.netlify/functions/annonces", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-admin-token": token },
-      body: JSON.stringify({ action: "delete", id: el.dataset.id })
-    });
-    if (!r.ok) return toast("Retrait impossible", true);
-    toast("Annonce retirée");
-    fillAnnonceList();
-  },
+  "img-ref-pick": () => { const f = $("#imgRefFile"); if (f) f.click(); },
+  "img-ref-remove": () => { const pr = ($("#img-prompt") || {}).value || ""; ui.imgRef = null; render(); const t = $("#img-prompt"); if (t) t.value = pr; },
   "img-generate": async () => {
     const prompt = ($("#img-prompt")?.value || "").trim();
     const out = $("#img-out");
     if (!prompt) return toast("Décrivez l'image souhaitée", true);
-    if (!paidAccess() && imagesUsed() >= TRIAL_IMAGES){
-      toast("Essai terminé : choisissez une offre pour générer plus d'images", true);
+    if (!session) return go("/connexion?next=/app/images");
+    if (!paidAccess() && !isAdmin(session.email)){
+      toast("Choisissez une offre pour générer des images", true);
       return go("/tarifs");
     }
     out.innerHTML = `<p class="muted small">Génération en cours, cela peut prendre quelques secondes…</p>`;
     try {
       const r = await fetch("/.netlify/functions/image", {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt })
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: session.email, prompt, ref: ui.imgRef || null })
       });
       const d = await r.json().catch(() => ({}));
       if (!r.ok || !d.image) throw new Error(d.error || "Erreur");
-      if (!paidAccess()) { const u = users[emailOf(session.email)]; if (u){ u.imagesUsed = imagesUsed() + 1; saveUsers(); } }
+      const restant = d.remaining === null || d.remaining === undefined ? "" : `<p class="muted small" style="margin-top:12px">Il vous reste ${d.remaining} image${d.remaining > 1 ? "s" : ""} aujourd'hui.</p>`;
       out.innerHTML = `<img src="${d.image}" alt="${esc(prompt)}" style="width:100%;max-width:520px;border-radius:14px;border:1px solid var(--line)">
-        <div style="margin-top:14px"><a class="btn btn-line btn-sm" href="${d.image}" download="karat-image.png">Télécharger</a></div>`;
+        <div style="margin-top:14px"><a class="btn btn-line btn-sm" href="${d.image}" download="karat-image.png">Télécharger</a></div>${restant}`;
     } catch (e) {
-      out.innerHTML = `<p class="muted small">La génération a échoué. Réessayez dans un instant.</p>`;
+      out.innerHTML = `<p class="muted small">${esc(e.message === "Erreur" ? "La génération a échoué. Réessayez dans un instant." : e.message)}</p>`;
     }
   }
 });
- 
+
+document.addEventListener("change", async e => {
+  if (!e.target || e.target.id !== "imgRefFile") return;
+  const file = (e.target.files || [])[0];
+  e.target.value = "";
+  if (!file) return;
+  const pr = ($("#img-prompt") || {}).value || "";
+  try {
+    const im = await shrinkImage(file);
+    ui.imgRef = im.data;
+    render();
+    const t = $("#img-prompt"); if (t) t.value = pr;
+  } catch (err) { toast(`« ${file.name} » n'a pas pu être lue. Essayez une photo JPG ou PNG.`, true); }
+});
+
 Object.assign(ACTIONS, {
   "copy-code": el => {
-    const txt = el.dataset.code || "";
-    const ok = () => toast("Code copié");
-    const ko = () => toast("Copie impossible", true);
-    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(ok, ko);
-    else ko();
+    copyText(el.dataset.code || "").then(() => toast("Code copié"), () => toast("Copie impossible : sélectionnez le code et copiez-le", true));
   }
 });
- 
+
 document.addEventListener("click", e => {
   const d = e.target.closest && e.target.closest("#drop");
   if (d && !e.target.closest("button")) $("#fileInput")?.click();
 });
- 
+
 /* =====================================================================
    SUPPORT : contact par e-mail
    ===================================================================== */
@@ -1688,7 +1757,159 @@ Object.assign(ACTIONS, {
     catch (e) { toast("Copie impossible : sélectionnez l'adresse", true); }
   }
 });
- 
+
+/* ---------- Limites d'usage (affichage) ---------- */
+// Doit rester identique à _shared/acces.js (MSG_QUOTA, IMAGE_QUOTA)
+const QUOTAS = {
+  gratuit:   { msgs: 5,        imgs: 0,        rep: "Brèves" },
+  essentiel: { msgs: 40,       imgs: 3,        rep: "Courtes à moyennes" },
+  pro:       { msgs: 150,      imgs: 10,       rep: "Longues, jusqu'à une quinzaine de pages" },
+  expert:    { msgs: Infinity, imgs: Infinity, rep: "Longues, avec le modèle le plus avancé" }
+};
+const fmtQ = (n, zero = "Aucune") => n === Infinity ? "Illimité" : n === 0 ? zero : String(n);
+
+// Compteur « messages restants » sous la zone de saisie du chat
+async function refreshUsage(){
+  const el = document.getElementById("usage-hint");
+  if (!el || !session) return;
+  try{
+    const plan = currentPlan() || "gratuit";
+    const r = await fetch(CONFIG.USAGE_ENDPOINT + "?email=" + enc(session.email) + "&plan=" + enc(plan), { cache: "no-store" });
+    if (!r.ok) return;
+    const u = await r.json();
+    if (u.msgLimit === undefined) return;
+    el.textContent = u.msgLimit === null ? "Messages illimités" : `Messages aujourd'hui : ${Math.max(0, u.msgLimit - u.msgUsed)} / ${u.msgLimit}`;
+  }catch(e){ el.textContent = ""; }
+}
+
+/* ---------- Documentation intégrée ---------- */
+Object.assign(ICON, { book: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>' });
+
+const KG_TOC = [
+  ["demarrer", "Bien démarrer"], ["modules", "Les modules"], ["question", "Bien poser une question"],
+  ["fichiers", "Joindre des fichiers"], ["images", "Générer des images"], ["limites", "Limites par offre"],
+  ["compte", "Compte et données"], ["abonnement", "Abonnement"], ["prudence", "Prudence et règles d'usage"],
+  ["faq", "Questions fréquentes"]
+];
+
+function vGuide(){
+  const sec = (id, n, title, body) => `<section class="card kg-sec" id="kg-${id}">
+      <div class="kg-num">${n}</div><h2>${title}</h2>${body}</section>`;
+  const qa = (q, a) => `<div class="kg-qa"><b>${q}</b><p>${a}</p></div>`;
+  const offres = [
+    ["Essai gratuit", "Gratuit, 24 h", QUOTAS.gratuit],
+    ["Essentiel", PLANS.essentiel.price + " / mois", QUOTAS.essentiel],
+    ["Pro", PLANS.pro.price + " / mois", QUOTAS.pro],
+    ["Expert", PLANS.expert.price + " / mois", QUOTAS.expert]
+  ].map(([n, p, q]) => `<tr><td>${n}</td><td>${p}</td><td>${fmtQ(q.msgs)}</td><td>${q.rep}</td><td>${fmtQ(q.imgs)}</td></tr>`).join("");
+
+  const toc = KG_TOC.map(([id, t]) => `<button type="button" class="kg-toc-btn" data-action="guide-jump" data-target="${id}">${t}</button>`).join("");
+
+  return appShell("/app/guide", pageHead("Aide", "Documentation", "Tout ce qu'il faut savoir pour utiliser KARAT, de la création de votre compte à vos premières réponses.") +
+    `<div class="kg">
+      <nav class="kg-toc" aria-label="Sommaire">${toc}</nav>
+      <div class="kg-body">
+        ${sec("demarrer", "01", "Bien démarrer", `
+          <p>KARAT est un assistant IA en français. Vous lui posez une question, vous joignez un fichier ou une image, et il répond dans la conversation.</p>
+          <div class="kg-steps">
+            <div class="kg-step"><span class="n">ÉTAPE 1</span><h3>Créez votre compte</h3><p>Avec votre e-mail et un mot de passe, ou avec Google.</p></div>
+            <div class="kg-step"><span class="n">ÉTAPE 2</span><h3>Essayez KARAT</h3><p>Pendant 24 heures, vous pouvez poser vos questions dans la limite de l'essai gratuit.</p></div>
+            <div class="kg-step"><span class="n">ÉTAPE 3</span><h3>Choisissez une offre</h3><p>Pour continuer après l'essai, choisissez Essentiel, Pro ou Expert sur la page Tarifs.</p></div>
+          </div>
+          <p>Le menu à gauche donne accès au chat, à l'historique, aux modules, aux images, au support et à votre abonnement.</p>`)}
+
+        ${sec("modules", "02", "Les modules", `
+          <p>Un module adapte la manière dont l'IA répond. Changez-le à tout moment avec les boutons au-dessus de la conversation.</p>
+          <ul>
+            <li><strong>Général</strong> : résumés, explications claires et aide à la décision.</li>
+            <li><strong>Code</strong> : débogage, refactorisation, tests et revue de code. Joignez votre fichier ou collez votre code.</li>
+            <li><strong>Rédaction</strong> : reformuler, raccourcir, adapter le ton ou rédiger un e-mail.</li>
+            <li><strong>Données</strong> : analyser un tableau CSV, repérer des tendances et proposer des graphiques.</li>
+          </ul>`)}
+
+        ${sec("question", "03", "Bien poser une question", `
+          <p>Plus votre demande est précise, plus la réponse est utile. Indiquez le contexte, le résultat attendu et le format souhaité.</p>
+          <ul>
+            <li><strong>Vague :</strong> « Aide-moi avec mon site. »</li>
+            <li><strong>Précise :</strong> « Je tiens un salon de coiffure à Lyon. Rédige une présentation de 80 mots pour ma page d'accueil, avec un ton chaleureux. »</li>
+            <li>Si une réponse s'arrête, écrivez « continue » pour recevoir la suite.</li>
+            <li>Pour reprendre une discussion, ouvrez-la depuis l'Historique.</li>
+          </ul>`)}
+
+        ${sec("fichiers", "04", "Joindre des fichiers", `
+          <p>Utilisez le bouton <strong>+</strong> à gauche de la zone de saisie. Formats acceptés : images (PNG, JPG, WEBP, GIF), PDF, et fichiers texte (TXT, MD, CSV, JSON, code).</p>
+          <ul>
+            <li>Un fichier texte est lu jusqu'à 30 000 caractères. Au-delà, la suite n'est pas prise en compte.</li>
+            <li>Vous pouvez joindre jusqu'à 10 documents dans un même message.</li>
+            <li>Un message ne peut pas dépasser environ 5 Mo de contenu joint.</li>
+            <li>Si l'IA ne peut pas lire un fichier, elle le dit dans sa réponse.</li>
+          </ul>`)}
+
+        ${sec("images", "05", "Générer des images", `
+          <p>La génération d'images est disponible à partir de l'offre Essentiel. L'essai gratuit n'en inclut pas. Ouvrez la page <strong>Images</strong> du menu, décrivez la scène souhaitée et lancez la génération.</p>
+          <ul>
+            <li>Essentiel : 3 images par jour.</li>
+            <li>Pro : 10 images par jour, et la retouche à partir d'une photo de référence.</li>
+            <li>Expert : images illimitées.</li>
+          </ul>`)}
+
+        ${sec("limites", "06", "Limites par offre", `
+          <p>Les limites sont appliquées par nos serveurs. Le nombre de messages restants s'affiche sous la zone de saisie du chat.</p>
+          <div class="kg-table-wrap"><table class="kg-table">
+            <thead><tr><th>Offre</th><th>Prix</th><th>Messages par jour</th><th>Réponses</th><th>Images par jour</th></tr></thead>
+            <tbody>${offres}</tbody>
+          </table></div>
+          <ul>
+            <li>Un message compte pour 1, même si vous joignez plusieurs fichiers.</li>
+            <li>Une réponse coupée, relancée avec « continue », compte comme un nouveau message.</li>
+            <li>Le compteur se remet à zéro chaque jour, à minuit (heure UTC).</li>
+          </ul>`)}
+
+        ${sec("compte", "07", "Compte et données", `
+          <p>Votre compte, vos conversations et votre historique sont enregistrés dans le navigateur que vous utilisez. Si vous changez d'appareil ou si vous effacez les données de navigation, l'historique n'est plus disponible.</p>
+          <ul>
+            <li>Les mots de passe ne sont jamais enregistrés en clair : ils sont transformés par un calcul de hachage.</li>
+            <li>Les paiements sont gérés par Stripe, notre prestataire de paiement. KARAT ne reçoit pas votre numéro de carte.</li>
+            <li>Pour vous déconnecter, utilisez « Se déconnecter » dans le menu. La conversation en cours est alors effacée de cet appareil.</li>
+          </ul>`)}
+
+        ${sec("abonnement", "08", "Abonnement", `
+          <p>Votre offre se gère depuis la page <strong>Abonnement</strong>, dans le menu.</p>
+          <ul>
+            <li>Pour résilier, cliquez sur « Résilier ». Votre accès reste actif jusqu'à la fin de la période payée.</li>
+            <li>Pour changer d'offre, écrivez-nous depuis la page Support.</li>
+            <li>L'essai gratuit dure 24 heures à partir de la création de votre compte. Il ne se renouvelle pas.</li>
+          </ul>`)}
+
+        ${sec("prudence", "09", "Prudence et règles d'usage", `
+          <p>L'IA peut se tromper, inventer des faits ou se contredire. Vérifiez les informations importantes avant de les utiliser : chiffres, textes juridiques, décisions financières ou médicales.</p>
+          <ul>
+            <li>Ne partagez pas de mots de passe ni de données personnelles de tiers sans leur accord.</li>
+            <li>KARAT ne fournit pas de logiciel de triche, de contournement de protections ou de piratage. Ces demandes sont refusées.</li>
+            <li>Les réponses de KARAT ne remplacent pas l'avis d'un professionnel (avocat, comptable, médecin).</li>
+          </ul>`)}
+
+        ${sec("faq", "10", "Questions fréquentes", `
+          ${qa("Pourquoi ma réponse s'arrête-t-elle ?", "Elle est plus longue que la limite de votre offre. Écrivez « continue » pour recevoir la suite.")}
+          ${qa("Pourquoi vois-je « limite atteinte » ?", "Vous avez utilisé tous vos messages du jour. Le compteur revient à zéro chaque jour. Une offre supérieure vous en donne davantage.")}
+          ${qa("Pourquoi ne puis-je pas générer d'image ?", "L'essai gratuit n'inclut pas les images. Elles sont disponibles dès l'offre Essentiel.")}
+          ${qa("Mon historique a disparu.", "L'historique est enregistré dans le navigateur. Reconnectez-vous depuis le même navigateur et le même appareil.")}
+          ${qa("Qui contacter ?", `Depuis la page Support, ou par e-mail à ${SUPPORT_EMAIL} en indiquant l'adresse de votre compte.`)}`)}
+
+        <div class="card kg-cta">
+          <div><h2>Prêt à commencer ?</h2><p>Ouvrez le chat et posez votre première question.</p></div>
+          <a class="btn btn-accent" href="#/app/chat">Ouvrir le chat ${ic("arrow")}</a>
+        </div>
+      </div>
+    </div>`);
+}
+Object.assign(ACTIONS, {
+  "guide-jump": el => {
+    const s = document.getElementById("kg-" + el.dataset.target);
+    if (s) s.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+});
+
 /* ---------- Abonnés en direct depuis Stripe (administrateur) ---------- */
 async function fillStripeSubs(){
   const st = $("#stripeStatus"); if (!st) return;
@@ -1721,7 +1942,7 @@ Object.assign(ACTIONS, {
     fillStripeSubs();
   }
 });
- 
+
 /* ---------- Pièces jointes du chat : images (réduites) et fichiers ---------- */
 function rerenderKeepDraft(){
   const draft = ($("#input") || {}).value || "";
@@ -1743,7 +1964,7 @@ function shrinkImage(file){
       return c.toDataURL("image/jpeg", quality);
     };
     img.onload = () => {
-      const data = draw(1280, 0.85);
+      const data = draw(1024, 0.8);
       const thumb = draw(240, 0.7);
       URL.revokeObjectURL(url);
       res({ data, thumb });
@@ -1752,21 +1973,79 @@ function shrinkImage(file){
     img.src = url;
   });
 }
+// Copie dans le presse-papiers ; repli compatible iPhone et anciens navigateurs
+function copyText(txt){
+  return new Promise((res, rej) => {
+    const fallback = () => {
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = txt; ta.setAttribute("readonly", "");
+        ta.style.position = "fixed"; ta.style.top = "0"; ta.style.left = "0"; ta.style.opacity = "0"; ta.style.fontSize = "16px";
+        document.body.appendChild(ta); ta.focus(); ta.select(); ta.setSelectionRange(0, txt.length);
+        const ok = document.execCommand("copy"); ta.remove();
+        ok ? res() : rej(new Error("copie"));
+      } catch (e) { rej(e); }
+    };
+    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(txt).then(res, fallback);
+    else fallback();
+  });
+}
 function readDataURL(file){
   return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); });
 }
+// Lecture du texte d'un PDF (pdf.js chargé à la demande depuis cdnjs)
+let pdfLibPromise = null;
+function loadPdfJs(){
+  if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+  if (pdfLibPromise) return pdfLibPromise;
+  pdfLibPromise = new Promise((res, rej) => {
+    const sc = document.createElement("script");
+    sc.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+    sc.onload = () => {
+      const lib = window.pdfjsLib;
+      if (!lib) return rej(new Error("pdf.js absent"));
+      lib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+      res(lib);
+    };
+    sc.onerror = () => rej(new Error("pdf.js injoignable"));
+    document.head.appendChild(sc);
+  });
+  pdfLibPromise.catch(() => { pdfLibPromise = null; });
+  return pdfLibPromise;
+}
+async function extractPdf(file){
+  const lib = await loadPdfJs();
+  const doc = await lib.getDocument({ data: await file.arrayBuffer() }).promise;
+  let out = "";
+  for (let i = 1; i <= doc.numPages && out.length < 60000; i++){
+    const page = await doc.getPage(i);
+    const tc = await page.getTextContent();
+    out += tc.items.map(it => it.str).join(" ") + "\n";
+  }
+  return { text: out.trim(), pages: doc.numPages };
+}
+const MAX_IMAGES = 12, MAX_PDFS = 10, MAX_PDF_SCAN_BYTES = 2.5 * 1024 * 1024;
 async function handleChatFiles(list){
   const draft = ($("#input") || {}).value || "";
   for (const file of Array.from(list || [])){
-    if (/^image\//.test(file.type)){
-      if (ui.pendingImg.length >= 4){ toast("4 images maximum par message", true); break; }
+    if (/^image\//.test(file.type) || /\.(jpe?g|png|webp|gif|heic|heif)$/i.test(file.name)){
+      if (ui.pendingImg.length >= MAX_IMAGES){ toast(`${MAX_IMAGES} images maximum par message`, true); break; }
       try { const im = await shrinkImage(file); ui.pendingImg.push({ name: file.name, data: im.data, thumb: im.thumb }); }
-      catch (e) { toast(`« ${file.name} » est illisible`, true); }
+      catch (e) { toast(`« ${file.name} » n'a pas pu être lue. Essayez une photo JPG ou PNG.`, true); }
     } else if (/\.pdf$/i.test(file.name) || file.type === "application/pdf"){
-      if (file.size > 1.5 * 1024 * 1024){ toast(`« ${file.name} » dépasse 1,5 Mo`, true); continue; }
-      if (ui.pendingFiles.filter(f => f.pdf).length >= 2){ toast("2 PDF maximum par message", true); continue; }
-      try { ui.pendingFiles.push({ name: file.name, content: null, pdf: await readDataURL(file) }); }
-      catch (e) { toast(`« ${file.name} » est illisible`, true); }
+      if (ui.pendingFiles.filter(f => f.isPdf).length >= MAX_PDFS){ toast(`${MAX_PDFS} PDF maximum par message`, true); break; }
+      let item = null;
+      try {
+        const r = await extractPdf(file);
+        if (r.text.length >= 40) item = { name: file.name, content: r.text, pdf: null, size: file.size, pages: r.pages, isPdf: true };
+      } catch (e) { item = null; }
+      if (!item){
+        // PDF scanné ou lecture impossible : on envoie le PDF tel quel à l'IA
+        if (file.size > MAX_PDF_SCAN_BYTES){ toast(`« ${file.name} » est un scan trop lourd (2,5 Mo max)`, true); continue; }
+        try { item = { name: file.name, content: null, pdf: await readDataURL(file), size: file.size, isPdf: true }; }
+        catch (e) { toast(`« ${file.name} » est illisible`, true); continue; }
+      }
+      ui.pendingFiles.push(item);
     } else if (isTextLike(file)){
       if (file.size > 300 * 1024){ toast(`« ${file.name} » dépasse 300 Ko`, true); continue; }
       try { ui.pendingFiles.push({ name: file.name, content: await readText(file), pdf: null }); }
@@ -1785,8 +2064,29 @@ document.addEventListener("change", e => {
     handleChatFiles(picked);
   }
 });
- 
+
 render();
 showAnnoncesOnOpen();
 if (session) syncPlan().then(() => render());
- 
+// Reprise : si la page a été fermée pendant une réponse, on récupère la réponse quand on revient
+(function resumePendingAI(){
+  const p = store.get("karat_ai_pending", null);
+  if (!p || !session) return;
+  const conv = convById(p.conv);
+  if (!conv){ store.del("karat_ai_pending"); return; }
+  ui.typing = true; ui.convId = conv.id;
+  pollAI(p.id).catch(e => "La réponse n'a pas pu être récupérée (" + (e.message || "erreur") + ")").then(reply => {
+    store.del("karat_ai_pending");
+    conv.messages.push({ role: "ai", text: reply, at: Date.now() });
+    conv.updatedAt = Date.now();
+    ui.typing = false;
+    saveChats();
+    render();
+  });
+})();
+// Quand la personne revient sur l'onglet (ou rouvre l'app), on revérifie son offre et on met à jour l'écran si elle a changé
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden || !session) return;
+  const before = planOf(session.email);
+  syncPlan().then(() => { if (planOf(session.email) !== before) render(); });
+});
