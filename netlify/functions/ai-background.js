@@ -27,7 +27,7 @@ const TIER_NOTE = {
 };
 // Message affiché quand la limite quotidienne de messages est atteinte
 const limitMsg = (tier, limit) => {
-  const next = tier === "gratuit" ? `Passez à l'offre Essentiel pour ${MSG_QUOTA.essentiel} messages par jour.`
+  const next = tier === "gratuit" ? `Passez à l'offre Essentiel à 9,99 € par mois pour ${MSG_QUOTA.essentiel} messages par jour.`
     : tier === "essentiel" ? `Passez à l'offre Pro pour ${MSG_QUOTA.pro} messages par jour.`
     : tier === "pro" ? "Passez à l'offre Expert pour des messages illimités."
     : "Revenez demain pour poursuivre la conversation.";
