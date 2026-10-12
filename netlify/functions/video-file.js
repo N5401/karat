@@ -1,5 +1,4 @@
-// KARAT — renvoie une vidéo sauvegardée (lecture dans la page et téléchargement), uniquement à son abonné Expert.
-// Limite Netlify : une réponse de fonction fait au plus environ 6 Mo, donc les vidéos plus lourdes ne s'affichent pas.
+// KARAT — liste des vidéos sauvegardées d'un abonné Expert (page Vidéos, « Mes vidéos »).
 // Variables : STRIPE_SECRET_KEY (offre), NETLIFY_TOKEN + SITE_ID (si besoin).
 
 const { getStore } = require("@netlify/blobs");
@@ -20,24 +19,16 @@ const json = (statusCode, body) => ({
 exports.handler = async (event) => {
   if (event.httpMethod !== "GET") return json(405, { error: "Méthode non autorisée" });
 
-  const q = event.queryStringParameters || {};
-  const id = String(q.id || "");
-  if (!/^[\w.-]{1,160}$/.test(id)) return json(400, { error: "Identifiant invalide" });
-
-  const email = cleanEmail(q.email);
+  const email = cleanEmail((event.queryStringParameters || {}).email);
   let plan = null;
   try { plan = await planFor(email); } catch (e) { return json(503, { error: "Vérification de l'offre impossible" }); }
-  if (!ALLOWED.includes(plan)) return json(403, { error: "Réservé à l'offre Expert." });
+  if (!ALLOWED.includes(plan)) return json(403, { error: "La génération de vidéos est réservée à l'offre Expert." });
 
-  let rec = null;
-  try { rec = await blobStore("karat-videos").get("file|" + encodeURIComponent(email) + "|" + id, { type: "json" }); }
-  catch (e) { console.error("KARAT video-file:", e.message); }
-  if (!rec || !rec.b64) return json(404, { error: "Vidéo introuvable" });
-
-  return {
-    statusCode: 200,
-    isBase64Encoded: true,
-    headers: { "Content-Type": "video/mp4", "Cache-Control": "private, max-age=3600" },
-    body: rec.b64,
-  };
+  try {
+    const list = (await blobStore("karat-videos").get("list|" + encodeURIComponent(email), { type: "json" })) || [];
+    return json(200, { videos: list });
+  } catch (e) {
+    console.error("KARAT video-list:", e.message);
+    return json(500, { error: "Liste indisponible" });
+  }
 };
