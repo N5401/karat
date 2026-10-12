@@ -96,7 +96,7 @@ exports.handler = async (event) => {
         headers: { "x-goog-api-key": apiKey, "Content-Type": "application/json" },
         body: JSON.stringify({
           instances: [{ prompt }],
-          parameters: { aspectRatio, durationSeconds: String(durationSeconds), resolution },
+          parameters: { aspectRatio, durationSeconds, resolution },
         }),
       });
       const d = await r.json().catch(() => ({}));
