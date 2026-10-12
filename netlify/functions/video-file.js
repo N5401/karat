@@ -6,7 +6,7 @@
 const { getStore } = require("@netlify/blobs");
 const { planFor, cleanEmail } = require("./_shared/acces");
 
-const ALLOWED = ["expert", "admin"];
+const ALLOWED = ["essentiel", "pro", "expert", "admin"];
 // 3 Mo par morceau : environ 4 Mo une fois encodé en base64, bien sous la limite
 const CHUNK = 3 * 1024 * 1024;
 
@@ -49,7 +49,7 @@ exports.handler = async (event) => {
   const email = cleanEmail(q.email);
   let plan = null;
   try { plan = await planFor(email); } catch (e) { return json(503, { error: "Vérification de l'offre impossible" }); }
-  if (!ALLOWED.includes(plan)) return json(403, { error: "Réservé à l'offre Expert." });
+  if (!ALLOWED.includes(plan)) return json(403, { error: "Réservé aux abonnés payants." });
 
   let rec = null;
   try { rec = await blobStore("karat-videos").get("file|" + encodeURIComponent(email) + "|" + id, { type: "json" }); }
