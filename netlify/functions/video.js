@@ -13,7 +13,7 @@ const PROVIDER = (process.env.VIDEO_PROVIDER || "google").toLowerCase() === "atl
 const GOOGLE_PREDICT = "https://generativelanguage.googleapis.com/v1beta/models/veo-3.1-generate-preview:predictLongRunning";
 const ATLAS_GENERATE = "https://api.atlascloud.ai/api/v1/model/generateVideo";
 // Vidéos par mois selon l'offre (Infinity = illimité). Doit rester identique à VIDEO_MAX_MONTH dans app.js.
-const VIDEO_MONTHLY = { expert: 3, admin: Infinity };
+const VIDEO_MONTHLY = { expert: 6, admin: Infinity };
 const DURATIONS = [4, 6, 8];
 const RESOLUTIONS = ["720p", "1080p"];
 const RATIOS = ["16:9", "9:16"];
@@ -96,7 +96,7 @@ exports.handler = async (event) => {
         headers: { "x-goog-api-key": apiKey, "Content-Type": "application/json" },
         body: JSON.stringify({
           instances: [{ prompt }],
-          parameters: { aspectRatio, durationSeconds: String(durationSeconds), resolution },
+          parameters: { aspectRatio, durationSeconds, resolution },
         }),
       });
       const d = await r.json().catch(() => ({}));
