@@ -1,6 +1,7 @@
 {
   "name": "karat",
   "private": true,
+  "description": "KARAT — site et fonctions Netlify",
   "dependencies": {
     "@netlify/blobs": "^8.0.0"
   }
