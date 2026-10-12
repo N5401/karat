@@ -2392,7 +2392,7 @@ function vPricing(){
       <button class="btn ${billing === "an" ? "btn-accent" : "btn-line"} btn-sm" data-action="billing" data-period="an">Annuel · 2 mois offerts</button>
     </div>
     <div class="plans">${["essentiel", "pro", "expert"].map(planCard).join("")}</div>
-    <p class="small muted" style="text-align:center;margin-top:22px">Essai gratuit de 24 h après la création de votre compte : 5 messages par jour, réponses courtes, sans génération d'images.</p>
+    <p class="small muted" style="text-align:center;margin-top:22px">Essai gratuit de 24 h après la création de votre compte : 10 messages par jour, réponses courtes et 1 image par jour.</p>
   </div></section>
   <section class="section" style="padding-top:20px"><div class="wrap" style="max-width:820px">
     <div class="label">Questions fréquentes</div>
@@ -3762,7 +3762,7 @@ function imgQuotaText(){
   if (p === "expert") return "Offre Expert : messages et images illimités.";
   if (p === "pro") return "Offre Pro : 10 images par jour.";
   if (p === "essentiel") return "Offre Essentiel : 3 images par jour.";
-  return "Choisissez une offre pour générer des images.";
+  return inTrial() ? "Essai gratuit : 1 image par jour." : "Choisissez une offre pour générer des images.";
 }
 /* ---------- Vidéos (offre Expert) : le serveur vérifie l'offre et le quota ---------- */
 const VIDEO_MAX_MONTH = 6; // doit rester identique à VIDEO_MONTHLY dans netlify/functions/video.js
@@ -3931,7 +3931,7 @@ Object.assign(ACTIONS, {
     const out = $("#img-out");
     if (!prompt) return toast("Décrivez l'image souhaitée", true);
     if (!session) return go("/connexion?next=/app/images");
-    if (!paidAccess() && !isAdmin(session.email)){
+    if (!hasAccess() && !isAdmin(session.email)){
       toast("Choisissez une offre pour générer des images", true);
       return go("/tarifs");
     }
