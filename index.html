@@ -1859,6 +1859,8 @@ const CONFIG = {
     pro:       "https://buy.stripe.com/3cI3cncpyfxw4A51a35c407",
     expert:    "https://buy.stripe.com/fZu6oz61a5WWfeJ2e75c408"
   },
+  CREDIT_LINK: "https://buy.stripe.com/8x24grblu0CC1nT05Z5c409",   // lien Stripe « KARAT 1 CREDIT » (paiement unique, quantité ajustable, 5 € le crédit)
+  CREDITS_ENDPOINT: "/.netlify/functions/credits",   // solde de crédits de l'abonné
   VERIFY_ENDPOINT: "/.netlify/functions/abo",   // serveur qui confirme l'abonnement après paiement (webhook Stripe)
   AI_ENDPOINT: "/.netlify/functions/ai-background",  // moteur IA réel (réponses longues, en arrière-plan)
   AI_RESULT: "/.netlify/functions/ai-result",        // récupère la réponse une fois prête
@@ -1867,8 +1869,8 @@ const CONFIG = {
 };
 
 const PLANS = {
-  essentiel: { name: "Essentiel", price: "9,99 €",  num: 9.99, priceAn: "99 €", numAn: 99, desc: "Pour découvrir KARAT au quotidien.", feats: ["Assistant IA polyvalent", "20 messages par jour", "3 générations d'images par jour","Analyse de fichiers texte, PDF et images", "Historique des conversations sur 30 jours", "Support par e-mail"] },
-  pro:       { name: "Pro",       price: "29,99 €", num: 29.99, priceAn: "299 €", numAn: 299, desc: "Pour les professionnels qui travaillent chaque jour.", feats: ["Tout Essentiel", "60 messages par jour", "5 générations d'images par jour","Retouche d'image à partir d'une photo de référence", "Analyse de plusieurs documents à la fois (jusqu'à 10 PDF par message)", "Réponses longues et détaillées, jusqu'à une quinzaine de pages", "Modes spécialisés : code, rédaction, analyse de données", "Historique illimité", "Support prioritaire"] },
+  essentiel: { name: "Essentiel", price: "9,99 €",  num: 9.99, priceAn: "99 €", numAn: 99, desc: "Pour découvrir KARAT au quotidien.", feats: ["Assistant IA polyvalent", "20 messages par jour", "3 générations d'images par jour","Analyse de fichiers texte, PDF et images", "Historique des conversations sur 30 jours", "Vidéos IA à l'unité : 5 € la vidéo de 8 secondes", "Support par e-mail"] },
+  pro:       { name: "Pro",       price: "29,99 €", num: 29.99, priceAn: "299 €", numAn: 299, desc: "Pour les professionnels qui travaillent chaque jour.", feats: ["Tout Essentiel", "60 messages par jour", "5 générations d'images par jour","Retouche d'image à partir d'une photo de référence", "Analyse de plusieurs documents à la fois (jusqu'à 10 PDF par message)", "Réponses longues et détaillées, jusqu'à une quinzaine de pages", "Modes spécialisés : code, rédaction, analyse de données", "Historique illimité", "Vidéos IA à l'unité : 5 € la vidéo de 8 secondes", "Support prioritaire"] },
   expert:    { name: "Expert",    price: "49,99 €", num: 49.99, priceAn: "499 €", numAn: 499, desc: "Pour les équipes et les usages intensifs.", feats: ["Tout Pro", "45 messages par jour, images illimitées", "Génération de vidéos IA avec le son, par mois", "Modèle d'IA le plus avancé, pour les tâches complexes", "Accompagnement dédié à la mise en place"] }
 };
 
@@ -2129,7 +2131,7 @@ function afterRender(path){
   if (path === "/admin/annonces") fillAnnonceList();
   if (path === "/") startAvis();
   if (path === "/admin/avis") fillAdminAvis();
-  if (path === "/app/video") loadVideos();
+  if (path === "/app/video"){ loadVideos(); loadCredits(); }
 }
 
 /* =====================================================================
@@ -2182,7 +2184,7 @@ function appShell(path, content){
       ${link("/app/modules", "grid", "Modules")}
       ${link("/app/guide", "book", "Documentation")}
       ${link("/app/images", "image", "Images")}
-      ${isExpertPlan() ? link("/app/video", "film", "Vidéos") : ""}
+      ${paidAccess() ? link("/app/video", "film", "Vidéos") : ""}
       ${link("/app/support", "mail", "Support")}
       ${link("/app/offre", "card", "Abonnement")}
       ${adm ? `<div class="group">Administration</div>
@@ -3767,13 +3769,17 @@ const VIDEO_MAX_MONTH = 6; // doit rester identique à VIDEO_MONTHLY dans netlif
 function isExpertPlan(){ const p = currentPlan(); return p === "expert" || p === "admin"; }
 function vVideo(){
   const who = isAdmin(session && session.email) ? " (accès administrateur illimité)" : "";
-  const body = isExpertPlan()
+  const body = paidAccess()
     ? `<div class="card" style="max-width:720px">
-        <p class="muted small" style="margin-bottom:14px">Offre Expert : ${VIDEO_MAX_MONTH} vidéos par mois${who}. Une génération prend environ 2 à 3 minutes.</p>
+        <p class="muted small" style="margin-bottom:14px">${isExpertPlan() ? `Offre Expert : ${VIDEO_MAX_MONTH} vidéos par mois incluses${who}, puis des crédits.` : "Vidéos à l'unité : 1 crédit par vidéo."} Une génération prend environ 2 à 3 minutes.</p>
+        <div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">
+          <p class="small">Crédits disponibles : <b id="credit-balance">…</b> <span class="muted">· 5 € le crédit, 1 crédit = 1 vidéo de 8 secondes</span></p>
+          ${CONFIG.CREDIT_LINK ? `<a class="btn btn-line btn-sm" href="${creditUrl()}">Acheter des crédits</a>` : `<span class="muted small">Achat de crédits bientôt disponible</span>`}
+        </div>
         <div class="field" style="margin-bottom:16px"><label for="vid-prompt">DESCRIPTION</label><textarea id="vid-prompt" class="textarea" rows="4" maxlength="1000" placeholder="Ex : un bureau lumineux le matin, une tasse de café fumante, la caméra avance lentement"></textarea></div>
         <div class="row" style="gap:12px;flex-wrap:wrap;margin-bottom:18px">
-          <div style="min-width:150px"><label class="small muted" for="vid-dur">Durée</label><select id="vid-dur" class="select" style="width:100%;margin-top:6px"><option value="8" selected>8 secondes</option><option value="6">6 secondes</option><option value="4">4 secondes</option></select></div>
-          <div style="min-width:150px"><label class="small muted" for="vid-res">Résolution</label><select id="vid-res" class="select" style="width:100%;margin-top:6px"><option value="720p" selected>720p</option><option value="1080p">1080p</option></select></div>
+          <div style="min-width:150px"><label class="small muted" for="vid-dur">Durée</label><select id="vid-dur" class="select" style="width:100%;margin-top:6px"><option value="8" selected>8 secondes</option></select></div>
+          <div style="min-width:150px"><label class="small muted" for="vid-res">Résolution</label><select id="vid-res" class="select" style="width:100%;margin-top:6px"><option value="720p" selected>720p</option></select></div>
           <div style="min-width:170px"><label class="small muted" for="vid-ratio">Format</label><select id="vid-ratio" class="select" style="width:100%;margin-top:6px"><option value="16:9" selected>Paysage 16:9</option><option value="9:16">Portrait 9:16</option></select></div>
         </div>
         <button class="btn btn-accent" data-action="video-generate">Générer la vidéo</button>
@@ -3781,10 +3787,26 @@ function vVideo(){
         <div id="vid-list" style="margin-top:26px"></div>
       </div>`
     : `<div class="card" style="max-width:720px">
-        <p class="muted" style="margin-bottom:14px">La génération de vidéos est réservée à l'offre Expert.</p>
+        <p class="muted" style="margin-bottom:14px">La génération de vidéos est réservée aux abonnés payants.</p>
         <a class="btn btn-accent" href="#/app/offre">Voir les offres</a>
       </div>`;
-  return appShell("/app/video", pageHead("Espace", "Génération de vidéos", "Décrivez la vidéo, KARAT la génère pour vous. Réservé à l'offre Expert.") + body);
+  return appShell("/app/video", pageHead("Espace", "Génération de vidéos", "Décrivez la vidéo, KARAT la génère pour vous. Expert inclut 6 vidéos par mois ; les autres se paient en crédits.") + body);
+}
+
+// Solde de crédits vidéo, affiché sur la page Vidéos
+function creditUrl(){
+  const u = new URL(CONFIG.CREDIT_LINK);
+  if (session) u.searchParams.set("prefilled_email", session.email);
+  return u.toString();
+}
+async function loadCredits(){
+  const el = $("#credit-balance");
+  if (!el || !session) return;
+  try{
+    const r = await fetch(`${CONFIG.CREDITS_ENDPOINT}?email=${enc(session.email)}`, { cache: "no-store" });
+    const d = await r.json().catch(() => ({}));
+    el.textContent = r.ok ? String(d.credits) : "indisponible";
+  }catch(e){ el.textContent = "indisponible"; }
 }
 
 // Liste « Mes vidéos » : chaque vidéo est sauvegardée sur le site, à l'adresse de l'abonné
@@ -3846,7 +3868,7 @@ Object.assign(ACTIONS, {
   },
   "video-generate": async () => {
     if (!session) return go("/connexion?next=/app/video");
-    if (!isExpertPlan()){ toast("Réservé à l'offre Expert", true); return go("/app/offre"); }
+    if (!paidAccess()){ toast("Réservé aux abonnés payants", true); return go("/app/offre"); }
     const prompt = ($("#vid-prompt")?.value || "").trim();
     if (prompt.length < 10) return toast("Décrivez la vidéo en quelques phrases", true);
     const btn = document.querySelector('[data-action="video-generate"]');
@@ -3869,7 +3891,7 @@ Object.assign(ACTIONS, {
         if (st.status === "completed"){
           const restant = d.remaining === null || d.remaining === undefined ? "" : `<p class="muted small" style="margin-top:12px">Il vous reste ${d.remaining} vidéo${d.remaining > 1 ? "s" : ""} ce mois-ci.</p>`;
           $("#vid-out").innerHTML = `<p class="small">Vidéo prête : elle est enregistrée dans « Mes vidéos » ci-dessous.</p>${restant}`;
-          loadVideos();
+          loadVideos(); loadCredits();
           return;
         }
       }
