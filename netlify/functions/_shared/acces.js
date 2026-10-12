@@ -5,12 +5,13 @@
 const { getStore } = require("@netlify/blobs");
 
 const ADMIN_EMAILS = ["tarzanastral@gmail.com"];          // accès illimité
-const PRICE_TO_PLAN = { 799: "essentiel", 1899: "pro", 3999: "expert" };
+// Anciens montants (799, 1899, 3999) gardés pour les abonnés existants ; nouveaux montants 999, 2999, 4999
+const PRICE_TO_PLAN = { 799: "essentiel", 1899: "pro", 3999: "expert", 999: "essentiel", 2999: "pro", 4999: "expert", 9900: "essentiel", 29900: "pro", 49900: "expert" };
 const PLAN_LABEL = { essentiel: "Essentiel", pro: "Pro", expert: "Expert" };
 // Images par jour selon l'offre (Infinity = illimité)
-const IMAGE_QUOTA = { essentiel: 3, pro: 10, expert: Infinity };
+const IMAGE_QUOTA = { essentiel: 3, pro: 5, expert: Infinity };
 // Messages par jour selon l'offre. Sans offre = essai gratuit (« gratuit »).
-const MSG_QUOTA = { gratuit: 5, essentiel: 40, pro: 150, expert: Infinity, admin: Infinity };
+const MSG_QUOTA = { gratuit: 5, essentiel: 20, pro: 60, expert: 45, admin: Infinity };
 // Longueur maximale d'une réponse (en jetons) selon l'offre
 const ANSWER_TOKENS = { gratuit: 700, essentiel: 3000, pro: 12000, expert: 12000, admin: 12000 };
 const TIER_LABEL = { gratuit: "Essai gratuit", essentiel: "Essentiel", pro: "Pro", expert: "Expert", admin: "Administrateur" };
