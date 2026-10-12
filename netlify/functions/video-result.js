@@ -45,7 +45,23 @@ exports.handler = async (event) => {
   const data = (d && d.data) || {};
   if (data.status === "completed" || data.status === "succeeded") {
     const url = Array.isArray(data.outputs) ? data.outputs[0] : null;
-    return json(200, { status: "completed", url: url || null });
+    if (!url) return json(200, { status: "failed", error: "La génération est terminée mais aucune vidéo n'a été renvoyée." });
+
+    // Vérifie que le fichier est bien une vidéo accessible avant de l'afficher (sinon écran gris de 0 seconde)
+    let check = { ok: false, status: 0, type: "" };
+    try {
+      const c = await fetch(url, { method: "GET", headers: { Range: "bytes=0-1023" } });
+      check = { ok: c.ok, status: c.status, type: c.headers.get("content-type") || "" };
+      try { await c.body.cancel(); } catch (e) { /* rien à faire */ }
+    } catch (e) {
+      console.error("KARAT video-result: fichier injoignable", e.message);
+    }
+    let host = ""; try { host = new URL(url).host; } catch (e) { /* adresse invalide */ }
+    console.log("KARAT video-result: contrôle du fichier", host, JSON.stringify(check));
+    if (!check.ok || !/video|octet-stream/i.test(check.type)) {
+      return json(200, { status: "failed", error: `La vidéo est générée mais le fichier n'est pas lisible (code ${check.status || "aucun"}, type ${check.type || "inconnu"}).` });
+    }
+    return json(200, { status: "completed", url });
   }
   if (data.status === "failed") {
     return json(200, { status: "failed", error: data.error || "La génération a échoué" });
