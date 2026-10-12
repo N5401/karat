@@ -29,7 +29,8 @@ const TIER_NOTE = {
 const limitMsg = (tier, limit) => {
   const next = tier === "gratuit" ? `Passez à l'offre Essentiel pour ${MSG_QUOTA.essentiel} messages par jour.`
     : tier === "essentiel" ? `Passez à l'offre Pro pour ${MSG_QUOTA.pro} messages par jour.`
-    : "Passez à l'offre Expert pour des messages illimités.";
+    : tier === "pro" ? `Passez à l'offre Expert pour ${MSG_QUOTA.expert} messages par jour.`
+    : "Revenez demain pour poursuivre la conversation.";
   return `Vous avez atteint la limite de ${limit} messages pour aujourd'hui (${TIER_LABEL[tier]}). Elle se remet à zéro chaque jour. ${next}`;
 };
 
