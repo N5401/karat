@@ -1863,7 +1863,7 @@ const CONFIG = {
 const PLANS = {
   essentiel: { name: "Essentiel", price: "7,99 €",  num: 7.99,  desc: "Pour découvrir KARAT au quotidien.", feats: ["Assistant IA polyvalent", "40 messages par jour", "3 générations d'images par jour","Analyse de fichiers texte, PDF et images", "Historique des conversations sur 30 jours", "Support par e-mail"] },
   pro:       { name: "Pro",       price: "18,99 €", num: 18.99, desc: "Pour les professionnels qui travaillent chaque jour.", feats: ["Tout Essentiel", "150 messages par jour", "10 générations d'images par jour","Retouche d'image à partir d'une photo de référence", "Analyse de plusieurs documents à la fois (jusqu'à 10 PDF par message)", "Réponses longues et détaillées, jusqu'à une quinzaine de pages", "Modes spécialisés : code, rédaction, analyse de données", "Historique illimité", "Support prioritaire"] },
-  expert:    { name: "Expert",    price: "39,99 €", num: 39.99, desc: "Pour les équipes et les usages intensifs.", feats: ["Tout Pro", "Messages et images illimités", "Génération de vidéos IA avec le son, 3 par mois", "Modèle d'IA le plus avancé, pour les tâches complexes", "Accompagnement dédié à la mise en place"] }
+  expert:    { name: "Expert",    price: "39,99 €", num: 39.99, desc: "Pour les équipes et les usages intensifs.", feats: ["Tout Pro", "Messages et images illimités", "Génération de vidéos IA avec le son, par mois", "Modèle d'IA le plus avancé, pour les tâches complexes", "Accompagnement dédié à la mise en place"] }
 };
 
 const MODES = {
@@ -3747,7 +3747,7 @@ function imgQuotaText(){
   return "Choisissez une offre pour générer des images.";
 }
 /* ---------- Vidéos (offre Expert) : le serveur vérifie l'offre et le quota ---------- */
-const VIDEO_MAX_MONTH = 3; // doit rester identique à VIDEO_MONTHLY dans netlify/functions/video.js
+const VIDEO_MAX_MONTH = 6; // doit rester identique à VIDEO_MONTHLY dans netlify/functions/video.js
 function isExpertPlan(){ const p = currentPlan(); return p === "expert" || p === "admin"; }
 function vVideo(){
   const who = isAdmin(session && session.email) ? " (accès administrateur illimité)" : "";
