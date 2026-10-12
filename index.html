@@ -2166,6 +2166,7 @@ function appShell(path, content){
   return `<div class="shell">
     <aside class="side">
       <a href="#/app/chat" class="logo"><i></i>KARAT</a>
+      <a class="nav-item" href="#/">${ic("home")} Accueil</a>
       <div class="group">Espace</div>
       ${link("/app/chat", "chat", "Chat IA")}
       ${link("/app/historique", "clock", "Historique", myChats().length)}
