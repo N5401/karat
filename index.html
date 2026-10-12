@@ -1869,9 +1869,9 @@ const CONFIG = {
 };
 
 const PLANS = {
-  essentiel: { name: "Essentiel", price: "9,99 €",  num: 9.99, priceAn: "99 €", numAn: 99, desc: "Pour découvrir KARAT au quotidien.", feats: ["Assistant IA polyvalent", "20 messages par jour", "3 générations d'images par jour","Analyse de fichiers texte, PDF et images", "Historique des conversations sur 30 jours", "Vidéos IA à l'unité : 5 € la vidéo de 8 secondes", "Support par e-mail"] },
-  pro:       { name: "Pro",       price: "29,99 €", num: 29.99, priceAn: "299 €", numAn: 299, desc: "Pour les professionnels qui travaillent chaque jour.", feats: ["Tout Essentiel", "60 messages par jour", "5 générations d'images par jour","Retouche d'image à partir d'une photo de référence", "Analyse de plusieurs documents à la fois (jusqu'à 10 PDF par message)", "Réponses longues et détaillées, jusqu'à une quinzaine de pages", "Modes spécialisés : code, rédaction, analyse de données", "Historique illimité", "Vidéos IA à l'unité : 5 € la vidéo de 8 secondes", "Support prioritaire"] },
-  expert:    { name: "Expert",    price: "49,99 €", num: 49.99, priceAn: "499 €", numAn: 499, desc: "Pour les équipes et les usages intensifs.", feats: ["Tout Pro", "45 messages par jour, images illimitées", "Génération de vidéos IA avec le son, par mois", "Modèle d'IA le plus avancé, pour les tâches complexes", "Accompagnement dédié à la mise en place"] }
+  essentiel: { name: "Essentiel", price: "9,99 €",  num: 9.99, priceAn: "99 €", numAn: 99, desc: "Pour découvrir KARAT au quotidien.", feats: ["Assistant IA polyvalent", "50 messages par jour", "3 générations d'images par jour","Analyse de fichiers texte, PDF et images", "Historique des conversations sur 30 jours", "Vidéos IA à l'unité : 5 € la vidéo de 8 secondes", "Support par e-mail"] },
+  pro:       { name: "Pro",       price: "29,99 €", num: 29.99, priceAn: "299 €", numAn: 299, desc: "Pour les professionnels qui travaillent chaque jour.", feats: ["Tout Essentiel", "120 messages par jour", "5 générations d'images par jour","Retouche d'image à partir d'une photo de référence", "Analyse de plusieurs documents à la fois (jusqu'à 10 PDF par message)", "Réponses longues et détaillées, jusqu'à une quinzaine de pages", "Modes spécialisés : code, rédaction, analyse de données", "Historique illimité", "Vidéos IA à l'unité : 5 € la vidéo de 8 secondes", "Support prioritaire"] },
+  expert:    { name: "Expert",    price: "49,99 €", num: 49.99, priceAn: "499 €", numAn: 499, desc: "Pour les équipes et les usages intensifs.", feats: ["Tout Pro", "Messages et images illimités", "Génération de vidéos IA avec le son, par mois", "Modèle d'IA le plus avancé, pour les tâches complexes", "Accompagnement dédié à la mise en place"] }
 };
 
 const MODES = {
@@ -3759,7 +3759,7 @@ const imagesUsed = () => { const u = users[emailOf(session && session.email)]; r
 function imgQuotaText(){
   if (isAdmin(session && session.email)) return "Accès illimité.";
   const p = planOf(session && session.email);
-  if (p === "expert") return "Offre Expert : images illimitées.";
+  if (p === "expert") return "Offre Expert : messages et images illimités.";
   if (p === "pro") return "Offre Pro : 10 images par jour.";
   if (p === "essentiel") return "Offre Essentiel : 3 images par jour.";
   return "Choisissez une offre pour générer des images.";
@@ -4096,7 +4096,7 @@ function vGuide(){
           <ul>
             <li>Essentiel : 3 images par jour.</li>
             <li>Pro : 10 images par jour, et la retouche à partir d'une photo de référence.</li>
-            <li>Expert : images illimitées.</li>
+            <li>Expert : messages et images illimités.</li>
           </ul>`)}
 
         ${sec("limites", "06", "Limites par offre", `
