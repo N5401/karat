@@ -2123,6 +2123,7 @@ function afterRender(path){
   if (path === "/admin/annonces") fillAnnonceList();
   if (path === "/") startAvis();
   if (path === "/admin/avis") fillAdminAvis();
+  if (path === "/app/video") loadVideos();
 }
 
 /* =====================================================================
@@ -3761,12 +3762,39 @@ function vVideo(){
         </div>
         <button class="btn btn-accent" data-action="video-generate">Générer la vidéo</button>
         <div id="vid-out" style="margin-top:22px"></div>
+        <div id="vid-list" style="margin-top:26px"></div>
       </div>`
     : `<div class="card" style="max-width:720px">
         <p class="muted" style="margin-bottom:14px">La génération de vidéos est réservée à l'offre Expert.</p>
         <a class="btn btn-accent" href="#/app/offre">Voir les offres</a>
       </div>`;
   return appShell("/app/video", pageHead("Espace", "Génération de vidéos", "Décrivez la vidéo, KARAT la génère pour vous. Réservé à l'offre Expert.") + body);
+}
+
+// Liste « Mes vidéos » : chaque vidéo est sauvegardée sur le site, à l'adresse de l'abonné
+async function loadVideos(){
+  const box = $("#vid-list");
+  if (!box || !session) return;
+  const who = enc(session.email);
+  try {
+    const r = await fetch(`/.netlify/functions/video-list?email=${who}`, { cache: "no-store" });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.error || "Liste indisponible");
+    const items = d.videos || [];
+    box.innerHTML = `<div class="small muted" style="margin-bottom:12px;letter-spacing:.08em">MES VIDÉOS</div>` + (items.length
+      ? items.map(v => {
+          const src = `/.netlify/functions/video-file?email=${who}&id=${enc(v.id)}`;
+          return `<div style="border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:12px">
+            <video src="${src}" controls preload="metadata" playsinline style="width:100%;max-width:420px;border-radius:10px;display:block"></video>
+            <div class="small" style="margin-top:8px">${esc(v.prompt)}</div>
+            <div class="small muted" style="margin-top:4px">${new Date(v.createdAt).toLocaleString("fr-FR")}</div>
+            <a class="btn btn-line btn-sm" style="margin-top:8px" href="${src}" download="karat-video.mp4">Télécharger</a>
+          </div>`;
+        }).join("")
+      : `<p class="muted small">Aucune vidéo pour l'instant.</p>`);
+  } catch (e) {
+    box.innerHTML = `<p class="muted small">${esc(e.message)}</p>`;
+  }
 }
 
 Object.assign(ACTIONS, {
@@ -3792,10 +3820,10 @@ Object.assign(ACTIONS, {
         const s = await fetch(`/.netlify/functions/video-result?id=${enc(d.id)}&email=${enc(session.email)}`, { cache: "no-store" });
         const st = await s.json().catch(() => ({}));
         if (!s.ok || st.status === "failed") throw new Error(st.error || "La génération a échoué");
-        if (st.status === "completed" && st.url){
+        if (st.status === "completed"){
           const restant = d.remaining === null || d.remaining === undefined ? "" : `<p class="muted small" style="margin-top:12px">Il vous reste ${d.remaining} vidéo${d.remaining > 1 ? "s" : ""} ce mois-ci.</p>`;
-          $("#vid-out").innerHTML = `<video src="${esc(st.url)}" controls playsinline style="width:100%;max-width:520px;border-radius:14px;border:1px solid var(--line)"></video>
-            <div style="margin-top:14px"><a class="btn btn-line btn-sm" href="${esc(st.url)}" download="karat-video.mp4">Télécharger</a></div>${restant}`;
+          $("#vid-out").innerHTML = `<p class="small">Vidéo prête : elle est enregistrée dans « Mes vidéos » ci-dessous.</p>${restant}`;
+          loadVideos();
           return;
         }
       }
