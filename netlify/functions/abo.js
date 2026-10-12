@@ -8,7 +8,7 @@
 const { getStore } = require("@netlify/blobs");
 
 // Anciens montants (799, 1899, 3999) gardés pour les abonnés existants ; nouveaux montants 999, 2999, 4999
-const PRICE_TO_PLAN = { 799: "essentiel", 1899: "pro", 3999: "expert", 999: "essentiel", 2999: "pro", 4999: "expert" };
+const PRICE_TO_PLAN = { 799: "essentiel", 1899: "pro", 3999: "expert", 999: "essentiel", 2999: "pro", 4999: "expert", 9900: "essentiel", 29900: "pro", 49900: "expert" };
 const PLAN_NAMES = ["essentiel", "pro", "expert"];
 const ACTIVE = s => s.status === "active" || s.status === "trialing";
 
