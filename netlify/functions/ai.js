@@ -29,7 +29,7 @@ exports.handler = async (event) => {
   // Historique nettoyé : rôles valides, premier message = utilisateur, 20 derniers échanges au plus
   let messages = data.messages
     .filter(m => m && typeof m.content === "string" && m.content.trim() !== "")
-    .map(m => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.content.slice(0, 20000) }));
+    .map(m => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.content.slice(0, 160000) }));
   while (messages.length && messages[0].role !== "user") messages.shift();
   messages = messages.slice(-20);
   if (!messages.length) return json(400, { error: "Aucun message" });
@@ -37,22 +37,31 @@ exports.handler = async (event) => {
   // Images et PDF joints au dernier message
   const imgs = (Array.isArray(data.images) ? data.images : [])
     .filter(x => typeof x === "string" && /^data:image\/(jpeg|png|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(x))
-    .slice(0, 4);
+    .slice(0, 12);
   const pdfs = (Array.isArray(data.pdfs) ? data.pdfs : [])
     .filter(x => typeof x === "string" && /^data:application\/pdf;base64,[A-Za-z0-9+/=]+$/.test(x))
-    .slice(0, 2);
+    .slice(0, 10);
+  const imgNames = Array.isArray(data.imageNames) ? data.imageNames.map(n => String(n).slice(0, 120)) : [];
+  const pdfNames = Array.isArray(data.pdfNames) ? data.pdfNames.map(n => String(n).slice(0, 120)) : [];
   if (imgs.length || pdfs.length){
     const last = messages[messages.length - 1];
     if (last.role === "user"){
       last.content = [
-        ...imgs.map(d => ({ type: "image", source: { type: "base64", media_type: d.slice(5, d.indexOf(";")), data: d.slice(d.indexOf(",") + 1) } })),
-        ...pdfs.map(d => ({ type: "document", source: { type: "base64", media_type: "application/pdf", data: d.slice(d.indexOf(",") + 1) } })),
+        // Chaque fichier est annoncé par son nom, pour que l'IA sache lequel est lequel
+        ...imgs.flatMap((d, i) => [
+          { type: "text", text: `Image ${i + 1}${imgNames[i] ? " : " + imgNames[i] : ""}` },
+          { type: "image", source: { type: "base64", media_type: d.slice(5, d.indexOf(";")), data: d.slice(d.indexOf(",") + 1) } },
+        ]),
+        ...pdfs.flatMap((d, i) => [
+          { type: "text", text: `Document PDF ${i + 1}${pdfNames[i] ? " : " + pdfNames[i] : ""}` },
+          { type: "document", source: { type: "base64", media_type: "application/pdf", data: d.slice(d.indexOf(",") + 1) } },
+        ]),
         { type: "text", text: last.content },
       ];
     }
   }
 
-  const FORMAT = "\n\nMise en forme : quand tu donnes du code, mets-le dans un bloc entouré de trois apostrophes inversées, avec sur la première ligne le langage puis le nom exact du fichier à créer (exemple : html index.html). Un fichier par bloc. Utilise des paragraphes courts et des listes simples, sans titres inutiles.";
+  const FORMAT = "\n\nMise en forme : quand plusieurs fichiers, images ou documents sont joints, identifie chacun par son nom, réponds à la demande pour chacun, et dis clairement ce que tu n'as pas pu lire. Réponds de façon complète : ne tronque pas une réponse longue, découpe-la en parties claire quand c'est utile. Quand tu donnes du code, mets-le dans un bloc entouré de trois apostrophes inversées, avec sur la première ligne le langage puis le nom exact du fichier à créer (exemple : html index.html). Un fichier par bloc. Utilise des paragraphes courts et des listes simples, sans titres inutiles.";
   const system = (MODES[data.mode] || "Tu es KARAT, un assistant IA sobre et utile. Réponds en français.") + FORMAT;
 
   try {
@@ -63,7 +72,7 @@ exports.handler = async (event) => {
         "x-api-key": apiKey,
         "anthropic-version": "2023-06-01",
       },
-      body: JSON.stringify({ model, max_tokens: 1500, system, messages }),
+      body: JSON.stringify({ model, max_tokens: 6000, system, messages }),
     });
     const result = await r.json();
     if (!r.ok || !Array.isArray(result.content)) {
