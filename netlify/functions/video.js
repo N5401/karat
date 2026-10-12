@@ -1,21 +1,22 @@
-// KARAT — lancement d'une vidéo Veo 3.1. Réservé à l'offre Expert et à l'administrateur.
+// KARAT — lancement d'une vidéo Veo 3.1, pour les abonnés payants (crédits pour les offres sans vidéo incluse).
 // Fournisseur choisi par la variable VIDEO_PROVIDER : « google » (défaut) ou « atlas ».
 //   google : GOOGLE_API_KEY (clé Google AI Studio), son toujours inclus.
 //   atlas  : ATLAS_API_KEY, VIDEO_MODEL (défaut google/veo3.1/text-to-video), VIDEO_AUDIO (défaut « true »).
-// Le site envoie la demande ici ; la fonction lance la génération et renvoie un identifiant de suivi.
-// video-result.js suit la génération et sauvegarde la vidéo quand elle est prête.
-// Variables communes : STRIPE_SECRET_KEY (offre), NETLIFY_TOKEN + SITE_ID (si besoin).
+// Règle : Expert inclut 6 vidéos par mois ; ensuite, ou pour Essentiel et Pro, chaque vidéo coûte 1 crédit.
+// Le crédit ou le quota n'est décompté qu'une fois la génération acceptée par le fournisseur.
+// video-result.js suit la génération, sauvegarde la vidéo et rend le crédit si elle échoue.
+// Variables communes : STRIPE_SECRET_KEY, STRIPE_CREDIT_PLINK, NETLIFY_TOKEN + SITE_ID (si besoin).
 
 const { getStore } = require("@netlify/blobs");
 const { planFor, cleanEmail } = require("./_shared/acces");
+const { balanceOf, takeCredit } = require("./_shared/credits");
 
 const PROVIDER = (process.env.VIDEO_PROVIDER || "google").toLowerCase() === "atlas" ? "atlas" : "google";
 const GOOGLE_PREDICT = "https://generativelanguage.googleapis.com/v1beta/models/veo-3.1-generate-preview:predictLongRunning";
 const ATLAS_GENERATE = "https://api.atlascloud.ai/api/v1/model/generateVideo";
-// Vidéos par mois selon l'offre (Infinity = illimité). Doit rester identique à VIDEO_MAX_MONTH dans app.js.
-const VIDEO_MONTHLY = { expert: 6, admin: Infinity };
-const DURATIONS = [4, 6, 8];
-const RESOLUTIONS = ["720p", "1080p"];
+// Vidéos incluses par mois selon l'offre (0 = crédits seulement ; Infinity = illimité).
+// Doit rester identique à VIDEO_MAX_MONTH dans app.js (pour l'offre Expert).
+const VIDEO_MONTHLY = { essentiel: 0, pro: 0, expert: 6, admin: Infinity };
 const RATIOS = ["16:9", "9:16"];
 
 const blobStore = (name) => (process.env.NETLIFY_TOKEN && process.env.SITE_ID)
@@ -44,27 +45,33 @@ exports.handler = async (event) => {
   const prompt = String(data.prompt || "").trim().slice(0, 1000);
   if (prompt.length < 10) return json(400, { error: "Décrivez la vidéo en quelques phrases" });
 
-  const durationSeconds = DURATIONS.includes(Number(data.durationSeconds)) ? Number(data.durationSeconds) : 8;
-  const resolution = RESOLUTIONS.includes(data.resolution) ? data.resolution : "720p";
+  // Vidéos de 8 secondes en 720p uniquement : c'est le réglage vendu (1 crédit = 1 vidéo de 8 secondes)
+  const durationSeconds = 8;
+  const resolution = "720p";
   const aspectRatio = RATIOS.includes(data.aspectRatio) ? data.aspectRatio : "16:9";
-  // Règle Google et Atlas : le 1080p ne se fait qu'en 8 secondes
-  if (resolution === "1080p" && durationSeconds !== 8) {
-    return json(400, { error: "La résolution 1080p demande une durée de 8 secondes." });
-  }
 
   // L'offre est vérifiée sur le serveur, jamais seulement dans le navigateur
   let plan = null;
   try { plan = await planFor(email); } catch (e) { return json(503, { error: "Vérification de l'offre impossible, réessayez" }); }
-  const limit = plan ? VIDEO_MONTHLY[plan] : undefined;
-  if (limit === undefined) return json(403, { error: "La génération de vidéos est réservée à l'offre Expert." });
+  const monthly = plan ? VIDEO_MONTHLY[plan] : undefined;
+  if (monthly === undefined) return json(403, { error: "La génération de vidéos est réservée aux abonnés." });
 
+  // Quota inclus ce mois-ci, sinon crédits
   const store = blobStore("karat-quota");
   const key = monthKey(email);
   let used = 0;
   try { used = ((await store.get(key, { type: "json" })) || {}).n || 0; }
   catch (e) { console.error("KARAT video: lecture du compteur", e.message); }
-  if (used >= limit) {
-    return json(429, { error: `Limite atteinte : ${limit} vidéos par mois pour l'offre Expert. Le compteur repart le 1er du mois.` });
+
+  const source = used < monthly ? "quota" : "credit";
+  if (source === "credit") {
+    let credits = 0;
+    try { credits = await balanceOf(email); }
+    catch (e) { console.error("KARAT video: lecture des crédits", e.message); return json(503, { error: "Solde de crédits indisponible, réessayez" }); }
+    if (credits < 1) {
+      const incl = monthly === Infinity ? "" : monthly + " vidéos incluses par mois sont utilisées. ";
+      return json(402, { error: incl + "Achetez des crédits (5 € par vidéo de 8 secondes) pour continuer." });
+    }
   }
 
   // Appel du fournisseur choisi
@@ -115,14 +122,19 @@ exports.handler = async (event) => {
   // On garde les informations de la demande, pour les retrouver quand la vidéo est prête
   try {
     await blobStore("karat-videos").setJSON("job|" + encodeURIComponent(email) + "|" + safeName(name), {
-      prompt, durationSeconds, aspectRatio, resolution, createdAt: Date.now(),
+      prompt, durationSeconds, aspectRatio, resolution, createdAt: Date.now(), source, refunded: false,
     });
   } catch (e) { console.error("KARAT video: écriture de la demande", e.message); }
 
-  // Le compteur n'avance qu'une fois la génération acceptée
-  try { await store.setJSON(key, { n: used + 1 }); }
-  catch (e) { console.error("KARAT video: écriture du compteur", e.message); }
+  // Décompte, seulement maintenant que la génération est acceptée
+  if (source === "quota") {
+    try { await store.setJSON(key, { n: used + 1 }); }
+    catch (e) { console.error("KARAT video: écriture du compteur", e.message); }
+  } else {
+    try { await takeCredit(email); }
+    catch (e) { console.error("KARAT video: décompte du crédit", e.message); }
+  }
 
-  const remaining = limit === Infinity ? null : limit - used - 1;
-  return json(200, { id: name, remaining });
+  const remaining = source === "quota" && monthly !== Infinity ? monthly - used - 1 : null;
+  return json(200, { id: name, remaining, source });
 };
