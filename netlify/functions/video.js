@@ -1,13 +1,12 @@
-// KARAT — génération de vidéos, réservée à l'offre Expert (et à l'administrateur).
-// Le site envoie la demande ici ; la fonction la transmet à Atlas Cloud et renvoie un identifiant.
-// Le site interroge ensuite video-result.js jusqu'à ce que la vidéo soit prête.
-// Variables : ATLAS_API_KEY (clé Atlas Cloud), VIDEO_MODEL (défaut google/veo3.1/text-to-video),
-// STRIPE_SECRET_KEY (offre), NETLIFY_TOKEN + SITE_ID (compteur mensuel).
+// KARAT — lancement d'une vidéo Veo 3.1 (API Gemini de Google). Réservé à l'offre Expert et à l'administrateur.
+// Le site envoie la demande ici ; la fonction lance la génération et renvoie un identifiant de suivi.
+// Le site interroge ensuite video-result.js, qui sauvegarde la vidéo une fois prête.
+// Variables : GOOGLE_API_KEY (clé Google AI Studio), STRIPE_SECRET_KEY (offre).
 
 const { getStore } = require("@netlify/blobs");
 const { planFor, cleanEmail } = require("./_shared/acces");
 
-const ATLAS_GENERATE = "https://api.atlascloud.ai/api/v1/model/generateVideo";
+const GOOGLE_PREDICT = "https://generativelanguage.googleapis.com/v1beta/models/veo-3.1-generate-preview:predictLongRunning";
 // Vidéos par mois selon l'offre (Infinity = illimité). Doit rester identique à VIDEO_MAX_MONTH dans app.js.
 const VIDEO_MONTHLY = { expert: 3, admin: Infinity };
 const DURATIONS = [4, 6, 8];
@@ -24,8 +23,9 @@ const json = (statusCode, body) => ({
   body: JSON.stringify(body),
 });
 
-// Compteur par adresse et par mois : video|email|2026-10
 const monthKey = (email) => "video|" + encodeURIComponent(email) + "|" + new Date().toISOString().slice(0, 7);
+// Nom de fichier sûr pour les clés de stockage (l'identifiant Google contient des « / »)
+const safeName = (name) => String(name).replace(/[^\w.-]/g, "_");
 
 exports.handler = async (event) => {
   if (event.httpMethod !== "POST") return json(405, { error: "Méthode non autorisée" });
@@ -39,9 +39,13 @@ exports.handler = async (event) => {
   const prompt = String(data.prompt || "").trim().slice(0, 1000);
   if (prompt.length < 10) return json(400, { error: "Décrivez la vidéo en quelques phrases" });
 
-  const durationSeconds = DURATIONS.includes(Number(data.durationSeconds)) ? Number(data.durationSeconds) : 8;
+  let durationSeconds = DURATIONS.includes(Number(data.durationSeconds)) ? Number(data.durationSeconds) : 8;
   const resolution = RESOLUTIONS.includes(data.resolution) ? data.resolution : "720p";
   const aspectRatio = RATIOS.includes(data.aspectRatio) ? data.aspectRatio : "16:9";
+  // Règle Google : le 1080p ne se fait qu'en 8 secondes
+  if (resolution === "1080p" && durationSeconds !== 8) {
+    return json(400, { error: "La résolution 1080p demande une durée de 8 secondes." });
+  }
 
   // L'offre est vérifiée sur le serveur, jamais seulement dans le navigateur
   let plan = null;
@@ -58,41 +62,43 @@ exports.handler = async (event) => {
     return json(429, { error: `Limite atteinte : ${limit} vidéos par mois pour l'offre Expert. Le compteur repart le 1er du mois.` });
   }
 
-  const apiKey = process.env.ATLAS_API_KEY;
+  const apiKey = process.env.GOOGLE_API_KEY;
   if (!apiKey) return json(500, { error: "Génération vidéo non configurée" });
 
   let r, d;
   try {
-    r = await fetch(ATLAS_GENERATE, {
+    r = await fetch(GOOGLE_PREDICT, {
       method: "POST",
-      headers: { Authorization: "Bearer " + apiKey, "Content-Type": "application/json" },
-      // Noms des champs selon la fiche Atlas Cloud : aspect_ratio, duration, resolution, generate_audio (sans son par défaut)
+      headers: { "x-goog-api-key": apiKey, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: process.env.VIDEO_MODEL || "google/veo3.1/text-to-video",
-        prompt,
-        aspect_ratio: aspectRatio,
-        duration: durationSeconds,
-        resolution,
-        generate_audio: false,
+        instances: [{ prompt }],
+        parameters: { aspectRatio, durationSeconds: String(durationSeconds), resolution },
       }),
     });
     d = await r.json().catch(() => ({}));
   } catch (e) {
-    console.error("KARAT video: service injoignable", e.message);
+    console.error("KARAT video: Google injoignable", e.message);
     return json(502, { error: "Le service vidéo est injoignable" });
   }
 
-  const id = d && d.data && d.data.id;
-  if (!r.ok || !id) {
-    const why = (d && (d.message || d.error || (d.data && d.data.error))) || "";
+  const name = d && d.name;
+  if (!r.ok || !name) {
+    const why = (d && d.error && d.error.message) || "";
     console.error("KARAT video: demande refusée", r.status, JSON.stringify(d).slice(0, 500));
     return json(502, { error: "Le service vidéo a refusé la demande" + (why ? " : " + String(why).slice(0, 200) : "") });
   }
+
+  // On garde les informations de la demande, pour les retrouver quand la vidéo est prête
+  try {
+    await blobStore("karat-videos").setJSON("job|" + encodeURIComponent(email) + "|" + safeName(name), {
+      prompt, durationSeconds, aspectRatio, resolution, createdAt: Date.now(),
+    });
+  } catch (e) { console.error("KARAT video: écriture de la demande", e.message); }
 
   // Le compteur n'avance qu'une fois la génération acceptée
   try { await store.setJSON(key, { n: used + 1 }); }
   catch (e) { console.error("KARAT video: écriture du compteur", e.message); }
 
   const remaining = limit === Infinity ? null : limit - used - 1;
-  return json(200, { id, remaining });
+  return json(200, { id: name, remaining });
 };
