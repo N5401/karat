@@ -8,10 +8,18 @@ const CONFIG = {
   GOOGLE_CLIENT_ID: "944959967913-jtiabnp67550tks8i0pq4pe46n0pjkns.apps.googleusercontent.com",
   ADMIN_EMAILS: ["tarzanastral@gmail.com"],
   PAYMENT_LINKS: {
-    essentiel: "https://buy.stripe.com/3cI9AL61a1GG8Ql7yr5c400",
-    pro:       "https://buy.stripe.com/cNi28j89ifxweaF9Gz5c401",
-    expert:    "https://buy.stripe.com/bJe28j0GQclk5E93ib5c402"
+    essentiel: "https://buy.stripe.com/7sY5kv1KU2KKgiN05Z5c403",
+    pro:       "https://buy.stripe.com/aFa7sD4X6adc1nTf0T5c404",
+    expert:    "https://buy.stripe.com/28E00bexGclk2rX1a35c405"
   },
+  // Liens de paiement annuels : à remplir avec les liens Stripe « Annuelle » (tant qu'ils sont vides, l'offre annuelle reste indisponible)
+  PAYMENT_LINKS_YEAR: {
+    essentiel: "https://buy.stripe.com/dRmcMX3T2bhggiN2e75c406",
+    pro:       "https://buy.stripe.com/3cI3cncpyfxw4A51a35c407",
+    expert:    "https://buy.stripe.com/fZu6oz61a5WWfeJ2e75c408"
+  },
+  CREDIT_LINK: "https://buy.stripe.com/8x24grblu0CC1nT05Z5c409",   // lien Stripe « KARAT 1 CREDIT » (paiement unique, quantité ajustable, 5 € le crédit)
+  CREDITS_ENDPOINT: "/.netlify/functions/credits",   // solde de crédits de l'abonné
   VERIFY_ENDPOINT: "/.netlify/functions/abo",   // serveur qui confirme l'abonnement après paiement (webhook Stripe)
   AI_ENDPOINT: "/.netlify/functions/ai-background",  // moteur IA réel (réponses longues, en arrière-plan)
   AI_RESULT: "/.netlify/functions/ai-result",        // récupère la réponse une fois prête
@@ -20,9 +28,9 @@ const CONFIG = {
 };
 
 const PLANS = {
-  essentiel: { name: "Essentiel", price: "7,99 €",  num: 7.99,  desc: "Pour découvrir KARAT au quotidien.", feats: ["Assistant IA polyvalent", "40 messages par jour", "3 générations d'images par jour","Analyse de fichiers texte, PDF et images", "Historique des conversations sur 30 jours", "Support par e-mail"] },
-  pro:       { name: "Pro",       price: "18,99 €", num: 18.99, desc: "Pour les professionnels qui travaillent chaque jour.", feats: ["Tout Essentiel", "150 messages par jour", "10 générations d'images par jour","Retouche d'image à partir d'une photo de référence", "Analyse de plusieurs documents à la fois (jusqu'à 10 PDF par message)", "Réponses longues et détaillées, jusqu'à une quinzaine de pages", "Modes spécialisés : code, rédaction, analyse de données", "Historique illimité", "Support prioritaire"] },
-  expert:    { name: "Expert",    price: "39,99 €", num: 39.99, desc: "Pour les équipes et les usages intensifs.", feats: ["Tout Pro", "Messages et images illimités","Modèle d'IA le plus avancé, pour les tâches complexes", "Accompagnement dédié à la mise en place"] }
+  essentiel: { name: "Essentiel", price: "9,99 €",  num: 9.99, priceAn: "99 €", numAn: 99, desc: "Pour découvrir KARAT au quotidien.", feats: ["Assistant IA polyvalent", "20 messages par jour", "3 générations d'images par jour","Analyse de fichiers texte, PDF et images", "Historique des conversations sur 30 jours", "Vidéos IA à l'unité : 5 € la vidéo de 8 secondes", "Support par e-mail"] },
+  pro:       { name: "Pro",       price: "29,99 €", num: 29.99, priceAn: "299 €", numAn: 299, desc: "Pour les professionnels qui travaillent chaque jour.", feats: ["Tout Essentiel", "60 messages par jour", "5 générations d'images par jour","Retouche d'image à partir d'une photo de référence", "Analyse de plusieurs documents à la fois (jusqu'à 10 PDF par message)", "Réponses longues et détaillées, jusqu'à une quinzaine de pages", "Modes spécialisés : code, rédaction, analyse de données", "Historique illimité", "Vidéos IA à l'unité : 5 € la vidéo de 8 secondes", "Support prioritaire"] },
+  expert:    { name: "Expert",    price: "49,99 €", num: 49.99, priceAn: "499 €", numAn: 499, desc: "Pour les équipes et les usages intensifs.", feats: ["Tout Pro", "45 messages par jour, images illimitées", "Génération de vidéos IA avec le son, par mois", "Modèle d'IA le plus avancé, pour les tâches complexes", "Accompagnement dédié à la mise en place"] }
 };
 
 const MODES = {
@@ -282,7 +290,7 @@ function afterRender(path){
   if (path === "/admin/annonces") fillAnnonceList();
   if (path === "/") startAvis();
   if (path === "/admin/avis") fillAdminAvis();
-  if (path === "/app/video") loadVideos();
+  if (path === "/app/video"){ loadVideos(); loadCredits(); }
 }
 
 /* =====================================================================
@@ -335,7 +343,7 @@ function appShell(path, content){
       ${link("/app/modules", "grid", "Modules")}
       ${link("/app/guide", "book", "Documentation")}
       ${link("/app/images", "image", "Images")}
-      ${isExpertPlan() ? link("/app/video", "film", "Vidéos") : ""}
+      ${paidAccess() ? link("/app/video", "film", "Vidéos") : ""}
       ${link("/app/support", "mail", "Support")}
       ${link("/app/offre", "card", "Abonnement")}
       ${adm ? `<div class="group">Administration</div>
@@ -401,7 +409,7 @@ function vLanding(){
   const cta = promo ? "" : `
   <section class="lp-sec lp-sec-tight"><div class="lp-wrap">
     <div class="lp-cta">
-      <div><div class="lp-kicker">Prêt ?</div><h2>Commencez avec 7,99&nbsp;€ par mois.</h2><p>Sans engagement, résiliable depuis votre espace.</p></div>
+      <div><div class="lp-kicker">Prêt ?</div><h2>Commencez avec 9,99&nbsp;€ par mois.</h2><p>Sans engagement, résiliable depuis votre espace.</p></div>
       <a class="btn btn-accent" href="#/tarifs">Voir les offres ${ic("arrow")}</a>
     </div>
   </div></section>`;
@@ -423,7 +431,7 @@ function vLanding(){
         <div><b>4</b><span>modules métiers</span></div>
         <div><b>Google</b><span>ou e-mail</span></div>
         <div><b>Stripe</b><span>paiement sécurisé</span></div>
-        <div><b>7,99 €</b><span>offre de départ</span></div>
+        <div><b>9,99 €</b><span>offre de départ</span></div>
       </div>
     </div>
 
@@ -513,18 +521,21 @@ function vLanding(){
   </div>`;
 }
 
+let billing = "mois";   // "mois" ou "an" : choix affiché sur la page des tarifs (en mémoire seulement)
 function planCard(key){
   const p = PLANS[key];
   const hot = key === "pro";
   const cur = currentPlan() === key;
+  const an = billing === "an";
   if (promoHidden() && !cur) return "";
   return `<div class="plan ${hot ? "hot" : ""}">
     ${hot ? `<span class="ribbon">POPULAIRE</span>` : ""}
     <div class="pname">${p.name}</div>
-    <div class="price"><b>${p.price.replace(" €", "")}<span style="font-size:28px;letter-spacing:0"> €</span></b><span>/mois</span></div>
+    <div class="price"><b>${(an ? p.priceAn : p.price).replace(" €", "")}<span style="font-size:28px;letter-spacing:0"> €</span></b><span>${an ? "/an" : "/mois"}</span></div>
+    ${an ? `<p class="small muted" style="margin-top:-6px">soit ${(p.numAn / 12).toFixed(2).replace(".", ",")} € par mois, 2 mois offerts</p>` : ""}
     <p class="desc">${p.desc}</p>
     <ul>${p.feats.map(f => `<li>${ic("check")} ${esc(f)}</li>`).join("")}</ul>
-    <button class="btn ${hot ? "btn-accent" : "btn-line"}" data-action="plan" data-plan="${key}">${cur ? "Accéder au panel" : "Choisir " + p.name}</button>
+    <button class="btn ${hot ? "btn-accent" : "btn-line"}" data-action="plan" data-plan="${key}" data-period="${billing}">${cur ? "Accéder au panel" : "Choisir " + p.name}</button>
     <div class="status">${cur ? "✓ Votre offre actuelle" : ""}</div>
   </div>`;
 }
@@ -534,6 +545,10 @@ function vPricing(){
     <div class="head">
       <div><div class="label">Tarifs</div><h2 class="h-l" style="margin-top:14px">Trois offres. Un prix mensuel clair.</h2></div>
       <p>TTC, sans engagement. Résiliation possible à tout moment depuis votre espace.</p>
+    </div>
+    <div class="row" style="justify-content:center;gap:10px;margin:0 0 26px">
+      <button class="btn ${billing === "mois" ? "btn-accent" : "btn-line"} btn-sm" data-action="billing" data-period="mois">Mensuel</button>
+      <button class="btn ${billing === "an" ? "btn-accent" : "btn-line"} btn-sm" data-action="billing" data-period="an">Annuel · 2 mois offerts</button>
     </div>
     <div class="plans">${["essentiel", "pro", "expert"].map(planCard).join("")}</div>
     <p class="small muted" style="text-align:center;margin-top:22px">Essai gratuit de 24 h après la création de votre compte : 5 messages par jour, réponses courtes, sans génération d'images.</p>
@@ -738,11 +753,13 @@ function confirmAck(){
 /* =====================================================================
    TARIFS & PAIEMENT
    ===================================================================== */
-function startPlan(plan){
+function startPlan(plan, period = "mois"){
   if (!session) return go("/connexion?next=" + enc("/tarifs"));
   if (isAdmin(session.email)){ toast("Compte administrateur : accès complet inclus"); return go("/app/chat"); }
   if (planOf(session.email) === plan) return go("/app/chat");
-  const link = CONFIG.PAYMENT_LINKS[plan];
+  const links = period === "an" ? CONFIG.PAYMENT_LINKS_YEAR : CONFIG.PAYMENT_LINKS;
+  const link = links[plan];
+  if (period === "an" && !link){ toast("L'offre annuelle arrive très bientôt", true); return; }
   if (link){
     const url = new URL(link);
     url.searchParams.set("prefilled_email", session.email);
@@ -1449,7 +1466,8 @@ const ACTIONS = {
   "logout":        () => askConfirm("Se déconnecter ?", "Votre conversation en cours sera effacée de cet appareil.", doLogout, "Se déconnecter"),
   "close-modal":   () => closeModal(),
   "confirm-ok":    () => { const f = pendingOk; pendingOk = null; closeModal(); f && f(); },
-  "plan":          el => startPlan(el.dataset.plan),
+  "plan":          el => startPlan(el.dataset.plan, el.dataset.period || "mois"),
+  "billing":       el => { billing = el.dataset.period; render(); },
   "ack-confirm":   () => confirmAck(),
   "copy":          el => {
     copyText(el.dataset.text || "").then(() => toast("Réponse copiée"), () => toast("Copie impossible : sélectionnez le texte et copiez-le", true));
@@ -1906,17 +1924,21 @@ function imgQuotaText(){
   return "Choisissez une offre pour générer des images.";
 }
 /* ---------- Vidéos (offre Expert) : le serveur vérifie l'offre et le quota ---------- */
-const VIDEO_MAX_MONTH = 3; // doit rester identique à VIDEO_MONTHLY dans netlify/functions/video.js
+const VIDEO_MAX_MONTH = 6; // doit rester identique à VIDEO_MONTHLY dans netlify/functions/video.js
 function isExpertPlan(){ const p = currentPlan(); return p === "expert" || p === "admin"; }
 function vVideo(){
   const who = isAdmin(session && session.email) ? " (accès administrateur illimité)" : "";
-  const body = isExpertPlan()
+  const body = paidAccess()
     ? `<div class="card" style="max-width:720px">
-        <p class="muted small" style="margin-bottom:14px">Offre Expert : ${VIDEO_MAX_MONTH} vidéos par mois${who}. Une génération prend environ 2 à 3 minutes.</p>
+        <p class="muted small" style="margin-bottom:14px">${isExpertPlan() ? `Offre Expert : ${VIDEO_MAX_MONTH} vidéos par mois incluses${who}, puis des crédits.` : "Vidéos à l'unité : 1 crédit par vidéo."} Une génération prend environ 2 à 3 minutes.</p>
+        <div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">
+          <p class="small">Crédits disponibles : <b id="credit-balance">…</b> <span class="muted">· 5 € le crédit, 1 crédit = 1 vidéo de 8 secondes</span></p>
+          ${CONFIG.CREDIT_LINK ? `<a class="btn btn-line btn-sm" href="${creditUrl()}">Acheter des crédits</a>` : `<span class="muted small">Achat de crédits bientôt disponible</span>`}
+        </div>
         <div class="field" style="margin-bottom:16px"><label for="vid-prompt">DESCRIPTION</label><textarea id="vid-prompt" class="textarea" rows="4" maxlength="1000" placeholder="Ex : un bureau lumineux le matin, une tasse de café fumante, la caméra avance lentement"></textarea></div>
         <div class="row" style="gap:12px;flex-wrap:wrap;margin-bottom:18px">
-          <div style="min-width:150px"><label class="small muted" for="vid-dur">Durée</label><select id="vid-dur" class="select" style="width:100%;margin-top:6px"><option value="8" selected>8 secondes</option><option value="6">6 secondes</option><option value="4">4 secondes</option></select></div>
-          <div style="min-width:150px"><label class="small muted" for="vid-res">Résolution</label><select id="vid-res" class="select" style="width:100%;margin-top:6px"><option value="720p" selected>720p</option><option value="1080p">1080p</option></select></div>
+          <div style="min-width:150px"><label class="small muted" for="vid-dur">Durée</label><select id="vid-dur" class="select" style="width:100%;margin-top:6px"><option value="8" selected>8 secondes</option></select></div>
+          <div style="min-width:150px"><label class="small muted" for="vid-res">Résolution</label><select id="vid-res" class="select" style="width:100%;margin-top:6px"><option value="720p" selected>720p</option></select></div>
           <div style="min-width:170px"><label class="small muted" for="vid-ratio">Format</label><select id="vid-ratio" class="select" style="width:100%;margin-top:6px"><option value="16:9" selected>Paysage 16:9</option><option value="9:16">Portrait 9:16</option></select></div>
         </div>
         <button class="btn btn-accent" data-action="video-generate">Générer la vidéo</button>
@@ -1924,10 +1946,26 @@ function vVideo(){
         <div id="vid-list" style="margin-top:26px"></div>
       </div>`
     : `<div class="card" style="max-width:720px">
-        <p class="muted" style="margin-bottom:14px">La génération de vidéos est réservée à l'offre Expert.</p>
+        <p class="muted" style="margin-bottom:14px">La génération de vidéos est réservée aux abonnés payants.</p>
         <a class="btn btn-accent" href="#/app/offre">Voir les offres</a>
       </div>`;
-  return appShell("/app/video", pageHead("Espace", "Génération de vidéos", "Décrivez la vidéo, KARAT la génère pour vous. Réservé à l'offre Expert.") + body);
+  return appShell("/app/video", pageHead("Espace", "Génération de vidéos", "Décrivez la vidéo, KARAT la génère pour vous. Expert inclut 6 vidéos par mois ; les autres se paient en crédits.") + body);
+}
+
+// Solde de crédits vidéo, affiché sur la page Vidéos
+function creditUrl(){
+  const u = new URL(CONFIG.CREDIT_LINK);
+  if (session) u.searchParams.set("prefilled_email", session.email);
+  return u.toString();
+}
+async function loadCredits(){
+  const el = $("#credit-balance");
+  if (!el || !session) return;
+  try{
+    const r = await fetch(`${CONFIG.CREDITS_ENDPOINT}?email=${enc(session.email)}`, { cache: "no-store" });
+    const d = await r.json().catch(() => ({}));
+    el.textContent = r.ok ? String(d.credits) : "indisponible";
+  }catch(e){ el.textContent = "indisponible"; }
 }
 
 // Liste « Mes vidéos » : chaque vidéo est sauvegardée sur le site, à l'adresse de l'abonné
@@ -1947,7 +1985,7 @@ async function loadVideos(){
             <video src="${src}" controls preload="metadata" playsinline style="width:100%;max-width:420px;border-radius:10px;display:block"></video>
             <div class="small" style="margin-top:8px">${esc(v.prompt)}</div>
             <div class="small muted" style="margin-top:4px">${new Date(v.createdAt).toLocaleString("fr-FR")}</div>
-            <a class="btn btn-line btn-sm" style="margin-top:8px" href="${src}" download="karat-video.mp4">Télécharger</a>
+            <button class="btn btn-line btn-sm" style="margin-top:8px" data-action="video-download" data-src="${src}">Télécharger</button>
           </div>`;
         }).join("")
       : `<p class="muted small">Aucune vidéo pour l'instant.</p>`);
@@ -1957,9 +1995,39 @@ async function loadVideos(){
 }
 
 Object.assign(ACTIONS, {
+  // Le serveur envoie la vidéo par morceaux : on les réunit ici, puis on télécharge le fichier complet
+  "video-download": async (el) => {
+    const src = el.dataset.src;
+    const label = el.textContent;
+    el.disabled = true; el.textContent = "Téléchargement…";
+    try {
+      const parts = [];
+      let start = 0, total = null;
+      while (total === null || start < total) {
+        const r = await fetch(src, { headers: { Range: `bytes=${start}-` }, cache: "no-store" });
+        if (r.status !== 200 && r.status !== 206) throw new Error("code " + r.status);
+        const cr = /\/(\d+)$/.exec(r.headers.get("Content-Range") || "");
+        if (!cr) throw new Error("taille inconnue");
+        total = Number(cr[1]);
+        const part = await r.blob();
+        if (!part.size) break;
+        parts.push(part);
+        start += part.size;
+      }
+      const url = URL.createObjectURL(new Blob(parts, { type: "video/mp4" }));
+      const a = document.createElement("a");
+      a.href = url; a.download = "karat-video.mp4";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (e) {
+      toast("Téléchargement impossible : " + e.message, true);
+    } finally {
+      el.disabled = false; el.textContent = label;
+    }
+  },
   "video-generate": async () => {
     if (!session) return go("/connexion?next=/app/video");
-    if (!isExpertPlan()){ toast("Réservé à l'offre Expert", true); return go("/app/offre"); }
+    if (!paidAccess()){ toast("Réservé aux abonnés payants", true); return go("/app/offre"); }
     const prompt = ($("#vid-prompt")?.value || "").trim();
     if (prompt.length < 10) return toast("Décrivez la vidéo en quelques phrases", true);
     const btn = document.querySelector('[data-action="video-generate"]');
@@ -1982,7 +2050,7 @@ Object.assign(ACTIONS, {
         if (st.status === "completed"){
           const restant = d.remaining === null || d.remaining === undefined ? "" : `<p class="muted small" style="margin-top:12px">Il vous reste ${d.remaining} vidéo${d.remaining > 1 ? "s" : ""} ce mois-ci.</p>`;
           $("#vid-out").innerHTML = `<p class="small">Vidéo prête : elle est enregistrée dans « Mes vidéos » ci-dessous.</p>${restant}`;
-          loadVideos();
+          loadVideos(); loadCredits();
           return;
         }
       }
