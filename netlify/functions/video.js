@@ -1,7 +1,7 @@
 // KARAT — génération de vidéos, réservée à l'offre Expert (et à l'administrateur).
 // Le site envoie la demande ici ; la fonction la transmet à Atlas Cloud et renvoie un identifiant.
 // Le site interroge ensuite video-result.js jusqu'à ce que la vidéo soit prête.
-// Variables : ATLAS_API_KEY (clé Atlas Cloud), VIDEO_MODEL (défaut google/veo3.1/text-to-video-developer),
+// Variables : ATLAS_API_KEY (clé Atlas Cloud), VIDEO_MODEL (défaut google/veo3.1/text-to-video),
 // STRIPE_SECRET_KEY (offre), NETLIFY_TOKEN + SITE_ID (compteur mensuel).
 
 const { getStore } = require("@netlify/blobs");
@@ -66,12 +66,14 @@ exports.handler = async (event) => {
     r = await fetch(ATLAS_GENERATE, {
       method: "POST",
       headers: { Authorization: "Bearer " + apiKey, "Content-Type": "application/json" },
+      // Noms des champs selon la fiche Atlas Cloud : aspect_ratio, duration, resolution, generate_audio (sans son par défaut)
       body: JSON.stringify({
-        model: process.env.VIDEO_MODEL || "google/veo3.1/text-to-video-developer",
+        model: process.env.VIDEO_MODEL || "google/veo3.1/text-to-video",
         prompt,
-        durationSeconds,
+        aspect_ratio: aspectRatio,
+        duration: durationSeconds,
         resolution,
-        aspectRatio,
+        generate_audio: false,
       }),
     });
     d = await r.json().catch(() => ({}));
@@ -82,8 +84,9 @@ exports.handler = async (event) => {
 
   const id = d && d.data && d.data.id;
   if (!r.ok || !id) {
+    const why = (d && (d.message || d.error || (d.data && d.data.error))) || "";
     console.error("KARAT video: demande refusée", r.status, JSON.stringify(d).slice(0, 500));
-    return json(502, { error: "Le service vidéo a refusé la demande" });
+    return json(502, { error: "Le service vidéo a refusé la demande" + (why ? " : " + String(why).slice(0, 200) : "") });
   }
 
   // Le compteur n'avance qu'une fois la génération acceptée
