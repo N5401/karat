@@ -11,7 +11,7 @@ const PLAN_LABEL = { essentiel: "Essentiel", pro: "Pro", expert: "Expert" };
 // Images par jour selon l'offre (Infinity = illimité)
 const IMAGE_QUOTA = { essentiel: 3, pro: 5, expert: Infinity };
 // Messages par jour selon l'offre. Sans offre = essai gratuit (« gratuit »).
-const MSG_QUOTA = { gratuit: 5, essentiel: 20, pro: 60, expert: 45, admin: Infinity };
+const MSG_QUOTA = { gratuit: 5, essentiel: 50, pro: 120, expert: Infinity, admin: Infinity };
 // Longueur maximale d'une réponse (en jetons) selon l'offre
 const ANSWER_TOKENS = { gratuit: 700, essentiel: 3000, pro: 12000, expert: 12000, admin: 12000 };
 const TIER_LABEL = { gratuit: "Essai gratuit", essentiel: "Essentiel", pro: "Pro", expert: "Expert", admin: "Administrateur" };
