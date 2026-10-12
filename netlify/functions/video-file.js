@@ -1,11 +1,14 @@
 // KARAT — renvoie une vidéo sauvegardée (lecture dans la page et téléchargement), uniquement à son abonné Expert.
-// Limite Netlify : une réponse de fonction fait au plus environ 6 Mo, donc les vidéos plus lourdes ne s'affichent pas.
+// Netlify limite chaque réponse de fonction à environ 6 Mo (encodage compris) : la vidéo est donc envoyée
+// par morceaux, comme le fait le lecteur vidéo du navigateur (requêtes « Range »).
 // Variables : STRIPE_SECRET_KEY (offre), NETLIFY_TOKEN + SITE_ID (si besoin).
 
 const { getStore } = require("@netlify/blobs");
 const { planFor, cleanEmail } = require("./_shared/acces");
 
 const ALLOWED = ["expert", "admin"];
+// 3 Mo par morceau : environ 4 Mo une fois encodé en base64, bien sous la limite
+const CHUNK = 3 * 1024 * 1024;
 
 const blobStore = (name) => (process.env.NETLIFY_TOKEN && process.env.SITE_ID)
   ? getStore({ name, siteID: process.env.SITE_ID, token: process.env.NETLIFY_TOKEN })
@@ -16,6 +19,25 @@ const json = (statusCode, body) => ({
   headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
   body: JSON.stringify(body),
 });
+
+// Plage demandée (« bytes=début-fin »). Sans plage, on renvoie le premier morceau.
+function pickRange(header, total) {
+  let start = 0;
+  let end = Math.min(CHUNK, total) - 1;
+  const m = /^bytes=(\d*)-(\d*)$/.exec(String(header || "").trim());
+  if (m && (m[1] !== "" || m[2] !== "")) {
+    if (m[1] === "") { // forme « les N derniers octets »
+      start = Math.max(0, total - Number(m[2]));
+      end = total - 1;
+    } else {
+      start = Number(m[1]);
+      end = m[2] === "" ? start + CHUNK - 1 : Number(m[2]);
+    }
+    if (start >= total) return null;
+    end = Math.min(end, total - 1, start + CHUNK - 1);
+  }
+  return { start, end };
+}
 
 exports.handler = async (event) => {
   if (event.httpMethod !== "GET") return json(405, { error: "Méthode non autorisée" });
@@ -34,10 +56,24 @@ exports.handler = async (event) => {
   catch (e) { console.error("KARAT video-file:", e.message); }
   if (!rec || !rec.b64) return json(404, { error: "Vidéo introuvable" });
 
+  const buf = Buffer.from(rec.b64, "base64");
+  const total = buf.length;
+  const h = event.headers || {};
+  const range = pickRange(h.range || h.Range, total);
+  if (!range) {
+    return { statusCode: 416, headers: { "Content-Range": "bytes */" + total, "Accept-Ranges": "bytes" }, body: "" };
+  }
+
+  const part = buf.subarray(range.start, range.end + 1);
   return {
-    statusCode: 200,
+    statusCode: 206,
     isBase64Encoded: true,
-    headers: { "Content-Type": "video/mp4", "Cache-Control": "private, max-age=3600" },
-    body: rec.b64,
+    headers: {
+      "Content-Type": "video/mp4",
+      "Accept-Ranges": "bytes",
+      "Content-Range": `bytes ${range.start}-${range.end}/${total}`,
+      "Cache-Control": "private, max-age=3600",
+    },
+    body: part.toString("base64"),
   };
 };
