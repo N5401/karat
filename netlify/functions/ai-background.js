@@ -6,7 +6,7 @@
 // ANTHROPIC_MODEL_EXPERT (Expert, défaut claude-opus-5-5), et NETLIFY_TOKEN + SITE_ID (stockage des réponses).
 
 const { getStore } = require("@netlify/blobs");
-const { planFor } = require("./_shared/acces");
+const { planFor, msgQuota, addMsgUse, cleanEmail, MSG_QUOTA, ANSWER_TOKENS, TIER_LABEL } = require("./_shared/acces");
 
 const aiStore = () => (process.env.NETLIFY_TOKEN && process.env.SITE_ID)
   ? getStore({ name: "karat-ai", siteID: process.env.SITE_ID, token: process.env.NETLIFY_TOKEN })
@@ -20,6 +20,23 @@ const MODES = {
 };
 
 const cleanId = v => String(v || "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 80);
+
+// Consigne de brièveté pour l'essai gratuit (les autres offres n'ont pas de consigne de longueur)
+const TIER_NOTE = {
+  gratuit: "\n\nOffre gratuite : réponds brièvement, l'essentiel en 150 mots maximum, sans détailler.",
+};
+// Message affiché quand la limite quotidienne de messages est atteinte
+const limitMsg = (tier, limit) => {
+  const next = tier === "gratuit" ? `Passez à l'offre Essentiel pour ${MSG_QUOTA.essentiel} messages par jour.`
+    : tier === "essentiel" ? `Passez à l'offre Pro pour ${MSG_QUOTA.pro} messages par jour.`
+    : "Passez à l'offre Expert pour des messages illimités.";
+  return `Vous avez atteint la limite de ${limit} messages pour aujourd'hui (${TIER_LABEL[tier]}). Elle se remet à zéro chaque jour. ${next}`;
+};
+
+// Message affiché quand le moteur refuse ou ne renvoie aucun texte (sinon la bulle resterait vide)
+const REFUS = "Je ne peux pas répondre à cette demande. Précisez votre besoin et je vous aide.";
+// Règle de sécurité ajoutée à chaque réponse
+const POLICY = "\n\nRègle : tu ne fournis pas de logiciel de triche (spoofer, cheat, contournement d'anticheat ou de bans, injection dans un jeu), de malware, ni d'aide à pirater un compte ou un système. Dans ce cas, tu le dis en une ou deux phrases, sans détailler, et tu proposes une alternative légale.";
 
 exports.handler = async (event) => {
   if (event.httpMethod !== "POST") return { statusCode: 405, body: "" };
@@ -49,6 +66,21 @@ exports.handler = async (event) => {
   messages = messages.slice(-20);
   if (!messages.length) { await fail("Aucun message"); return { statusCode: 200, body: "" }; }
 
+  // Quota de messages du jour selon l'offre (sans offre = essai gratuit)
+  const tier = plan || "gratuit";
+  const email = cleanEmail(data.email);
+  if (!email) { await fail("Connectez-vous pour utiliser l'IA"); return { statusCode: 200, body: "" }; }
+  try {
+    const q = await msgQuota(email, tier);
+    if (q.used >= q.limit) {
+      await store.setJSON(id, { status: "done", reply: limitMsg(tier, q.limit), stopped: false });
+      return { statusCode: 200, body: "" };
+    }
+    await addMsgUse(email, q.used);
+  } catch (e) {
+    console.error("KARAT ai-bg: compteur de messages", e.message); // si le compteur est indisponible, on ne bloque pas le chat
+  }
+
   const imgs = (Array.isArray(data.images) ? data.images : [])
     .filter(x => typeof x === "string" && /^data:image\/(jpeg|png|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(x))
     .slice(0, 12);
@@ -75,13 +107,13 @@ exports.handler = async (event) => {
   }
 
   const FORMAT = "\n\nMise en forme : quand plusieurs fichiers, images ou documents sont joints, identifie chacun par son nom, réponds à la demande pour chacun, et dis clairement ce que tu n'as pas pu lire. Réponds de façon complète : ne tronque pas une réponse longue, découpe-la en parties claire quand c'est utile. Quand tu donnes du code, mets-le dans un bloc entouré de trois apostrophes inversées, avec sur la première ligne le langage puis le nom exact du fichier à créer (exemple : html index.html). Un fichier par bloc. Utilise des paragraphes courts et des listes simples, sans titres inutiles.";
-  const system = (MODES[data.mode] || "Tu es KARAT, un assistant IA sobre et utile. Réponds en français.") + FORMAT;
+  const system = (MODES[data.mode] || "Tu es KARAT, un assistant IA sobre et utile. Réponds en français.") + FORMAT + POLICY + (TIER_NOTE[tier] || "");
 
   try {
     const r = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "content-type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
-      body: JSON.stringify({ model, max_tokens: 12000, system, messages }),
+      body: JSON.stringify({ model, max_tokens: ANSWER_TOKENS[tier] || 12000, system, messages }),
     });
     const result = await r.json();
     if (!r.ok || !Array.isArray(result.content)) {
@@ -89,8 +121,12 @@ exports.handler = async (event) => {
       await fail("Le moteur IA a renvoyé une erreur");
       return { statusCode: 200, body: "" };
     }
-    const reply = result.content.filter(b => b.type === "text").map(b => b.text).join("");
+    let reply = result.content.filter(b => b.type === "text").map(b => b.text).join("").trim();
     const stopped = result.stop_reason === "max_tokens";
+    if (!reply || result.stop_reason === "refusal") {
+      console.warn("KARAT ai-bg: réponse vide ou refusée", "stop=" + result.stop_reason, "modele=" + model);
+      if (!reply) reply = REFUS;
+    }
     await store.setJSON(id, { status: "done", reply, stopped });
   } catch (e) {
     console.error("KARAT ai-bg: injoignable", e.message);
