@@ -1863,7 +1863,7 @@ const CONFIG = {
 const PLANS = {
   essentiel: { name: "Essentiel", price: "7,99 €",  num: 7.99,  desc: "Pour découvrir KARAT au quotidien.", feats: ["Assistant IA polyvalent", "40 messages par jour", "3 générations d'images par jour","Analyse de fichiers texte, PDF et images", "Historique des conversations sur 30 jours", "Support par e-mail"] },
   pro:       { name: "Pro",       price: "18,99 €", num: 18.99, desc: "Pour les professionnels qui travaillent chaque jour.", feats: ["Tout Essentiel", "150 messages par jour", "10 générations d'images par jour","Retouche d'image à partir d'une photo de référence", "Analyse de plusieurs documents à la fois (jusqu'à 10 PDF par message)", "Réponses longues et détaillées, jusqu'à une quinzaine de pages", "Modes spécialisés : code, rédaction, analyse de données", "Historique illimité", "Support prioritaire"] },
-  expert:    { name: "Expert",    price: "39,99 €", num: 39.99, desc: "Pour les équipes et les usages intensifs.", feats: ["Tout Pro", "Messages et images illimités","Modèle d'IA le plus avancé, pour les tâches complexes", "Accompagnement dédié à la mise en place"] }
+  expert:    { name: "Expert",    price: "39,99 €", num: 39.99, desc: "Pour les équipes et les usages intensifs.", feats: ["Tout Pro", "Messages et images illimités", "Génération de vidéos IA avec le son, 3 par mois", "Modèle d'IA le plus avancé, pour les tâches complexes", "Accompagnement dédié à la mise en place"] }
 };
 
 const MODES = {
@@ -3788,7 +3788,7 @@ async function loadVideos(){
             <video src="${src}" controls preload="metadata" playsinline style="width:100%;max-width:420px;border-radius:10px;display:block"></video>
             <div class="small" style="margin-top:8px">${esc(v.prompt)}</div>
             <div class="small muted" style="margin-top:4px">${new Date(v.createdAt).toLocaleString("fr-FR")}</div>
-            <a class="btn btn-line btn-sm" style="margin-top:8px" href="${src}" download="karat-video.mp4">Télécharger</a>
+            <button class="btn btn-line btn-sm" style="margin-top:8px" data-action="video-download" data-src="${src}">Télécharger</button>
           </div>`;
         }).join("")
       : `<p class="muted small">Aucune vidéo pour l'instant.</p>`);
@@ -3798,6 +3798,36 @@ async function loadVideos(){
 }
 
 Object.assign(ACTIONS, {
+  // Le serveur envoie la vidéo par morceaux : on les réunit ici, puis on télécharge le fichier complet
+  "video-download": async (el) => {
+    const src = el.dataset.src;
+    const label = el.textContent;
+    el.disabled = true; el.textContent = "Téléchargement…";
+    try {
+      const parts = [];
+      let start = 0, total = null;
+      while (total === null || start < total) {
+        const r = await fetch(src, { headers: { Range: `bytes=${start}-` }, cache: "no-store" });
+        if (r.status !== 200 && r.status !== 206) throw new Error("code " + r.status);
+        const cr = /\/(\d+)$/.exec(r.headers.get("Content-Range") || "");
+        if (!cr) throw new Error("taille inconnue");
+        total = Number(cr[1]);
+        const part = await r.blob();
+        if (!part.size) break;
+        parts.push(part);
+        start += part.size;
+      }
+      const url = URL.createObjectURL(new Blob(parts, { type: "video/mp4" }));
+      const a = document.createElement("a");
+      a.href = url; a.download = "karat-video.mp4";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (e) {
+      toast("Téléchargement impossible : " + e.message, true);
+    } finally {
+      el.disabled = false; el.textContent = label;
+    }
+  },
   "video-generate": async () => {
     if (!session) return go("/connexion?next=/app/video");
     if (!isExpertPlan()){ toast("Réservé à l'offre Expert", true); return go("/app/offre"); }
