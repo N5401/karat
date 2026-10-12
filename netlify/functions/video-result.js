@@ -5,10 +5,11 @@
 
 const { getStore } = require("@netlify/blobs");
 const { planFor, cleanEmail } = require("./_shared/acces");
+const { giveBack } = require("./_shared/credits");
 
 const GOOGLE_BASE = "https://generativelanguage.googleapis.com/v1beta/";
 const ATLAS_PREDICTION = "https://api.atlascloud.ai/api/v1/model/prediction/";
-const ALLOWED = ["expert", "admin"];
+const ALLOWED = ["essentiel", "pro", "expert", "admin"];
 const GOOGLE_OP = /^models\/[\w.-]+\/operations\/[\w.-]+$/;
 const ATLAS_ID = /^atlas:[\w-]{4,120}$/;
 
@@ -22,6 +23,27 @@ const json = (statusCode, body) => ({
   body: JSON.stringify(body),
 });
 const safeName = (name) => String(name).replace(/[^\w.-]/g, "_");
+
+// Rend le crédit (ou le quota du mois) une seule fois, quand la génération a échoué
+async function refundOnce(email, id) {
+  try {
+    const store = blobStore("karat-videos");
+    const jobKey = "job|" + encodeURIComponent(email) + "|" + id;
+    const job = await store.get(jobKey, { type: "json" });
+    if (!job || job.refunded) return;
+    if (job.source === "credit") {
+      await giveBack(email);
+    } else if (job.source === "quota") {
+      const qkey = "video|" + encodeURIComponent(email) + "|" + new Date(job.createdAt).toISOString().slice(0, 7);
+      const q = blobStore("karat-quota");
+      const n = ((await q.get(qkey, { type: "json" })) || {}).n || 0;
+      await q.setJSON(qkey, { n: Math.max(0, n - 1) });
+    }
+    await store.setJSON(jobKey, { ...job, refunded: true });
+  } catch (e) {
+    console.error("KARAT video-result: remboursement", e.message);
+  }
+}
 
 // Lit l'état chez le fournisseur et renvoie { state, uri?, headers?, error? }
 async function checkGoogle(name, apiKey) {
@@ -89,7 +111,7 @@ exports.handler = async (event) => {
   }
 
   if (st.state === "processing") return json(200, { status: "processing" });
-  if (st.state === "failed") return json(200, { status: "failed", error: st.error });
+  if (st.state === "failed") { await refundOnce(email, id); return json(200, { status: "failed", error: st.error }); }
 
   // Téléchargement du fichier, puis sauvegarde sur le site
   let buf;
@@ -99,6 +121,7 @@ exports.handler = async (event) => {
     buf = Buffer.from(await f.arrayBuffer());
   } catch (e) {
     console.error("KARAT video-result: téléchargement", e.message);
+    await refundOnce(email, id);
     return json(200, { status: "failed", error: "La vidéo est prête mais le fichier n'a pas pu être récupéré (" + e.message + ")." });
   }
 
@@ -118,6 +141,7 @@ exports.handler = async (event) => {
     await store.setJSON(listKey, list.slice(0, 200));
   } catch (e) {
     console.error("KARAT video-result: sauvegarde", e.message);
+    await refundOnce(email, id);
     return json(200, { status: "failed", error: "La vidéo est prête mais n'a pas pu être enregistrée." });
   }
 
