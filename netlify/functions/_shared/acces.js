@@ -6,15 +6,15 @@ const { getStore } = require("@netlify/blobs");
 
 const ADMIN_EMAILS = ["tarzanastral@gmail.com"];          // accès illimité
 // Anciens montants (799, 1899, 3999) gardés pour les abonnés existants ; nouveaux montants 999, 2999, 4999
-const PRICE_TO_PLAN = { 799: "essentiel", 1899: "pro", 3999: "expert", 999: "essentiel", 2999: "pro", 4999: "expert", 9900: "essentiel", 29900: "pro", 49900: "expert" };
+const PRICE_TO_PLAN = { 699: "essentiel", 799: "essentiel", 1899: "pro", 3999: "expert", 999: "essentiel", 2999: "pro", 4999: "expert", 9900: "essentiel", 29900: "pro", 49900: "expert" };
 const PLAN_LABEL = { essentiel: "Essentiel", pro: "Pro", expert: "Expert" };
-// Images par jour selon l'offre (Infinity = illimité)
-const IMAGE_QUOTA = { gratuit: 1, essentiel: 3, pro: 5, expert: Infinity };
-// Messages par jour selon l'offre. Sans offre = essai gratuit (« gratuit »).
-const MSG_QUOTA = { gratuit: 10, essentiel: 50, pro: 120, expert: Infinity, admin: Infinity };
+// Images selon l'offre (Infinity = illimité). Gratuit : 3 tous les 2 jours ; les autres offres : par jour.
+const IMAGE_QUOTA = { gratuit: 3, essentiel: 3, pro: 5, expert: Infinity };
+// Messages par jour selon l'offre. Sans offre = version gratuite (« gratuit »).
+const MSG_QUOTA = { gratuit: 30, essentiel: 80, pro: 200, expert: Infinity, admin: Infinity };
 // Longueur maximale d'une réponse (en jetons) selon l'offre
 const ANSWER_TOKENS = { gratuit: 700, essentiel: 3000, pro: 12000, expert: 12000, admin: 12000 };
-const TIER_LABEL = { gratuit: "Essai gratuit", essentiel: "Essentiel", pro: "Pro", expert: "Expert", admin: "Administrateur" };
+const TIER_LABEL = { gratuit: "Version gratuite", essentiel: "Essentiel", pro: "Pro", expert: "Expert", admin: "Administrateur" };
 
 const blobStore = (name) => (process.env.NETLIFY_TOKEN && process.env.SITE_ID)
   ? getStore({ name, siteID: process.env.SITE_ID, token: process.env.NETLIFY_TOKEN })
@@ -78,21 +78,30 @@ async function planFor(emailRaw){
 }
 
 const todayKey = () => new Date().toISOString().slice(0, 10);
-const quotaKey = (email) => encodeURIComponent(email) + "|" + todayKey();
+// La version gratuite se renouvelle tous les 2 jours (fenêtre de 48 h) ; les offres payantes se renouvellent chaque jour
+const DAY_MS = 24 * 60 * 60 * 1000;
+const periodKey = (tier) => tier === "gratuit" ? "2j|" + Math.floor(Date.now() / (2 * DAY_MS)) : todayKey();
+const quotaKey = (email, tier) => encodeURIComponent(email) + "|" + periodKey(tier);
+// Date de renouvellement de la version gratuite (prochaine fenêtre de 2 jours), en français
+function freeResetText(){
+  const next = (Math.floor(Date.now() / (2 * DAY_MS)) + 1) * 2 * DAY_MS;
+  return new Date(next).toLocaleString("fr-FR", { timeZone: "Europe/Paris", weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
+}
 
-// Limite et nombre d'images déjà faites aujourd'hui
+// Limite et nombre d'images déjà faites sur la période en cours
 async function imageQuota(email, plan){
   const limit = plan === "admin" ? Infinity : (IMAGE_QUOTA[plan] || 0);
-  const d = await blobStore("karat-quota").get(quotaKey(email), { type: "json" });
+  const d = await blobStore("karat-quota").get(quotaKey(email, plan), { type: "json" });
   return { limit, used: (d && d.n) || 0 };
 }
 
-async function addImageUse(email, used){
-  await blobStore("karat-quota").setJSON(quotaKey(email), { n: used + 1 });
+async function addImageUse(email, used, plan){
+  await blobStore("karat-quota").setJSON(quotaKey(email, plan), { n: used + 1 });
 }
 
-// Messages déjà envoyés aujourd'hui (compteur séparé des images)
-const msgKey = (email) => "msg|" + quotaKey(email);
+// Messages déjà envoyés sur la période en cours (compteur séparé des images)
+// Messages : compteur quotidien pour toutes les offres (seules les images de la version gratuite se renouvellent tous les 2 jours)
+const msgKey = (email) => "msg|" + encodeURIComponent(email) + "|" + todayKey();
 
 async function msgQuota(email, tier){
   const limit = MSG_QUOTA[tier] === undefined ? 0 : MSG_QUOTA[tier];
@@ -100,11 +109,11 @@ async function msgQuota(email, tier){
   return { limit, used: (d && d.n) || 0 };
 }
 
-async function addMsgUse(email, used){
+async function addMsgUse(email, used, tier){
   await blobStore("karat-quota").setJSON(msgKey(email), { n: used + 1 });
 }
 
 module.exports = {
   planFor, imageQuota, addImageUse, cleanEmail, PLAN_LABEL, IMAGE_QUOTA,
-  MSG_QUOTA, ANSWER_TOKENS, TIER_LABEL, msgQuota, addMsgUse,
+  MSG_QUOTA, ANSWER_TOKENS, TIER_LABEL, msgQuota, addMsgUse, freeResetText,
 };
