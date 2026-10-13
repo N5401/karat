@@ -10,6 +10,44 @@ const { planFor, imageQuota, addImageUse, cleanEmail, PLAN_LABEL, freeResetText 
 const IMAGE_MODEL = process.env.IMAGE_MODEL || "gpt-image-2.5-sunburst";
 const IMAGE_QUALITY = process.env.IMAGE_QUALITY || "medium";
 
+const { getStore } = require("@netlify/blobs");
+
+const blobStore = (name) => (process.env.NETLIFY_TOKEN && process.env.SITE_ID)
+  ? getStore({ name, siteID: process.env.SITE_ID, token: process.env.NETLIFY_TOKEN })
+  : getStore(name);
+
+// Points images offerts par l'administrateur (karat-bonus) : utilisés une fois le quota du jour épuisé
+const bonusKey = (email) => "img|" + encodeURIComponent(email);
+async function readBonus(email){
+  try {
+    const b = await blobStore("karat-bonus").get(bonusKey(email), { type: "json" });
+    return b && typeof b.n === "number" ? b.n : 0;
+  } catch (e) {
+    console.error("KARAT image: points", e.message);
+    return 0;
+  }
+}
+async function writeBonus(email, n){
+  await blobStore("karat-bonus").setJSON(bonusKey(email), { n: Math.max(0, n) });
+}
+
+// Galerie « Mes images » : chaque image est conservée sur le site, à l'adresse du compte
+async function saveToGallery(email, b64, prompt){
+  try {
+    const q = encodeURIComponent(email);
+    const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    const store = blobStore("karat-images");
+    await store.setJSON("file|" + q + "|" + id, { b64, mime: "image/png" });
+    const list = (await store.get("list|" + q, { type: "json" })) || [];
+    list.unshift({ id, prompt: String(prompt).slice(0, 300), createdAt: Date.now() });
+    await store.setJSON("list|" + q, list.slice(0, 200));
+    return id;
+  } catch (e) {
+    console.error("KARAT image: galerie", e.message);
+    return null;
+  }
+}
+
 const json = (statusCode, body) => ({
   statusCode,
   headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" },
@@ -31,15 +69,18 @@ exports.handler = async (event) => {
   const ref = typeof data.ref === "string" && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(data.ref) ? data.ref : null;
 
   // Offre et quota du jour
-  let plan, quota;
+  let plan, quota, bonus = 0;
   try {
     plan = (await planFor(email)) || "gratuit";   // sans offre : version gratuite, 3 images tous les 2 jours
     quota = await imageQuota(email, plan);
+    bonus = await readBonus(email);
   } catch (e) {
     console.error("KARAT image: offre/quota", e.message);
     return json(502, { error: "Vérification de l'offre impossible, réessayez." });
   }
-  if (quota.used >= quota.limit){
+  // Quota du jour épuisé : on utilise les points offerts par l'administrateur, s'il en reste
+  const useBonus = quota.used >= quota.limit;
+  if (useBonus && bonus < 1){
     return json(429, {
       error: plan === "gratuit"
         ? `Vous avez utilisé vos 3 images gratuites de cette période. Elles se renouvellent le ${freeResetText()}. Pour en générer davantage dès maintenant, l'offre Essentiel (6,99 € par mois) en inclut 3 par jour.`
@@ -74,12 +115,16 @@ exports.handler = async (event) => {
       console.error("KARAT image: erreur API", r.status, JSON.stringify(result).slice(0, 500));
       return json(502, { error: "Le générateur d'images a renvoyé une erreur" });
     }
-    await addImageUse(email, quota.used, plan);
+    if (useBonus) await writeBonus(email, bonus - 1);
+    else await addImageUse(email, quota.used, plan);
+    const imageId = await saveToGallery(email, result.data[0].b64_json, prompt);
     const unlimited = quota.limit === Infinity;
     return json(200, {
       image: "data:image/png;base64," + result.data[0].b64_json,
-      remaining: unlimited ? null : quota.limit - quota.used - 1,
+      id: imageId,
+      remaining: unlimited ? null : (useBonus ? 0 : quota.limit - quota.used - 1),
       limit: unlimited ? null : quota.limit,
+      bonus: useBonus ? bonus - 1 : bonus,
     });
   } catch (e) {
     console.error("KARAT image: injoignable", e.message);
