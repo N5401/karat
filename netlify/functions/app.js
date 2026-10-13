@@ -280,7 +280,7 @@ function afterRender(path){
   if (path === "/admin/abonnements"){ fillSubs(); if (adminToken()) fillStripeSubs(); }
   if (path === "/admin/journal"){ const s = $("[data-change='log-filter']"); if (s) s.value = ui.logFilter; }
   if (path === "/admin/annonces") fillAnnonceList();
-  if (path === "/") startAvis();
+  if (path === "/"){ startAvis(); startHome(); }
   if (path === "/admin/avis") fillAdminAvis();
   if (path === "/app/video"){ loadVideos(); loadCredits(); }
 }
@@ -380,109 +380,177 @@ const kpi = (label, value, sub = "", delta = null) => `
 /* =====================================================================
    PAGES PUBLIQUES
    ===================================================================== */
+/* ---------- Accueil : démo vivante, modules, étapes, preuves ---------- */
+const HM_ORDER = ["general", "code", "redaction", "data"];
+const HM_DEMO = {
+  general: [
+    { me: true, t: "Résume-moi ce rapport trimestriel en cinq points." },
+    { t: "Voici l'essentiel :<br>• Chiffre d'affaires en hausse de 12 %<br>• Coûts logistiques en baisse<br>• Un recrutement à prévoir au quatrième trimestre<br>• Retard sur le lancement de la boutique<br>• Trois actions prioritaires proposées." }
+  ],
+  code: [
+    { me: true, t: "Pourquoi ma fonction renvoie undefined ?" },
+    { t: "Le <code>return</code> manque : <code>forEach</code> ne renvoie rien. Utilisez plutôt <code>reduce</code> :", code: "return items.reduce((somme, i) => somme + i.prix, 0);" }
+  ],
+  redaction: [
+    { me: true, t: "Réécris ce message plus poliment : « Votre retard est inacceptable. »" },
+    { t: "« Je constate un retard de livraison et je vous remercie de bien vouloir m'indiquer une date prévue. »" }
+  ],
+  data: [
+    { me: true, t: "Quelle est la tendance de ventes.csv ?" },
+    { t: "Les ventes progressent d'environ 8 % par mois depuis mars, avec un creux en juillet. Un graphique en courbe mensuel le montrera le mieux." }
+  ]
+};
+const hmMsg = it => `<div class="hm-msg${it.me ? " me" : ""}">${it.t}${it.code ? `<pre class="hm-code"><code>${esc(it.code)}</code></pre>` : ""}</div>`;
+let hmRun = 0, hmTimer = null, hmAuto = true;
+
+// Affiche un exemple de conversation, message par message, puis passe au module suivant (sauf choix manuel)
+function hmRender(mod, instant){
+  const box = document.getElementById("hm-body");
+  if (!box) return;
+  const run = ++hmRun;
+  clearTimeout(hmTimer);
+  document.querySelectorAll(".hm-tab").forEach(b => b.classList.toggle("on", b.dataset.hmMod === mod));
+  const items = HM_DEMO[mod];
+  if (instant){ box.innerHTML = items.map(hmMsg).join(""); return; }
+  box.innerHTML = "";
+  let t = 350;
+  items.forEach(it => {
+    if (it.me){
+      setTimeout(() => { if (run === hmRun) box.insertAdjacentHTML("beforeend", hmMsg(it)); }, t);
+      t += 800;
+    } else {
+      setTimeout(() => {
+        if (run !== hmRun) return;
+        box.insertAdjacentHTML("beforeend", `<div class="hm-msg hm-typing"><i></i><i></i><i></i></div>`);
+        box.scrollTop = box.scrollHeight;
+      }, t);
+      setTimeout(() => {
+        if (run !== hmRun) return;
+        const dots = box.querySelector(".hm-typing");
+        if (dots) dots.remove();
+        box.insertAdjacentHTML("beforeend", hmMsg(it));
+        box.scrollTop = box.scrollHeight;
+      }, t + 1100);
+      t += 1700;
+    }
+  });
+  if (hmAuto){
+    hmTimer = setTimeout(() => {
+      if (run !== hmRun || !hmAuto) return;
+      hmRender(HM_ORDER[(HM_ORDER.indexOf(mod) + 1) % HM_ORDER.length], false);
+    }, t + 4500);
+  }
+}
+
+function startHome(){
+  const box = document.getElementById("hm-body");
+  if (!box) return;
+  const reduce = !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
+  hmAuto = !reduce;
+  hmRender("general", reduce);
+  document.querySelectorAll(".hm-tab").forEach(b => b.addEventListener("click", () => {
+    hmAuto = false;
+    hmRender(b.dataset.hmMod, false);
+  }));
+  document.querySelectorAll(".hm-mod-card").forEach(c => c.addEventListener("click", () => {
+    hmAuto = false;
+    hmRender(c.dataset.hmMod, false);
+    document.querySelector(".hm-hero")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }));
+  if ("IntersectionObserver" in window){
+    const io = new IntersectionObserver(es => es.forEach(e => {
+      if (e.isIntersecting){ e.target.classList.add("hm-in"); io.unobserve(e.target); }
+    }), { threshold: .12 });
+    document.querySelectorAll(".hm-rv").forEach(el => io.observe(el));
+  } else {
+    document.querySelectorAll(".hm-rv").forEach(el => el.classList.add("hm-in"));
+  }
+}
+
 function vLanding(){
   const promo = promoHidden();
-  const modules = Object.keys(MODES).map((k, i) => `
-    <article class="lp-mod-card">
-      <div class="lp-mod-top"><span class="lp-ico">${ic(MODES[k].icon)}</span><span class="lp-num">0${i + 1}</span></div>
+  const loggedIn = !!session;
+  const tabs = HM_ORDER.map(k => `<button type="button" class="hm-tab" data-hm-mod="${k}">${MODES[k].name}</button>`).join("");
+  const modCards = HM_ORDER.map((k, i) => `
+    <article class="hm-mod-card hm-rv" data-hm-mod="${k}">
+      <div class="hm-mod-top"><span class="hm-ico">${ic(MODES[k].icon)}</span><span class="hm-num">0${i + 1}</span></div>
       <h3>${MODES[k].name}</h3>
       <p>${MODES[k].desc}</p>
       <ul>${MODES[k].bullets.map(b => `<li>${b}</li>`).join("")}</ul>
     </article>`).join("");
+  const feats = [
+    { i: "grid",   t: "Joignez vos fichiers", d: "PDF, CSV, images et code : ajoutez-les à votre question en un clic." },
+    { i: "clock",  t: "Un historique clair", d: "Vos conversations classées par date, à reprendre quand vous voulez." },
+    { i: "image",  t: "Des images sur demande", d: "Décrivez l'image souhaitée. Pro permet aussi de retoucher une photo de référence." },
+    { i: "film",   t: "Des vidéos avec le son", d: "Vidéos IA de 8 secondes, incluses dans certaines offres ou achetées à l'unité avec des crédits." },
+    { i: "chat",   t: "Un vrai échange", d: "KARAT garde le fil de la discussion et continue une réponse coupée sur simple demande." },
+    { i: "shield", t: "Un espace privé", d: "Un compte personnel, des conversations visibles de vous seul, et un paiement géré par Stripe." }
+  ];
+  const primary = loggedIn
+    ? `<a class="btn btn-accent" href="#/app/chat">Ouvrir le panel ${ic("arrow")}</a>`
+    : `<a class="btn btn-accent" href="#/connexion?tab=signup">Essayer gratuitement ${ic("arrow")}</a>`;
+  const secondary = promo ? "" : `<a class="btn btn-line" href="#/tarifs">Voir les offres</a>`;
+  const note = loggedIn ? "" : `<p class="hm-note">Version gratuite sans carte bancaire · Résiliable à tout moment</p>`;
 
   const offres = promo ? "" : `
   <section class="lp-sec" id="offres"><div class="lp-wrap">
-    <div class="lp-sec-head">
+    <div class="lp-sec-head hm-rv">
       <div><div class="lp-kicker">Tarifs</div><h2 class="lp-h2">Une offre pour chaque usage.</h2></div>
       <p>TTC, sans engagement. Résiliable depuis votre espace.</p>
     </div>
     <div class="plans">${["essentiel", "pro", "expert"].map(planCard).join("")}</div>
   </div></section>`;
 
-  const cta = promo ? "" : `
-  <section class="lp-sec lp-sec-tight"><div class="lp-wrap">
-    <div class="lp-cta">
-      <div><div class="lp-kicker">Prêt ?</div><h2>Commencez avec 6,99&nbsp;€ par mois.</h2><p>Sans engagement, résiliable depuis votre espace.</p></div>
-      <a class="btn btn-accent" href="#/tarifs">Voir les offres ${ic("arrow")}</a>
-    </div>
-  </div></section>`;
-
   return `<div class="lp">
   ${pubHeader("/")}
 
-  <section class="lp-hero"><div class="lp-wrap lp-hero-grid">
+  <section class="hm-hero"><div class="lp-wrap hm-grid">
     <div>
-      <span class="lp-eyebrow"><i></i>Nouveau · Panel IA multi-modules</span>
-      <h1>Analysez <span class="lp-strike">moins</span>.<br/><span class="lp-acc">Décidez plus vite.</span></h1>
-      <p class="lp-lead">KARAT réunit l'analyse de fichiers, le code, la rédaction et les données dans un seul panel sobre et rapide.</p>
-      <div class="lp-ctas">${promo
-        ? `<a class="btn btn-accent" href="#/app/chat">Ouvrir le panel ${ic("arrow")}</a>`
-        : `<a class="btn btn-accent" href="#/tarifs">Voir les offres ${ic("arrow")}</a>
-           <a class="btn btn-line" href="#/connexion?tab=signup">Créer un compte</a>`}
-      </div>
-      <div class="lp-stats">
-        <div><b>4</b><span>modules métiers</span></div>
-        <div><b>Google</b><span>ou e-mail</span></div>
-        <div><b>Stripe</b><span>paiement sécurisé</span></div>
-        <div><b>6,99 €</b><span>offre de départ</span></div>
-      </div>
+      <span class="hm-eyebrow"><i></i>Assistant IA en français</span>
+      <h1 class="hm-h1">Plus de réponses utiles,<br/><span class="acc">moins de temps perdu.</span></h1>
+      <p class="hm-lead">KARAT répond, analyse vos fichiers, corrige votre code, rédige vos messages et lit vos tableaux. Dans un seul panel, avec un historique que vous retrouvez à tout moment.</p>
+      <div class="hm-ctas">${primary}${secondary}</div>
+      ${note}
     </div>
-
-    <div class="lp-visual" aria-hidden="true">
-      <div class="lp-window">
-        <div class="lp-win-bar"><span class="lp-dots"><i></i><i></i><i></i></span><span>karat — panel IA</span><span></span></div>
-        <div class="lp-win-body">
-          <aside class="lp-win-side">
-            <small>Modules</small>
-            <span class="lp-mod on">Général</span>
-            <span class="lp-mod">Code</span>
-            <span class="lp-mod">Rédaction</span>
-            <span class="lp-mod">Données</span>
-          </aside>
-          <div class="lp-win-main">
-            <div class="lp-msg me">Compare ces deux versions du module et résume les écarts.</div>
-            <div class="lp-msg">Analyse terminée sur 4 fichiers.<br/>• 3 améliorations de performance<br/>• 1 risque de régression signalé</div>
-            <div class="lp-msg me">Propose-moi un graphique pour les résultats.</div>
-            <div class="lp-msg">Un diagramme en barres par version est le plus lisible ici.</div>
-          </div>
-        </div>
-        <div class="lp-win-input"><span>Posez votre question…</span><span class="lp-send">${ic("arrow")}</span></div>
-      </div>
+    <div class="hm-demo" aria-label="Exemple de conversation">
+      <div class="hm-demo-top"><span class="hm-dots"><i></i><i></i><i></i></span><div class="hm-tabs">${tabs}</div></div>
+      <div class="hm-demo-body" id="hm-body"></div>
+      <div class="hm-demo-input"><span>Posez votre question…</span><span class="hm-send">${ic("arrow")}</span></div>
+      <p class="hm-caption">Exemples de réponses, à titre d'illustration.</p>
     </div>
   </div></section>
 
+  <div class="lp-wrap"><div class="hm-trust hm-rv">
+    <div>${ic("star")}<span><b>Version gratuite</b>pour commencer</span></div>
+    <div>${ic("card")}<span><b>Paiement Stripe</b>sécurisé</span></div>
+    <div>${ic("shield")}<span><b>Espace privé</b>à votre nom</span></div>
+    <div>${ic("clock")}<span><b>Résiliable</b>à tout moment</span></div>
+  </div></div>
+
   <section class="lp-sec" id="modules"><div class="lp-wrap">
-    <div class="lp-sec-head">
-      <div><div class="lp-kicker">Modules</div><h2 class="lp-h2">Un module pour chaque type de travail.</h2></div>
-      <p>Chaque module adapte le ton, la méthode et les suggestions à votre tâche.</p>
+    <div class="lp-sec-head hm-rv">
+      <div><div class="lp-kicker">Modules</div><h2 class="lp-h2">Un module pour chaque métier.</h2></div>
+      <p>Chaque module adapte le ton, la méthode et les suggestions à votre tâche. Cliquez sur un module pour voir un exemple.</p>
     </div>
-    <div class="lp-modules">${modules}</div>
+    <div class="hm-mods">${modCards}</div>
   </div></section>
 
   <section class="lp-sec lp-sec-tight" id="comment"><div class="lp-wrap">
-    <div class="lp-sec-head">
-      <div><div class="lp-kicker">Démarrer</div><h2 class="lp-h2">Trois étapes, moins de deux minutes.</h2></div>
-    </div>
-    <div class="lp-steps">
-      <div class="lp-step"><span class="n">01</span><h3>Créez votre compte</h3><p>Par e-mail ou avec Google. Votre espace est privé.</p></div>
-      <div class="lp-step"><span class="n">02</span><h3>Choisissez une offre</h3><p>Essentiel, Pro ou Expert. Paiement sécurisé par Stripe, résiliable à tout moment.</p></div>
-      <div class="lp-step"><span class="n">03</span><h3>Ouvrez le panel</h3><p>Lisez le rappel des règles d'utilisation, validez-le, puis commencez.</p></div>
+    <div class="lp-sec-head hm-rv"><div><div class="lp-kicker">Démarrer</div><h2 class="lp-h2">Trois étapes, moins de deux minutes.</h2></div></div>
+    <div class="hm-steps">
+      <div class="hm-step hm-rv"><span class="hm-n">1</span><h3>Créez votre compte</h3><p>Par e-mail ou avec Google, en une minute.</p></div>
+      <div class="hm-step hm-rv"><span class="hm-n">2</span><h3>Posez votre première question</h3><p>La version gratuite est disponible tout de suite, sans carte bancaire.</p></div>
+      <div class="hm-step hm-rv"><span class="hm-n">3</span><h3>Passez à une offre si besoin</h3><p>Essentiel, Pro ou Expert, résiliable à tout moment.</p></div>
     </div>
   </div></section>
 
   <section class="lp-sec" id="features"><div class="lp-wrap">
-    <div class="lp-sec-head">
-      <div><div class="lp-kicker">Fonctionnalités</div><h2 class="lp-h2">Un seul endroit pour vos fichiers, vos questions et vos résultats.</h2></div>
-      <p>Tout reste au même endroit, avec un historique consultable.</p>
+    <div class="lp-sec-head hm-rv">
+      <div><div class="lp-kicker">Fonctionnalités</div><h2 class="lp-h2">Tout ce qu'il faut, au même endroit.</h2></div>
+      <p>Fichiers, historique, images et vidéos, sans changer d'outil.</p>
     </div>
-    <div class="lp-bento">
-      <article class="lp-feat lp-f1"><span class="k">01 — Fichiers</span><h3>Joignez vos documents à la conversation</h3><p>Textes, code, tableaux : chargez-les dans votre bibliothèque et utilisez-les en un clic dans vos questions.</p>
-        <div class="lp-chips"><span>rapport.pdf</span><span>ventes.csv</span><span>module.js</span><span>photo.png</span></div></article>
-      <article class="lp-feat lp-f2"><span class="k">02 — Historique</span><h3>Retrouvez chaque échange</h3><p>Conversations classées par date, consultables à tout moment.</p>
-        <div class="lp-chips"><span>Aujourd'hui</span><span>Hier</span><span>7 derniers jours</span></div></article>
-      <article class="lp-feat lp-f3"><span class="k">03 — Accès</span><h3>Compte personnel</h3><p>Inscription par e-mail ou connexion Google.</p></article>
-      <article class="lp-feat lp-f4"><span class="k">04 — Abonnement</span><h3>Gérez votre offre</h3><p>Date de renouvellement et résiliation depuis votre espace.</p></article>
-      <article class="lp-feat lp-f5"><span class="k">05 — Confidentialité</span><h3>Isolé par compte</h3><p>Vos conversations ne sont visibles que de vous.</p></article>
+    <div class="hm-feats">
+      ${feats.map(f => `<article class="hm-feat hm-rv"><span class="hm-ico">${ic(f.i)}</span><h3>${f.t}</h3><p>${f.d}</p></article>`).join("")}
     </div>
   </div></section>
 
@@ -504,7 +572,13 @@ function vLanding(){
     </div>
   </div></section>
 
-  ${cta}
+  <section class="lp-sec lp-sec-tight"><div class="lp-wrap">
+    <div class="hm-final hm-rv">
+      <h2>Essayez KARAT aujourd'hui.</h2>
+      <p>Créez votre compte et posez votre première question en moins d'une minute.</p>
+      <a class="btn btn-accent" href="${loggedIn ? "#/app/chat" : "#/connexion?tab=signup"}">${loggedIn ? "Ouvrir le panel" : "Créer mon compte"} ${ic("arrow")}</a>
+    </div>
+  </div></section>
 
   <footer class="lp-foot"><div class="lp-wrap">
     <span class="logo"><i></i>KARAT</span>
@@ -1985,7 +2059,7 @@ function visitorId(){
 const VISITOR_ID = visitorId();
 function onlinePill(){
   const n = onlineCount == null ? "…" : onlineCount.toLocaleString("fr-FR");
-  return `<span class="online-pill" title="Visiteurs actifs ces dernières minutes"><span class="online-dot"></span><b id="online-count">${n}</b>&nbsp;en ligne</span>`;
+  return `<span class="online-pill" title="Visiteurs actifs ces dernières minutes"><span class="online-dot"></span><b id="online-count">${n}</b><span class="online-word">&nbsp;en ligne</span></span>`;
 }
 async function beatPresence(){
   if (document.visibilityState === "hidden") return;
