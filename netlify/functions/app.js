@@ -30,7 +30,7 @@ const CONFIG = {
 const PLANS = {
   essentiel: { name: "Essentiel", price: "6,99 €",  num: 6.99, priceAn: "99 €", numAn: 99, desc: "Pour découvrir KARAT au quotidien.", feats: ["Assistant IA polyvalent", "Messages limités", "3 générations d'images par jour","Analyse de fichiers texte, PDF et images", "Historique des conversations sur 30 jours", "1 vidéo IA offerte chaque mois", "Support par e-mail"] },
   pro:       { name: "Pro",       price: "29,99 €", num: 29.99, priceAn: "299 €", numAn: 299, desc: "Pour les professionnels qui travaillent chaque jour.", feats: ["Tout Essentiel", "Messages limités", "5 générations d'images par jour","Retouche d'image à partir d'une photo de référence", "Analyse de plusieurs documents à la fois (jusqu'à 10 PDF par message)", "Réponses longues et détaillées, jusqu'à une quinzaine de pages", "Modes spécialisés : code, rédaction, analyse de données", "Historique illimité", "3 vidéos IA offertes chaque mois", "Support prioritaire"] },
-  expert:    { name: "Expert",    price: "49,99 €", num: 49.99, priceAn: "499 €", numAn: 499, desc: "Pour les équipes et les usages intensifs.", feats: ["Tout Pro", "Messages et images illimités", "Génération de vidéos IA avec le son, par mois", "Modèle d'IA le plus avancé, pour les tâches complexes", "Accompagnement dédié à la mise en place"] }
+  expert:    { name: "Expert",    price: "49,99 €", num: 49.99, priceAn: "499 €", numAn: 499, desc: "Pour les équipes et les usages intensifs.", feats: ["Tout Pro, et en plus :", "Messages et images illimités", "Génération de vidéos IA avec le son, par mois", "Modèle d'IA le plus avancé, pour les tâches complexes", "Accompagnement dédié à la mise en place"] }
 };
 
 const MODES = {
