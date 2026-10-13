@@ -16,8 +16,8 @@ const PROVIDER = (process.env.VIDEO_PROVIDER || "google").toLowerCase() === "atl
 // Pour passer au moins cher (Veo 3.1 Lite, 0,05 $/s en 720p), mettez son identifiant exact dans VEO_MODEL.
 const VEO_MODEL = /^[\w.-]{3,80}$/.test(process.env.VEO_MODEL || "") ? process.env.VEO_MODEL : "veo-3.1-generate-preview";
 const GOOGLE_PREDICT = `https://generativelanguage.googleapis.com/v1beta/models/${VEO_MODEL}:predictLongRunning`;
-// Avec une image d'exemple, Google refuse le modèle Lite : on utilise donc VEO_IMAGE_MODEL (défaut : Veo 3.1 standard).
-const VEO_IMAGE_MODEL = /^[\w.-]{3,80}$/.test(process.env.VEO_IMAGE_MODEL || "") ? process.env.VEO_IMAGE_MODEL : "veo-3.1-generate-preview";
+// Modèle utilisé quand une image d'exemple est fournie (par défaut le même que VEO_MODEL, donc le Lite et son prix de 0,37 €).
+const VEO_IMAGE_MODEL = /^[\w.-]{3,80}$/.test(process.env.VEO_IMAGE_MODEL || "") ? process.env.VEO_IMAGE_MODEL : VEO_MODEL;
 const GOOGLE_PREDICT_IMAGE = `https://generativelanguage.googleapis.com/v1beta/models/${VEO_IMAGE_MODEL}:predictLongRunning`;
 const ATLAS_GENERATE = "https://api.atlascloud.ai/api/v1/model/generateVideo";
 // Vidéos incluses par mois selon l'offre (0 = crédits seulement ; Infinity = illimité).
@@ -42,7 +42,7 @@ const safeName = (name) => String(name).replace(/[^\w.-]/g, "_");
 // Instance envoyée à Veo : le texte, et l'image d'exemple comme image de départ si elle est fournie
 function googleInstance(prompt, ref){
   const inst = { prompt };
-  if (ref) inst.image = { inlineData: { mimeType: ref.slice(5, ref.indexOf(";")), data: ref.slice(ref.indexOf(",") + 1) } };
+  if (ref) inst.image = { bytesBase64Encoded: ref.slice(ref.indexOf(",") + 1), mimeType: ref.slice(5, ref.indexOf(";")) };
   return inst;
 }
 
