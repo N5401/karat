@@ -1849,7 +1849,7 @@ const CONFIG = {
   GOOGLE_CLIENT_ID: "944959967913-jtiabnp67550tks8i0pq4pe46n0pjkns.apps.googleusercontent.com",
   ADMIN_EMAILS: ["tarzanastral@gmail.com"],
   PAYMENT_LINKS: {
-    essentiel: "https://buy.stripe.com/7sY5kv1KU2KKgiN05Z5c403",
+    essentiel: "https://buy.stripe.com/00w5kv3T2gBA1nT7yr5c40a",
     pro:       "https://buy.stripe.com/aFa7sD4X6adc1nTf0T5c404",
     expert:    "https://buy.stripe.com/28E00bexGclk2rX1a35c405"
   },
@@ -1869,8 +1869,8 @@ const CONFIG = {
 };
 
 const PLANS = {
-  essentiel: { name: "Essentiel", price: "9,99 €",  num: 9.99, priceAn: "99 €", numAn: 99, desc: "Pour découvrir KARAT au quotidien.", feats: ["Assistant IA polyvalent", "50 messages par jour", "3 générations d'images par jour","Analyse de fichiers texte, PDF et images", "Historique des conversations sur 30 jours", "Vidéos IA à l'unité : 5 € la vidéo de 8 secondes", "Support par e-mail"] },
-  pro:       { name: "Pro",       price: "29,99 €", num: 29.99, priceAn: "299 €", numAn: 299, desc: "Pour les professionnels qui travaillent chaque jour.", feats: ["Tout Essentiel", "120 messages par jour", "5 générations d'images par jour","Retouche d'image à partir d'une photo de référence", "Analyse de plusieurs documents à la fois (jusqu'à 10 PDF par message)", "Réponses longues et détaillées, jusqu'à une quinzaine de pages", "Modes spécialisés : code, rédaction, analyse de données", "Historique illimité", "Vidéos IA à l'unité : 5 € la vidéo de 8 secondes", "Support prioritaire"] },
+  essentiel: { name: "Essentiel", price: "6,99 €",  num: 6.99, priceAn: "99 €", numAn: 99, desc: "Pour découvrir KARAT au quotidien.", feats: ["Assistant IA polyvalent", "80 messages par jour", "3 générations d'images par jour","Analyse de fichiers texte, PDF et images", "Historique des conversations sur 30 jours", "1 vidéo IA offerte chaque mois, puis 5 € la vidéo de 8 secondes", "Support par e-mail"] },
+  pro:       { name: "Pro",       price: "29,99 €", num: 29.99, priceAn: "299 €", numAn: 299, desc: "Pour les professionnels qui travaillent chaque jour.", feats: ["Tout Essentiel", "200 messages par jour", "5 générations d'images par jour","Retouche d'image à partir d'une photo de référence", "Analyse de plusieurs documents à la fois (jusqu'à 10 PDF par message)", "Réponses longues et détaillées, jusqu'à une quinzaine de pages", "Modes spécialisés : code, rédaction, analyse de données", "Historique illimité", "3 vidéos IA offertes chaque mois, puis 5 € la vidéo de 8 secondes", "Support prioritaire"] },
   expert:    { name: "Expert",    price: "49,99 €", num: 49.99, priceAn: "499 €", numAn: 499, desc: "Pour les équipes et les usages intensifs.", feats: ["Tout Pro", "Messages et images illimités", "Génération de vidéos IA avec le son, par mois", "Modèle d'IA le plus avancé, pour les tâches complexes", "Accompagnement dédié à la mise en place"] }
 };
 
@@ -2242,7 +2242,7 @@ function vLanding(){
   const cta = promo ? "" : `
   <section class="lp-sec lp-sec-tight"><div class="lp-wrap">
     <div class="lp-cta">
-      <div><div class="lp-kicker">Prêt ?</div><h2>Commencez avec 9,99&nbsp;€ par mois.</h2><p>Sans engagement, résiliable depuis votre espace.</p></div>
+      <div><div class="lp-kicker">Prêt ?</div><h2>Commencez avec 6,99&nbsp;€ par mois.</h2><p>Sans engagement, résiliable depuis votre espace.</p></div>
       <a class="btn btn-accent" href="#/tarifs">Voir les offres ${ic("arrow")}</a>
     </div>
   </div></section>`;
@@ -2264,7 +2264,7 @@ function vLanding(){
         <div><b>4</b><span>modules métiers</span></div>
         <div><b>Google</b><span>ou e-mail</span></div>
         <div><b>Stripe</b><span>paiement sécurisé</span></div>
-        <div><b>9,99 €</b><span>offre de départ</span></div>
+        <div><b>6,99 €</b><span>offre de départ</span></div>
       </div>
     </div>
 
@@ -2384,7 +2384,7 @@ function vPricing(){
       <button class="btn ${billing === "an" ? "btn-accent" : "btn-line"} btn-sm" data-action="billing" data-period="an">Annuel · 2 mois offerts</button>
     </div>
     <div class="plans">${["essentiel", "pro", "expert"].map(planCard).join("")}</div>
-    <p class="small muted" style="text-align:center;margin-top:22px">Version gratuite, sans limite de durée : 10 messages et 1 image tous les 2 jours, avec des réponses courtes. Pour aller plus loin, choisissez une offre ci-dessus.</p>
+    <p class="small muted" style="text-align:center;margin-top:22px">Version gratuite, sans limite de durée : 30 messages par jour et 3 images tous les 2 jours, avec des réponses courtes. Pour aller plus loin, choisissez une offre ci-dessus.</p>
   </div></section>
   <section class="section" style="padding-top:20px"><div class="wrap" style="max-width:820px">
     <div class="label">Questions fréquentes</div>
@@ -2908,7 +2908,7 @@ function vSubscription(){
             <p class="muted small" style="margin-top:6px">Active depuis le ${fmtDay(sub.since)} · prochain renouvellement le ${fmtDay(addMonths(sub.since, 1))}</p></div>
           <div class="row wrap-x">${promoHidden() ? "" : `<a class="btn btn-line btn-sm" href="#/tarifs">Changer d'offre</a>`}<button class="btn btn-ghost btn-sm" data-action="cancel-sub">Résilier</button></div>
         </div>`
-      : `<div class="plan-status"><div><div class="label">Statut</div><b>Version gratuite</b><p class="muted small" style="margin-top:6px">10 messages et 1 image tous les 2 jours. Une offre vous en donne davantage.</p></div><a class="btn btn-accent btn-sm" href="#/tarifs">Voir les offres</a></div>`;
+      : `<div class="plan-status"><div><div class="label">Statut</div><b>Version gratuite</b><p class="muted small" style="margin-top:6px">30 messages par jour et 3 images tous les 2 jours. Une offre vous en donne davantage.</p></div><a class="btn btn-accent btn-sm" href="#/tarifs">Voir les offres</a></div>`;
   const features = p ? `<div class="card" style="margin-top:18px"><div class="card-h"><h3>Inclus dans votre offre</h3></div>
     <ul style="list-style:none;display:grid;gap:12px">${PLANS[p].feats.map(f => `<li class="row">${ic("check")} ${esc(f)}</li>`).join("")}</ul></div>` : "";
   return appShell("/app/offre", pageHead("Espace", "Abonnement", "Votre offre, son renouvellement et sa résiliation.") +
@@ -3754,16 +3754,24 @@ function imgQuotaText(){
   if (p === "expert") return "Offre Expert : messages et images illimités.";
   if (p === "pro") return "Offre Pro : 5 images par jour.";
   if (p === "essentiel") return "Offre Essentiel : 3 images par jour.";
-  return session ? "Version gratuite : 1 image tous les 2 jours." : "Connectez-vous pour générer des images.";
+  return session ? "Version gratuite : 3 images tous les 2 jours." : "Connectez-vous pour générer des images.";
 }
 /* ---------- Vidéos (offre Expert) : le serveur vérifie l'offre et le quota ---------- */
-const VIDEO_MAX_MONTH = 6; // doit rester identique à VIDEO_MONTHLY dans netlify/functions/video.js
+// Vidéos incluses par mois selon l'offre : doit rester identique à VIDEO_MONTHLY dans netlify/functions/video.js
+const VIDEO_MONTHLY = { essentiel: 1, pro: 3, expert: 6 };
+function videoIncludedText(){
+  const p = currentPlan();
+  if (p === "admin") return "Accès administrateur : vidéos illimitées.";
+  const n = VIDEO_MONTHLY[p];
+  if (!n) return "Vidéos à l'unité : 1 crédit par vidéo.";
+  return `Offre ${PLANS[p].name} : ${n} vidéo${n > 1 ? "s" : ""} par mois incluse${n > 1 ? "s" : ""}, puis des crédits.`;
+}
 function isExpertPlan(){ const p = currentPlan(); return p === "expert" || p === "admin"; }
 function vVideo(){
   const who = isAdmin(session && session.email) ? " (accès administrateur illimité)" : "";
   const body = paidAccess()
     ? `<div class="card" style="max-width:720px">
-        <p class="muted small" style="margin-bottom:14px">${isExpertPlan() ? `Offre Expert : ${VIDEO_MAX_MONTH} vidéos par mois incluses${who}, puis des crédits.` : "Vidéos à l'unité : 1 crédit par vidéo."} Une génération prend environ 2 à 3 minutes.</p>
+        <p class="muted small" style="margin-bottom:14px">${videoIncludedText()} Une génération prend environ 2 à 3 minutes.</p>
         <div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">
           <p class="small">Crédits disponibles : <b id="credit-balance">…</b> <span class="muted">· 5 € le crédit, 1 crédit = 1 vidéo de 8 secondes</span></p>
           ${CONFIG.CREDIT_LINK ? `<a class="btn btn-line btn-sm" href="${creditUrl()}">Acheter des crédits</a>` : `<span class="muted small">Achat de crédits bientôt disponible</span>`}
@@ -3997,9 +4005,9 @@ Object.assign(ACTIONS, {
 /* ---------- Limites d'usage (affichage) ---------- */
 // Doit rester identique à _shared/acces.js (MSG_QUOTA, IMAGE_QUOTA)
 const QUOTAS = {
-  gratuit:   { msgs: 10,       imgs: 1,        rep: "Brèves" },
-  essentiel: { msgs: 50,       imgs: 3,        rep: "Courtes à moyennes" },
-  pro:       { msgs: 120,      imgs: 5,        rep: "Longues, jusqu'à une quinzaine de pages" },
+  gratuit:   { msgs: 30,       imgs: 3,        rep: "Brèves" },
+  essentiel: { msgs: 80,       imgs: 3,        rep: "Courtes à moyennes" },
+  pro:       { msgs: 200,      imgs: 5,        rep: "Longues, jusqu'à une quinzaine de pages" },
   expert:    { msgs: Infinity, imgs: Infinity, rep: "Longues, avec le modèle le plus avancé" }
 };
 const fmtQ = (n, zero = "Aucune") => n === Infinity ? "Illimité" : n === 0 ? zero : String(n);
@@ -4014,7 +4022,7 @@ async function refreshUsage(){
     if (!r.ok) return;
     const u = await r.json();
     if (u.msgLimit === undefined) return;
-    el.textContent = u.msgLimit === null ? "Messages illimités" : `Messages ${plan === "gratuit" ? "sur 2 jours" : "aujourd'hui"} : ${Math.max(0, u.msgLimit - u.msgUsed)} / ${u.msgLimit}`;
+    el.textContent = u.msgLimit === null ? "Messages illimités" : `Messages restants aujourd'hui : ${Math.max(0, u.msgLimit - u.msgUsed)} / ${u.msgLimit}`;
   }catch(e){ el.textContent = ""; }
 }
 
@@ -4051,7 +4059,7 @@ function vGuide(){
           <p>KARAT est un assistant IA en français. Vous lui posez une question, vous joignez un fichier ou une image, et il répond dans la conversation.</p>
           <div class="kg-steps">
             <div class="kg-step"><span class="n">ÉTAPE 1</span><h3>Créez votre compte</h3><p>Avec votre e-mail et un mot de passe, ou avec Google.</p></div>
-            <div class="kg-step"><span class="n">ÉTAPE 2</span><h3>Essayez KARAT</h3><p>La version gratuite permet 10 messages et 1 image tous les 2 jours, sans limite de durée.</p></div>
+            <div class="kg-step"><span class="n">ÉTAPE 2</span><h3>Essayez KARAT</h3><p>La version gratuite permet 30 messages par jour et 3 images tous les 2 jours, sans limite de durée.</p></div>
             <div class="kg-step"><span class="n">ÉTAPE 3</span><h3>Choisissez une offre</h3><p>Pour plus de messages et d'images, choisissez Essentiel, Pro ou Expert sur la page Tarifs.</p></div>
           </div>
           <p>${session ? "Le menu à gauche donne accès au chat, à l'historique, aux modules, aux images, au support et à votre abonnement." : "Une fois votre compte créé, le menu donne accès au chat, à l'historique, aux modules, aux images, au support et à votre abonnement."}</p>`)}
@@ -4084,7 +4092,7 @@ function vGuide(){
           </ul>`)}
 
         ${sec("images", "05", "Générer des images", `
-          <p>La génération d'images est disponible pour tous : la version gratuite en inclut une tous les 2 jours, et les offres payantes en incluent davantage. Ouvrez la page <strong>Images</strong> du menu, décrivez la scène souhaitée et lancez la génération.</p>
+          <p>La génération d'images est disponible pour tous : la version gratuite en inclut 3 tous les 2 jours, et les offres payantes en incluent davantage. Ouvrez la page <strong>Images</strong> du menu, décrivez la scène souhaitée et lancez la génération.</p>
           <ul>
             <li>Essentiel : 3 images par jour.</li>
             <li>Pro : 5 images par jour, et la retouche à partir d'une photo de référence.</li>
@@ -4100,7 +4108,7 @@ function vGuide(){
           <ul>
             <li>Un message compte pour 1, même si vous joignez plusieurs fichiers.</li>
             <li>Une réponse coupée, relancée avec « continue », compte comme un nouveau message.</li>
-            <li>La version gratuite se renouvelle tous les 2 jours. Les offres payantes se renouvellent chaque jour, à minuit (heure UTC).</li>
+            <li>Les messages se renouvellent chaque jour, à minuit (heure UTC). Les images de la version gratuite se renouvellent tous les 2 jours.</li>
           </ul>`)}
 
         ${sec("compte", "07", "Compte et données", `
@@ -4116,7 +4124,7 @@ function vGuide(){
           <ul>
             <li>Pour résilier, cliquez sur « Résilier ». Votre accès reste actif jusqu'à la fin de la période payée.</li>
             <li>Pour changer d'offre, écrivez-nous depuis la page Support.</li>
-            <li>La version gratuite n'a pas de limite de durée : elle se renouvelle tous les 2 jours.</li>
+            <li>La version gratuite n'a pas de limite de durée : ses messages se renouvellent chaque jour, et ses images tous les 2 jours.</li>
           </ul>`)}
 
         ${sec("prudence", "09", "Prudence et règles d'usage", `
@@ -4129,8 +4137,8 @@ function vGuide(){
 
         ${sec("faq", "10", "Questions fréquentes", `
           ${qa("Pourquoi ma réponse s'arrête-t-elle ?", "Elle est plus longue que la limite de votre offre. Écrivez « continue » pour recevoir la suite.")}
-          ${qa("Pourquoi vois-je « limite atteinte » ?", "Vous avez utilisé vos messages de la période en cours. La version gratuite se renouvelle tous les 2 jours, les offres payantes chaque jour. Une offre supérieure vous en donne davantage.")}
-          ${qa("Pourquoi ne puis-je pas générer d'image ?", "Vous avez utilisé l'image de votre période en cours. La version gratuite en inclut une tous les 2 jours, et les offres payantes en incluent davantage.")}
+          ${qa("Pourquoi vois-je « limite atteinte » ?", "Vous avez utilisé les messages de votre journée. Ils se renouvellent chaque jour, à minuit (heure UTC). Une offre supérieure vous en donne davantage.")}
+          ${qa("Pourquoi ne puis-je pas générer d'image ?", "Vous avez utilisé les images de votre période en cours. La version gratuite en inclut 3 tous les 2 jours, et les offres payantes en incluent davantage.")}
           ${qa("Mon historique a disparu.", "L'historique est enregistré dans le navigateur. Reconnectez-vous depuis le même navigateur et le même appareil.")}
           ${qa("Qui contacter ?", `Depuis la page Support, ou par e-mail à ${SUPPORT_EMAIL} en indiquant l'adresse de votre compte.`)}`)}
 
