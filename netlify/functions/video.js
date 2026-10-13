@@ -36,6 +36,13 @@ const monthKey = (email) => "video|" + encodeURIComponent(email) + "|" + new Dat
 // Nom de fichier sûr pour les clés de stockage
 const safeName = (name) => String(name).replace(/[^\w.-]/g, "_");
 
+// Instance envoyée à Veo : le texte, et l'image d'exemple comme image de départ si elle est fournie
+function googleInstance(prompt, ref){
+  const inst = { prompt };
+  if (ref) inst.image = { inlineData: { mimeType: ref.slice(5, ref.indexOf(";")), data: ref.slice(ref.indexOf(",") + 1) } };
+  return inst;
+}
+
 exports.handler = async (event) => {
   if (event.httpMethod !== "POST") return json(405, { error: "Méthode non autorisée" });
 
@@ -52,6 +59,11 @@ exports.handler = async (event) => {
   const durationSeconds = 8;
   const resolution = "720p";
   const aspectRatio = RATIOS.includes(data.aspectRatio) ? data.aspectRatio : "16:9";
+
+  // Image d'exemple facultative : la vidéo part de cette image (JPG, PNG ou WebP, 3 Mo au plus)
+  const ref = typeof data.ref === "string" && data.ref.length <= 4000000 && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(data.ref) ? data.ref : null;
+  if (data.ref && !ref) return json(400, { error: "Image d'exemple refusée : utilisez une photo JPG, PNG ou WebP de 3 Mo au plus." });
+  if (ref && PROVIDER === "atlas") return json(400, { error: "L'image d'exemple n'est pas prise en charge avec ce fournisseur vidéo." });
 
   // L'offre est vérifiée sur le serveur, jamais seulement dans le navigateur
   let plan = null;
@@ -105,7 +117,7 @@ exports.handler = async (event) => {
         method: "POST",
         headers: { "x-goog-api-key": apiKey, "Content-Type": "application/json" },
         body: JSON.stringify({
-          instances: [{ prompt }],
+          instances: [googleInstance(prompt, ref)],
           parameters: { aspectRatio, durationSeconds, resolution },
         }),
       });
