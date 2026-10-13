@@ -2188,6 +2188,7 @@ const ROUTES = [
   { re: /^\/app\/images$/,            fn: vImages,         app: true },
   { re: /^\/app\/video$/,             fn: vVideo,          app: true },
   { re: /^\/admin\/annonces$/,         fn: vAdminAnnonces,   admin: true },
+  { re: /^\/admin\/attributions$/,   fn: vAdminGrants,     admin: true },
   { re: /^\/admin\/avis$/,              fn: vAdminAvis,        admin: true },
   { re: /^\/app\/support$/,             fn: vSupport,        app: true },
   { re: /^\/admin\/reglages$/,       fn: vAdminSettings,  admin: true }
@@ -2242,6 +2243,7 @@ function afterRender(path){
   if (path === "/"){ startAvis(); startHome(); }
   if (path === "/admin/avis") fillAdminAvis();
   if (path === "/app/video"){ loadVideos(); loadCredits(); }
+  if (path === "/app/images") loadImages();
 }
 
 /* =====================================================================
@@ -2305,6 +2307,7 @@ function appShell(path, content){
         ${link("/admin/journal", "list", "Journal")}
         ${link("/admin/annonces", "bell", "Annonces")}
         ${link("/admin/avis", "star", "Avis")}
+        ${link("/admin/attributions", "card", "Attributions")}
         ${link("/admin/reglages", "settings", "Réglages")}` : ""}
       <div class="foot">
         <div class="plan-block">
@@ -4146,12 +4149,13 @@ function vImages(){
       </div>
       <input type="file" id="imgRefFile" accept="image/*" hidden />
       <div id="img-out" style="margin-top:22px"></div>
+      <div id="img-list" style="margin-top:26px"></div>
     </div>`);
 }
 
 Object.assign(ACTIONS, {
   "img-ref-pick": () => { const f = $("#imgRefFile"); if (f) f.click(); },
-  "img-ref-remove": () => { const pr = ($("#img-prompt") || {}).value || ""; ui.imgRef = null; render(); const t = $("#img-prompt"); if (t) t.value = pr; },
+  "img-ref-remove": () => { const pr = ($("#img-prompt") || {}).value || ""; ui.imgRef = null; render(); loadImages(); const t = $("#img-prompt"); if (t) t.value = pr; },
   "img-generate": async () => {
     const prompt = ($("#img-prompt")?.value || "").trim();
     const out = $("#img-out");
@@ -4171,7 +4175,8 @@ Object.assign(ACTIONS, {
       if (!r.ok || !d.image) throw new Error(d.error || "Erreur");
       const restant = d.remaining === null || d.remaining === undefined ? "" : `<p class="muted small" style="margin-top:12px">Il vous reste ${d.remaining} image${d.remaining > 1 ? "s" : ""} aujourd'hui.</p>`;
       out.innerHTML = `<img src="${d.image}" alt="${esc(prompt)}" style="width:100%;max-width:520px;border-radius:14px;border:1px solid var(--line)">
-        <div style="margin-top:14px"><a class="btn btn-line btn-sm" href="${d.image}" download="karat-image.png">Télécharger</a></div>${restant}`;
+        <div style="margin-top:14px"><a class="btn btn-line btn-sm" href="${d.image}" download="karat-image.png">Télécharger</a></div>${restant}${d.bonus ? `<p class="muted small" style="margin-top:6px">Points images restants : ${d.bonus}.</p>` : ""}`;
+        loadImages();
     } catch (e) {
       out.innerHTML = `<p class="muted small">${esc(e.message === "Erreur" ? "La génération a échoué. Réessayez dans un instant." : e.message)}</p>`;
     }
@@ -4188,6 +4193,7 @@ document.addEventListener("change", async e => {
     const im = await shrinkImage(file);
     ui.imgRef = im.data;
     render();
+    loadImages();
     const t = $("#img-prompt"); if (t) t.value = pr;
   } catch (err) { toast(`« ${file.name} » n'a pas pu être lue. Essayez une photo JPG ou PNG.`, true); }
 });
@@ -4225,6 +4231,100 @@ Object.assign(ACTIONS, {
   "support-copy": () => {
     try { navigator.clipboard.writeText(SUPPORT_EMAIL); toast("Adresse copiée"); }
     catch (e) { toast("Copie impossible : sélectionnez l'adresse", true); }
+  }
+});
+
+/* ---------- Galerie « Mes images » : chaque image générée est conservée sur le site ---------- */
+async function loadImages(){
+  const box = $("#img-list");
+  if (!box || !session) return;
+  const who = enc(session.email);
+  try {
+    const r = await fetch(`/.netlify/functions/image-list?email=${who}`, { cache: "no-store" });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.error || "Liste indisponible");
+    const items = d.images || [];
+    box.innerHTML = `<div class="small muted" style="margin-bottom:12px;letter-spacing:.08em">MES IMAGES</div>` + (items.length
+      ? `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px">${items.map(im => {
+          const src = `/.netlify/functions/image-file?email=${who}&id=${enc(im.id)}`;
+          return `<div style="border:1px solid var(--line);border-radius:14px;padding:10px">
+            <img src="${src}" alt="${esc(im.prompt)}" loading="lazy" style="width:100%;border-radius:10px;display:block">
+            <div class="small" style="margin-top:8px">${esc(im.prompt)}</div>
+            <div class="small muted" style="margin-top:4px">${new Date(im.createdAt).toLocaleString("fr-FR")}</div>
+            <a class="btn btn-line btn-sm" style="margin-top:8px" href="${src}" download="karat-image.png">Télécharger</a>
+          </div>`;
+        }).join("")}</div>`
+      : `<p class="muted small">Aucune image pour l'instant.</p>`);
+  } catch (e) {
+    box.innerHTML = `<p class="muted small">${esc(e.message)}</p>`;
+  }
+}
+
+/* ---------- Administration : attribution de crédits vidéo et de points images, par e-mail ---------- */
+function vAdminGrants(){
+  return appShell("/admin/attributions", pageHead("Administration", "Attributions", "Ajoutez des crédits vidéo ou des points images au compte d'un utilisateur, à partir de son adresse e-mail.") +
+    `<div class="grid g2" style="align-items:start">
+      <div class="card">
+        <div class="card-h"><h3>Attribuer</h3></div>
+        <div class="field" style="margin-bottom:14px"><label for="gr-email">E-MAIL DU COMPTE</label><input id="gr-email" class="input" type="email" placeholder="client@exemple.fr" /></div>
+        <div class="field" style="margin-bottom:14px"><label for="gr-type">TYPE</label><select id="gr-type" class="select" style="width:100%;height:44px"><option value="video">Crédits vidéo (1 crédit = 1 vidéo de 8 secondes)</option><option value="image">Points images (en plus du quota du jour)</option></select></div>
+        <div class="field" style="margin-bottom:14px"><label for="gr-amount">QUANTITÉ</label><input id="gr-amount" class="input" type="number" min="1" max="1000" value="1" /></div>
+        <div class="field" style="margin-bottom:18px"><label for="gr-token">JETON ADMINISTRATEUR</label><input id="gr-token" class="input" type="password" value="${esc(adminToken())}" placeholder="Votre jeton" /></div>
+        <div class="row" style="gap:10px;flex-wrap:wrap">
+          <button class="btn btn-accent" data-action="grant-send">Attribuer</button>
+          <button class="btn btn-line" data-action="grant-check">Voir le solde</button>
+        </div>
+        <div id="gr-result" style="margin-top:16px"></div>
+      </div>
+      <div class="card">
+        <div class="card-h"><h3>Comment ça marche</h3></div>
+        <p class="muted small">Les crédits vidéo s'ajoutent au solde du compte et servent à la prochaine génération. Les points images s'ajoutent après le quota quotidien de l'offre.</p>
+        <p class="muted small" style="margin-top:10px">Aucun e-mail n'est envoyé au client : prévenez-le vous-même.</p>
+      </div>
+    </div>`);
+}
+const grantBalance = d => `<p class="muted small" style="margin-top:8px">Solde du compte : ${d.videoCredits} crédit(s) vidéo · ${d.imageBonus} point(s) image</p>`;
+
+Object.assign(ACTIONS, {
+  "grant-send": async () => {
+    const email = ($("#gr-email")?.value || "").trim();
+    const type = $("#gr-type")?.value === "image" ? "image" : "video";
+    const amount = Math.floor(Number($("#gr-amount")?.value || 0));
+    const tok = ($("#gr-token")?.value || "").trim();
+    const out = $("#gr-result");
+    if (!email) return toast("Entrez l'e-mail du compte", true);
+    if (!(amount >= 1 && amount <= 1000)) return toast("Quantité entre 1 et 1000", true);
+    if (!tok) return toast("Entrez le jeton administrateur", true);
+    try { sessionStorage.setItem("karat_admin_token", tok); } catch (e) {}
+    out.innerHTML = `<p class="muted small">Envoi…</p>`;
+    try {
+      const r = await fetch("/.netlify/functions/admin-grant", {
+        method: "POST", headers: { "Content-Type": "application/json", "x-admin-token": tok },
+        body: JSON.stringify({ email, type, amount }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || "Attribution refusée");
+      out.innerHTML = `<p class="small">${amount} ${type === "video" ? "crédit(s) vidéo" : "point(s) image"} attribué(s) à <b>${esc(email)}</b>.</p>${grantBalance(d)}`;
+      toast("Attribution enregistrée");
+    } catch (e) {
+      out.innerHTML = `<p class="muted small">${esc(e.message)}</p>`;
+    }
+  },
+  "grant-check": async () => {
+    const email = ($("#gr-email")?.value || "").trim();
+    const tok = ($("#gr-token")?.value || "").trim();
+    const out = $("#gr-result");
+    if (!email) return toast("Entrez l'e-mail du compte", true);
+    if (!tok) return toast("Entrez le jeton administrateur", true);
+    try { sessionStorage.setItem("karat_admin_token", tok); } catch (e) {}
+    try {
+      const r = await fetch(`/.netlify/functions/admin-grant?email=${enc(email)}`, { cache: "no-store", headers: { "x-admin-token": tok } });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || "Lecture refusée");
+      out.innerHTML = grantBalance(d);
+    } catch (e) {
+      out.innerHTML = `<p class="muted small">${esc(e.message)}</p>`;
+    }
   }
 });
 
