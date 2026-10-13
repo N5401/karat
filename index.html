@@ -1768,6 +1768,12 @@ h1,.page-head h1,.h-xl{font-family:var(--display);font-weight:600;letter-spacing
 /* ===== DOCUMENTATION ET LIMITES D'USAGE ===== */
 .usage-hint{color:var(--accent)}
 .usage-hint:not(:empty)::after{content:" · ";color:var(--dim)}
+
+/* Compteur de visiteurs en ligne (en-tête du site) */
+.online-pill{display:inline-flex;align-items:center;gap:7px;padding:6px 12px;border:1px solid var(--line2);border-radius:999px;font-size:13px;color:var(--muted);white-space:nowrap;margin-right:8px}
+.online-dot{width:7px;height:7px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.18);flex:none}
+.online-pill b{color:var(--text);font-weight:600}
+@media (max-width:640px){.online-pill{display:none}}
 .kg{display:grid;grid-template-columns:230px minmax(0,1fr);gap:28px;align-items:start}
 .kg-toc{position:sticky;top:24px;display:flex;flex-direction:column;gap:4px}
 .kg-toc-btn{text-align:left;font-size:14px;color:var(--muted);padding:9px 12px;border-radius:12px;transition:background .15s,color .15s}
@@ -2138,6 +2144,7 @@ function pubHeader(path){
       <a href="#/documentation" class="${path === "/documentation" ? "on" : ""}">Documentation</a>
     </nav>
     <div class="row">
+      ${onlinePill()}
       ${session
         ? (hasAccess()
             ? `<a class="btn btn-accent btn-sm" href="#/app/chat">Ouvrir le panel</a>
@@ -3774,7 +3781,7 @@ function vVideo(){
         <p class="muted small" style="margin-bottom:14px">${videoIncludedText()} Une génération prend environ 2 à 3 minutes.</p>
         <div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">
           <p class="small">Crédits disponibles : <b id="credit-balance">…</b> <span class="muted">· 5 € le crédit, 1 crédit = 1 vidéo de 8 secondes</span></p>
-          ${CONFIG.CREDIT_LINK ? `<a class="btn btn-line btn-sm" href="${creditUrl()}">Acheter des crédits</a>` : `<span class="muted small">Achat de crédits bientôt disponible</span>`}
+          ${isAdmin(session && session.email) ? "" : CONFIG.CREDIT_LINK ? `<a class="btn btn-line btn-sm" href="${creditUrl()}">Acheter des crédits</a>` : `<span class="muted small">Achat de crédits bientôt disponible</span>`}
         </div>
         <div class="field" style="margin-bottom:16px"><label for="vid-prompt">DESCRIPTION</label><textarea id="vid-prompt" class="textarea" rows="4" maxlength="1000" placeholder="Ex : un bureau lumineux le matin, une tasse de café fumante, la caméra avance lentement"></textarea></div>
         <div class="row" style="gap:12px;flex-wrap:wrap;margin-bottom:18px">
@@ -3805,9 +3812,41 @@ async function loadCredits(){
   try{
     const r = await fetch(`${CONFIG.CREDITS_ENDPOINT}?email=${enc(session.email)}`, { cache: "no-store" });
     const d = await r.json().catch(() => ({}));
-    el.textContent = r.ok ? String(d.credits) : "indisponible";
+    el.textContent = r.ok ? (d.unlimited ? "illimités (administrateur)" : String(d.credits)) : "indisponible";
   }catch(e){ el.textContent = "indisponible"; }
 }
+
+/* ---------- Compteur de visiteurs en ligne (anonyme, sans compte) ---------- */
+let onlineCount = null;
+function visitorId(){
+  try{
+    let id = localStorage.getItem("karat-vid");
+    if (!id){
+      id = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36);
+      localStorage.setItem("karat-vid", id);
+    }
+    return id;
+  }catch(e){ return "m" + Math.random().toString(36).slice(2) + Date.now().toString(36); }
+}
+const VISITOR_ID = visitorId();
+function onlinePill(){
+  const n = onlineCount == null ? "…" : onlineCount.toLocaleString("fr-FR");
+  return `<span class="online-pill" title="Visiteurs actifs ces dernières minutes"><span class="online-dot"></span><b id="online-count">${n}</b>&nbsp;en ligne</span>`;
+}
+async function beatPresence(){
+  if (document.visibilityState === "hidden") return;
+  try{
+    const r = await fetch("/.netlify/functions/presence", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: VISITOR_ID }), cache: "no-store" });
+    const d = await r.json().catch(() => ({}));
+    if (r.ok && typeof d.online === "number"){
+      onlineCount = d.online;
+      const el = document.getElementById("online-count");
+      if (el) el.textContent = d.online.toLocaleString("fr-FR");
+    }
+  }catch(e){ /* le compteur est facultatif */ }
+}
+beatPresence();
+setInterval(beatPresence, 90000);
 
 // Liste « Mes vidéos » : chaque vidéo est sauvegardée sur le site, à l'adresse de l'abonné
 async function loadVideos(){
