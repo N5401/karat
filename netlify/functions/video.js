@@ -16,6 +16,9 @@ const PROVIDER = (process.env.VIDEO_PROVIDER || "google").toLowerCase() === "atl
 // Pour passer au moins cher (Veo 3.1 Lite, 0,05 $/s en 720p), mettez son identifiant exact dans VEO_MODEL.
 const VEO_MODEL = /^[\w.-]{3,80}$/.test(process.env.VEO_MODEL || "") ? process.env.VEO_MODEL : "veo-3.1-generate-preview";
 const GOOGLE_PREDICT = `https://generativelanguage.googleapis.com/v1beta/models/${VEO_MODEL}:predictLongRunning`;
+// Avec une image d'exemple, Google refuse le modèle Lite : on utilise donc VEO_IMAGE_MODEL (défaut : Veo 3.1 standard).
+const VEO_IMAGE_MODEL = /^[\w.-]{3,80}$/.test(process.env.VEO_IMAGE_MODEL || "") ? process.env.VEO_IMAGE_MODEL : "veo-3.1-generate-preview";
+const GOOGLE_PREDICT_IMAGE = `https://generativelanguage.googleapis.com/v1beta/models/${VEO_IMAGE_MODEL}:predictLongRunning`;
 const ATLAS_GENERATE = "https://api.atlascloud.ai/api/v1/model/generateVideo";
 // Vidéos incluses par mois selon l'offre (0 = crédits seulement ; Infinity = illimité).
 // Doit rester identique à VIDEO_MONTHLY dans app.js.
@@ -113,7 +116,7 @@ exports.handler = async (event) => {
     } else {
       const apiKey = process.env.GOOGLE_API_KEY;
       if (!apiKey) return json(500, { error: "Génération vidéo non configurée (GOOGLE_API_KEY manquante)" });
-      const r = await fetch(GOOGLE_PREDICT, {
+      const r = await fetch(ref ? GOOGLE_PREDICT_IMAGE : GOOGLE_PREDICT, {
         method: "POST",
         headers: { "x-goog-api-key": apiKey, "Content-Type": "application/json" },
         body: JSON.stringify({
