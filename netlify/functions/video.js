@@ -2,7 +2,7 @@
 // Fournisseur choisi par la variable VIDEO_PROVIDER : « google » (défaut) ou « atlas ».
 //   google : GOOGLE_API_KEY (clé Google AI Studio), son toujours inclus.
 //   atlas  : ATLAS_API_KEY, VIDEO_MODEL (défaut google/veo3.1/text-to-video), VIDEO_AUDIO (défaut « true »).
-// Règle : Expert inclut 6 vidéos par mois ; ensuite, ou pour Essentiel et Pro, chaque vidéo coûte 1 crédit.
+// Règle : Essentiel inclut 1 vidéo par mois, Pro 3, Expert 6 ; au-delà, chaque vidéo coûte 1 crédit.
 // Le crédit ou le quota n'est décompté qu'une fois la génération acceptée par le fournisseur.
 // video-result.js suit la génération, sauvegarde la vidéo et rend le crédit si elle échoue.
 // Variables communes : STRIPE_SECRET_KEY, STRIPE_CREDIT_PLINK, NETLIFY_TOKEN + SITE_ID (si besoin).
@@ -12,11 +12,14 @@ const { planFor, cleanEmail } = require("./_shared/acces");
 const { balanceOf, takeCredit } = require("./_shared/credits");
 
 const PROVIDER = (process.env.VIDEO_PROVIDER || "google").toLowerCase() === "atlas" ? "atlas" : "google";
-const GOOGLE_PREDICT = "https://generativelanguage.googleapis.com/v1beta/models/veo-3.1-generate-preview:predictLongRunning";
+// Modèle Veo côté Google, choisi par la variable VEO_MODEL (défaut : Veo 3.1 standard).
+// Pour passer au moins cher (Veo 3.1 Lite, 0,05 $/s en 720p), mettez son identifiant exact dans VEO_MODEL.
+const VEO_MODEL = /^[\w.-]{3,80}$/.test(process.env.VEO_MODEL || "") ? process.env.VEO_MODEL : "veo-3.1-generate-preview";
+const GOOGLE_PREDICT = `https://generativelanguage.googleapis.com/v1beta/models/${VEO_MODEL}:predictLongRunning`;
 const ATLAS_GENERATE = "https://api.atlascloud.ai/api/v1/model/generateVideo";
 // Vidéos incluses par mois selon l'offre (0 = crédits seulement ; Infinity = illimité).
-// Doit rester identique à VIDEO_MAX_MONTH dans app.js (pour l'offre Expert).
-const VIDEO_MONTHLY = { essentiel: 0, pro: 0, expert: 6, admin: Infinity };
+// Doit rester identique à VIDEO_MONTHLY dans app.js.
+const VIDEO_MONTHLY = { essentiel: 1, pro: 3, expert: 6, admin: Infinity };
 const RATIOS = ["16:9", "9:16"];
 
 const blobStore = (name) => (process.env.NETLIFY_TOKEN && process.env.SITE_ID)
@@ -42,7 +45,7 @@ exports.handler = async (event) => {
   const email = cleanEmail(data.email);
   if (!email) return json(401, { error: "Connectez-vous pour générer une vidéo" });
 
-  const prompt = String(data.prompt || "").trim().slice(0, 1000);
+  const prompt = String(data.prompt || "").trim().slice(0, 4000);
   if (prompt.length < 10) return json(400, { error: "Décrivez la vidéo en quelques phrases" });
 
   // Vidéos de 8 secondes en 720p uniquement : c'est le réglage vendu (1 crédit = 1 vidéo de 8 secondes)
@@ -53,8 +56,8 @@ exports.handler = async (event) => {
   // L'offre est vérifiée sur le serveur, jamais seulement dans le navigateur
   let plan = null;
   try { plan = await planFor(email); } catch (e) { return json(503, { error: "Vérification de l'offre impossible, réessayez" }); }
-  const monthly = plan ? VIDEO_MONTHLY[plan] : undefined;
-  if (monthly === undefined) return json(403, { error: "La génération de vidéos est réservée aux abonnés." });
+  // Sans abonnement : aucune vidéo incluse, la génération se paie uniquement avec des crédits
+  const monthly = plan ? VIDEO_MONTHLY[plan] : 0;
 
   // Quota inclus ce mois-ci, sinon crédits
   const store = blobStore("karat-quota");
@@ -69,7 +72,7 @@ exports.handler = async (event) => {
     try { credits = await balanceOf(email); }
     catch (e) { console.error("KARAT video: lecture des crédits", e.message); return json(503, { error: "Solde de crédits indisponible, réessayez" }); }
     if (credits < 1) {
-      const incl = monthly === Infinity ? "" : monthly + " vidéos incluses par mois sont utilisées. ";
+      const incl = (monthly === Infinity || monthly === 0) ? "" : monthly + " vidéos incluses par mois sont utilisées. ";
       return json(402, { error: incl + "Achetez des crédits (5 € par vidéo de 8 secondes) pour continuer." });
     }
   }
