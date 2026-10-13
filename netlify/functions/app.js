@@ -2014,6 +2014,7 @@ function vVideo(){
           <p class="small">Crédits disponibles : <b id="credit-balance">…</b> <span class="muted">· 5 € le crédit, 1 crédit = 1 vidéo de 8 secondes</span></p>
           ${isAdmin(session && session.email) ? "" : CONFIG.CREDIT_LINK ? `<a class="btn btn-line btn-sm" href="${creditUrl()}">Acheter des crédits</a>` : `<span class="muted small">Achat de crédits bientôt disponible</span>`}
         </div>
+        ${vidRefBlock()}
         <div class="field" style="margin-bottom:16px"><label for="vid-prompt">DESCRIPTION</label><textarea id="vid-prompt" class="textarea" rows="10" maxlength="4000" style="height:auto;min-height:240px;resize:vertical;overflow-y:auto" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px';document.getElementById('vid-count').textContent=this.value.length+' / 4000'" placeholder="Ex : un bureau lumineux le matin, une tasse de café fumante, la caméra avance lentement. Vous pouvez détailler les personnages, les décors, les mouvements de caméra et l'ambiance sonore."></textarea><div id="vid-count" class="muted small" style="text-align:right;margin-top:6px">0 / 4000</div></div>
         <div class="row" style="gap:12px;flex-wrap:wrap;margin-bottom:18px">
           <div style="min-width:150px"><label class="small muted" for="vid-dur">Durée</label><select id="vid-dur" class="select" style="width:100%;margin-top:6px"><option value="8" selected>8 secondes</option></select></div>
@@ -2148,7 +2149,7 @@ Object.assign(ACTIONS, {
     try {
       const r = await fetch("/.netlify/functions/video", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: session.email, prompt, durationSeconds: Number($("#vid-dur").value), resolution: $("#vid-res").value, aspectRatio: $("#vid-ratio").value })
+        body: JSON.stringify({ email: session.email, prompt, durationSeconds: Number($("#vid-dur").value), resolution: $("#vid-res").value, aspectRatio: $("#vid-ratio").value, ref: ui.vidRef || null })
       });
       const d = await r.json().catch(() => ({}));
       if (!r.ok || !d.id) throw new Error(d.error || "La génération a échoué");
@@ -2273,6 +2274,42 @@ Object.assign(ACTIONS, {
     try { navigator.clipboard.writeText(SUPPORT_EMAIL); toast("Adresse copiée"); }
     catch (e) { toast("Copie impossible : sélectionnez l'adresse", true); }
   }
+});
+
+/* ---------- Image d'exemple pour la vidéo : la vidéo part de cette image ---------- */
+function vidRefBlock(){
+  const thumb = ui.vidRef
+    ? `<div class="img-thumb" style="margin:0"><img src="${ui.vidRef}" alt="Image d'exemple"><button type="button" data-action="vid-ref-remove" aria-label="Retirer l'image d'exemple"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>`
+    : "";
+  return `<div style="margin-bottom:16px">
+    <div class="small muted" style="letter-spacing:.08em">IMAGE D'EXEMPLE (FACULTATIF)</div>
+    <p class="muted small" style="margin:6px 0 10px">La vidéo part de cette image : ajoutez une photo du personnage, du produit ou du lieu à reproduire.</p>
+    <div class="row" style="gap:12px;align-items:center;flex-wrap:wrap">${thumb}<button type="button" class="btn btn-line btn-sm" data-action="vid-ref-pick">${ic("image")} ${ui.vidRef ? "Changer l'image" : "Ajouter une image d'exemple"}</button></div>
+    <input type="file" id="vidRefFile" accept="image/*" hidden />
+  </div>`;
+}
+
+Object.assign(ACTIONS, {
+  "vid-ref-pick": () => { const f = $("#vidRefFile"); if (f) f.click(); },
+  "vid-ref-remove": () => {
+    const pr = ($("#vid-prompt") || {}).value || "";
+    ui.vidRef = null; render(); loadVideos(); loadCredits();
+    const t = $("#vid-prompt"); if (t) t.value = pr;
+  },
+});
+
+document.addEventListener("change", async e => {
+  if (!e.target || e.target.id !== "vidRefFile") return;
+  const file = (e.target.files || [])[0];
+  e.target.value = "";
+  if (!file) return;
+  const pr = ($("#vid-prompt") || {}).value || "";
+  try {
+    const im = await shrinkImage(file);
+    ui.vidRef = im.data;
+    render(); loadVideos(); loadCredits();
+    const t = $("#vid-prompt"); if (t) t.value = pr;
+  } catch (err) { toast(`« ${file.name} » n'a pas pu être lue. Essayez une photo JPG ou PNG.`, true); }
 });
 
 /* ---------- Galerie « Mes images » : chaque image générée est conservée sur le site ---------- */
