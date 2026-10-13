@@ -1,10 +1,10 @@
 // KARAT — génération d'images via l'API OpenAI (gpt-image).
 // POST {email, prompt, ref?}  ref = photo de référence optionnelle (data:image/...;base64,...)
-// Quotas par jour selon l'offre (voir _shared/acces.js) : Essentiel 3, Pro 5, Expert illimité.
+// Quotas selon l'offre (voir _shared/acces.js) : version gratuite 3 images tous les 2 jours, Essentiel 3 par jour, Pro 5, Expert illimité.
 // Variables Netlify : OPENAI_API_KEY, STRIPE_SECRET_KEY, NETLIFY_TOKEN, SITE_ID.
 // Chaque image est facturée par OpenAI : vérifiez votre solde sur platform.openai.com.
 
-const { planFor, imageQuota, addImageUse, cleanEmail, PLAN_LABEL } = require("./_shared/acces");
+const { planFor, imageQuota, addImageUse, cleanEmail, PLAN_LABEL, freeResetText } = require("./_shared/acces");
 
 // Modèle et qualité : modifiables ici ou dans les variables Netlify.
 const IMAGE_MODEL = process.env.IMAGE_MODEL || "gpt-image-2.5-sunburst";
@@ -33,7 +33,7 @@ exports.handler = async (event) => {
   // Offre et quota du jour
   let plan, quota;
   try {
-    plan = (await planFor(email)) || "gratuit";   // sans offre : 1 image par jour
+    plan = (await planFor(email)) || "gratuit";   // sans offre : version gratuite, 3 images tous les 2 jours
     quota = await imageQuota(email, plan);
   } catch (e) {
     console.error("KARAT image: offre/quota", e.message);
@@ -42,7 +42,7 @@ exports.handler = async (event) => {
   if (quota.used >= quota.limit){
     return json(429, {
       error: plan === "gratuit"
-        ? "Limite atteinte : 1 image par jour. Passez à l'offre Essentiel à 9,99 € par mois pour 3 images par jour."
+        ? `Vous avez utilisé vos 3 images gratuites de cette période. Elles se renouvellent le ${freeResetText()}. Pour en générer davantage dès maintenant, l'offre Essentiel (6,99 € par mois) en inclut 3 par jour.`
         : `Limite atteinte : ${quota.limit} images par jour avec l'offre ${PLAN_LABEL[plan] || plan}. Revenez demain ou passez à une offre supérieure.`,
       remaining: 0,
     });
@@ -74,7 +74,7 @@ exports.handler = async (event) => {
       console.error("KARAT image: erreur API", r.status, JSON.stringify(result).slice(0, 500));
       return json(502, { error: "Le générateur d'images a renvoyé une erreur" });
     }
-    await addImageUse(email, quota.used);
+    await addImageUse(email, quota.used, plan);
     const unlimited = quota.limit === Infinity;
     return json(200, {
       image: "data:image/png;base64," + result.data[0].b64_json,
