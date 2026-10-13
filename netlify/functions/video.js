@@ -13,8 +13,9 @@ const { balanceOf, takeCredit } = require("./_shared/credits");
 
 const PROVIDER = (process.env.VIDEO_PROVIDER || "google").toLowerCase() === "atlas" ? "atlas" : "google";
 // Modèle Veo côté Google, choisi par la variable VEO_MODEL (défaut : Veo 3.1 standard).
-// Pour passer au moins cher (Veo 3.1 Lite, 0,05 $/s en 720p), mettez son identifiant exact dans VEO_MODEL.
-const VEO_MODEL = /^[\w.-]{3,80}$/.test(process.env.VEO_MODEL || "") ? process.env.VEO_MODEL : "veo-3.1-generate-preview";
+// Par défaut : Veo 3.1 Lite (0,05 $/s en 720p, soit 0,40 $ pour 8 secondes).
+// Pour le modèle standard (3,20 $ par vidéo), mettez veo-3.1-generate-preview dans VEO_MODEL.
+const VEO_MODEL = /^[\w.-]{3,80}$/.test(process.env.VEO_MODEL || "") ? process.env.VEO_MODEL : "veo-3.1-lite-generate-preview";
 const GOOGLE_PREDICT = `https://generativelanguage.googleapis.com/v1beta/models/${VEO_MODEL}:predictLongRunning`;
 // Modèle utilisé quand une image d'exemple est fournie (par défaut le même que VEO_MODEL, donc le Lite et son prix de 0,37 €).
 const VEO_IMAGE_MODEL = /^[\w.-]{3,80}$/.test(process.env.VEO_IMAGE_MODEL || "") ? process.env.VEO_IMAGE_MODEL : VEO_MODEL;
@@ -93,7 +94,7 @@ exports.handler = async (event) => {
   }
 
   // Appel du fournisseur choisi
-  let name = null, why = "";
+  let name = null, why = "", busy = false;
   try {
     if (PROVIDER === "atlas") {
       const apiKey = process.env.ATLAS_API_KEY;
@@ -126,7 +127,7 @@ exports.handler = async (event) => {
       });
       const d = await r.json().catch(() => ({}));
       if (r.ok && d.name) name = d.name;
-      else { why = (d && d.error && d.error.message) || ""; console.error("KARAT video: Google refuse", r.status, JSON.stringify(d).slice(0, 500)); }
+      else { why = (d && d.error && d.error.message) || ""; if (r.status === 429) busy = true; console.error("KARAT video: Google refuse", r.status, JSON.stringify(d).slice(0, 500)); }
     }
   } catch (e) {
     console.error("KARAT video: service injoignable", PROVIDER, e.message);
@@ -134,6 +135,8 @@ exports.handler = async (event) => {
   }
 
   if (!name) {
+    // Limite de débit atteinte chez le fournisseur : message clair, et aucun crédit n'est débité
+    if (busy) return json(503, { error: "Le service vidéo est très sollicité en ce moment. Réessayez dans quelques minutes : aucun crédit n'a été débité." });
     return json(502, { error: "Le service vidéo a refusé la demande" + (why ? " : " + String(why).slice(0, 200) : "") });
   }
 
