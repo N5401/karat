@@ -3186,7 +3186,6 @@ function vAdminOverview(){
   const prevWeek = accounts.filter(r => r.createdAt <= now - wk && r.createdAt > now - 2 * wk).length;
   const conv = accounts.length ? Math.round(paying.length / accounts.length * 100) : 0;
   const counts = Object.keys(PLANS).map(k => ({ k, n: paying.filter(r => r.plan === k).length }));
-  const recent = [...accounts].sort((a, b) => b.createdAt - a.createdAt).slice(0, 6);
   const activity = logs.slice(0, 6);
   return appShell("/admin", pageHead("Administration", "Vue d'ensemble", "L'état de votre activité en un coup d'œil.") +
     `<div class="grid g4" style="margin-bottom:18px">
@@ -3202,16 +3201,7 @@ function vAdminOverview(){
         <p class="muted small" style="margin-top:20px">${paying.length} abonné${paying.length > 1 ? "s" : ""} actif${paying.length > 1 ? "s" : ""}.</p>
       </div>
     </div>
-    <div class="grid g2" style="align-items:start">
-      <div class="card flat" style="padding:0">
-        <div class="card-h" style="padding:20px 22px 0"><h3>Dernières inscriptions</h3><a class="linkbtn" href="#/admin/utilisateurs">Voir tout →</a></div>
-        <div class="table-wrap" style="border:0;border-radius:0;margin-top:14px"><table class="tbl">
-          <thead><tr><th>Nom</th><th>Inscrit le</th><th>Offre</th></tr></thead>
-          <tbody>${recent.map(r => `<tr>
-            <td><div class="who-cell"><span class="avatar sm">${esc(initial(rowName(r)))}</span><div><b>${esc(rowName(r))}</b><div class="dim small">${esc(r.email)}</div></div></div></td>
-            <td>${fmtDate(r.createdAt)}</td><td>${planBadge(r)}</td></tr>`).join("") || `<tr><td colspan="3"><div class="empty" style="padding:30px"><b>Aucun compte</b>Les inscriptions apparaîtront ici.</div></td></tr>`}</tbody>
-        </table></div>
-      </div>
+    <div style="align-items:start">
       <div class="card flat" style="padding:0">
         <div class="card-h" style="padding:20px 22px 0"><h3>Activité récente</h3><a class="linkbtn" href="#/admin/journal">Journal complet →</a></div>
         <div style="padding:14px 22px 20px;display:grid;gap:14px">
@@ -3221,17 +3211,9 @@ function vAdminOverview(){
     </div>`);
 }
 function vAdminUsers(){
-  return appShell("/admin/utilisateurs", pageHead("Administration", "Utilisateurs", "Coordonnées, offre et historique de chaque compte.",
-    `<div class="search">${ic("search")}<input class="input" placeholder="Nom, e-mail, téléphone…" aria-label="Rechercher un utilisateur" data-input="admin-search" /></div>
-     <select class="select" data-change="admin-filter" aria-label="Filtrer par offre">
-       <option value="all">Toutes les offres</option><option value="none">Sans offre</option>
-       ${Object.keys(PLANS).map(p => `<option value="${p}">${PLANS[p].name}</option>`).join("")}
-     </select>
-     <button class="btn btn-line btn-sm" data-action="export-users">${ic("download")} Exporter CSV</button>`) +
-    `<div class="table-wrap"><table class="tbl">
-      <thead><tr>${th("Nom", "name")}${th("E-mail", "email")}<th>Téléphone</th>${th("Inscrit le", "createdAt")}${th("Dernière connexion", "lastLogin")}<th>Mode</th>${th("Offre", "plan")}<th><span class="sr-only"></span></th></tr></thead>
-      <tbody id="admBody"></tbody>
-    </table><div class="pager" id="admPager"></div></div>`);
+  const total = allRows().filter(r => !r.isAdmin).length;
+  return appShell("/admin/utilisateurs", pageHead("Administration", "Utilisateurs", "Le nombre de comptes créés, sans le détail des personnes.") +
+    `<div class="grid g4">${kpi("Comptes créés", total, "inscriptions au total")}</div>`);
 }
 function fillAdminUsers(){
   const body = $("#admBody"); if (!body) return;
