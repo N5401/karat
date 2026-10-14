@@ -2240,6 +2240,7 @@ function afterRender(path){
   if (path === "/" || path === "/tarifs") initFX();
   if (path === "/admin/utilisateurs"){ const s = $("[data-change='admin-filter']"); if (s) s.value = ui.adminFilter; fillAdminUsers(); }
   if (path === "/admin/abonnements"){ fillSubs(); if (adminToken()) fillStripeSubs(); }
+  if (path === "/admin" || path === "/admin/utilisateurs" || path === "/admin/journal") loadServerAccounts();
   if (path === "/admin/journal"){ const s = $("[data-change='log-filter']"); if (s) s.value = ui.logFilter; }
   if (path === "/admin/annonces") fillAnnonceList();
   if (path === "/"){ startAvis(); startHome(); }
@@ -2647,6 +2648,10 @@ function startSession(s, isNew){
   go(isNew ? "/app/guide" : nextTarget());
   toast(`Bienvenue, ${s.name || s.email}`);
 }
+// Envoie le compte au serveur, pour que l'administrateur voie tous les comptes (une fiche par adresse, sans mot de passe)
+function sendAccount(u){
+  try { fetch("/.netlify/functions/inscriptions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: u.email, firstName: u.firstName || "", lastName: u.lastName || "", phone: u.phone || "", provider: u.provider || "", createdAt: u.createdAt || Date.now(), lastLogin: u.lastLogin || Date.now() }), keepalive: true }).catch(() => {}); } catch (e) {}
+}
 async function onLogin(f){
   setErr("");
   const email = emailOf(f.querySelector('[name="email"]').value);
@@ -2658,6 +2663,7 @@ async function onLogin(f){
     if (!(await verifyPw(pw, u))) return setErr("Mot de passe incorrect.");
   }catch(e){ return setErr("Votre navigateur bloque le chiffrement. Ouvrez la page en https ou en local."); }
   u.lastLogin = Date.now(); saveUsers();
+  sendAccount(users[email]);
   startSession({ email, name: displayName(u) }, false);
 }
 async function onSignup(f){
@@ -2677,6 +2683,7 @@ async function onSignup(f){
     users[email] = { email, firstName: first, lastName: last, phone, hash, salt, provider: "password", createdAt: Date.now(), lastLogin: Date.now() };
     saveUsers();
   }catch(e){ return setErr("Votre navigateur bloque le chiffrement. Ouvrez la page en https ou en local."); }
+  sendAccount(users[email]);
   startSession({ email, name: `${first} ${last}` }, true);
 }
 function parseJwt(token){
@@ -2698,6 +2705,7 @@ window.handleGoogleCredential = function(resp){
       lastLogin: Date.now(), picture: p.picture
     };
     saveUsers();
+    sendAccount(users[email]);
     startSession({ email, name: p.name, picture: p.picture, provider: "Google" }, isNew);
   }catch(e){ setErr("Connexion Google impossible, réessayez."); }
 };
@@ -3119,9 +3127,9 @@ function vSubscription(){
    ADMINISTRATION
    ===================================================================== */
 function allRows(){
-  const emails = new Set([...Object.keys(users), ...Object.keys(subs)]);
+  const emails = new Set([...Object.keys(serverAccounts || {}), ...Object.keys(users), ...Object.keys(subs)]);
   return [...emails].map(email => {
-    const u = users[email] || {};
+    const u = users[email] || (serverAccounts || {})[email] || {};
     const s = subs[email] || {};
     return {
       email,
@@ -3186,6 +3194,7 @@ function vAdminOverview(){
   const prevWeek = accounts.filter(r => r.createdAt <= now - wk && r.createdAt > now - 2 * wk).length;
   const conv = accounts.length ? Math.round(paying.length / accounts.length * 100) : 0;
   const counts = Object.keys(PLANS).map(k => ({ k, n: paying.filter(r => r.plan === k).length }));
+  const recent = [...accounts].sort((a, b) => b.createdAt - a.createdAt).slice(0, 6);
   const activity = logs.slice(0, 6);
   return appShell("/admin", pageHead("Administration", "Vue d'ensemble", "L'état de votre activité en un coup d'œil.") +
     `<div class="grid g4" style="margin-bottom:18px">
@@ -3201,20 +3210,58 @@ function vAdminOverview(){
         <p class="muted small" style="margin-top:20px">${paying.length} abonné${paying.length > 1 ? "s" : ""} actif${paying.length > 1 ? "s" : ""}.</p>
       </div>
     </div>
-    <div style="align-items:start">
+    <div class="grid g2" style="align-items:start">
+      <div class="card flat" style="padding:0">
+        <div class="card-h" style="padding:20px 22px 0"><h3>Dernières inscriptions</h3><a class="linkbtn" href="#/admin/utilisateurs">Voir tout →</a></div>
+        <div class="table-wrap" style="border:0;border-radius:0;margin-top:14px"><table class="tbl">
+          <thead><tr><th>Nom</th><th>Inscrit le</th><th>Offre</th></tr></thead>
+          <tbody>${recent.map(r => `<tr>
+            <td><div class="who-cell"><span class="avatar sm">${esc(initial(rowName(r)))}</span><div><b>${esc(rowName(r))}</b><div class="dim small">${esc(r.email)}</div></div></div></td>
+            <td>${fmtDate(r.createdAt)}</td><td>${planBadge(r)}</td></tr>`).join("") || `<tr><td colspan="3"><div class="empty" style="padding:30px"><b>Aucun compte</b>Les inscriptions apparaîtront ici.</div></td></tr>`}</tbody>
+        </table></div>
+      </div>
       <div class="card flat" style="padding:0">
         <div class="card-h" style="padding:20px 22px 0"><h3>Activité récente</h3><a class="linkbtn" href="#/admin/journal">Journal complet →</a></div>
         <div style="padding:14px 22px 20px;display:grid;gap:14px">
-          ${activity.map(e => `<div class="row" style="align-items:flex-start"><span class="badge" style="min-width:110px;justify-content:center">${esc(e.type.toUpperCase())}</span><div style="min-width:0"><div class="dim small">${fmtDate(e.t)}</div></div></div>`).join("") || `<p class="muted">Aucune activité pour l'instant.</p>`}
+          ${activity.map(e => `<div class="row" style="align-items:flex-start"><span class="badge" style="min-width:110px;justify-content:center">${esc(e.type.toUpperCase())}</span><div style="min-width:0"><div class="small" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(e.email || "—")}</div><div class="dim small">${fmtDate(e.t)}</div></div></div>`).join("") || `<p class="muted">Aucune activité pour l'instant.</p>`}
         </div>
       </div>
     </div>`);
 }
+// Comptes de tous les visiteurs, lus sur le serveur (il faut le jeton administrateur saisi dans Abonnements)
+let serverAccounts = null, serverError = "", serverLoading = false;
+function usersNote(){
+  if (serverError) return `<p class="muted small" style="margin-bottom:12px">Comptes des autres visiteurs indisponibles : ${esc(serverError)}</p>`;
+  if (!adminToken()) return `<p class="muted small" style="margin-bottom:12px">Saisissez le jeton administrateur dans Abonnements pour voir les comptes de tous les visiteurs.</p>`;
+  return "";
+}
+async function loadServerAccounts(){
+  const tok = adminToken();
+  if (!tok || serverAccounts !== null || serverLoading || serverError) return;
+  serverLoading = true;
+  try{
+    const r = await fetch("/.netlify/functions/inscriptions", { headers: { "x-admin-token": tok }, cache: "no-store" });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.error || "Erreur");
+    const map = {};
+    (d.accounts || []).forEach(a => { if (a && a.email) map[a.email] = a; });
+    serverAccounts = map;
+  }catch(e){ serverError = e.message || "Erreur"; }
+  serverLoading = false;
+  render();
+}
 function vAdminUsers(){
-  const accounts = allRows().filter(r => !r.isAdmin);
-  const sans = accounts.filter(r => !effPlan(r.email)).length;
-  return appShell("/admin/utilisateurs", pageHead("Administration", "Utilisateurs", "Le nombre de comptes créés. Les abonnés se trouvent dans Abonnements.") +
-    `<div class="grid g4">${kpi("Comptes créés", accounts.length, "inscriptions au total")}${kpi("Sans abonnement", sans, "comptes sans offre")}</div>`);
+  return appShell("/admin/utilisateurs", pageHead("Administration", "Utilisateurs", "Coordonnées, offre et historique de chaque compte.",
+    `<div class="search">${ic("search")}<input class="input" placeholder="Nom, e-mail, téléphone…" aria-label="Rechercher un utilisateur" data-input="admin-search" /></div>
+     <select class="select" data-change="admin-filter" aria-label="Filtrer par offre">
+       <option value="all">Toutes les offres</option><option value="none">Sans offre</option>
+       ${Object.keys(PLANS).map(p => `<option value="${p}">${PLANS[p].name}</option>`).join("")}
+     </select>
+     <button class="btn btn-line btn-sm" data-action="export-users">${ic("download")} Exporter CSV</button>`) +
+    `${usersNote()}<div class="table-wrap"><table class="tbl">
+      <thead><tr>${th("Nom", "name")}${th("E-mail", "email")}<th>Téléphone</th>${th("Inscrit le", "createdAt")}${th("Dernière connexion", "lastLogin")}<th>Mode</th>${th("Offre", "plan")}<th><span class="sr-only"></span></th></tr></thead>
+      <tbody id="admBody"></tbody>
+    </table><div class="pager" id="admPager"></div></div>`);
 }
 function fillAdminUsers(){
   const body = $("#admBody"); if (!body) return;
@@ -3386,11 +3433,12 @@ function vAdminLog(){
        ${types.map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join("")}
      </select>`) +
     `<div class="table-wrap"><table class="tbl logs">
-      <thead><tr><th>Date</th><th>Événement</th><th>Détail</th></tr></thead>
+      <thead><tr><th>Date</th><th>Événement</th><th>Compte</th><th>Détail</th></tr></thead>
       <tbody>${filtered.slice(0, 300).map(e => `<tr>
         <td>${fmtDate(e.t)}</td>
         <td><span class="badge">${esc(e.type.toUpperCase())}</span></td>
-        <td class="muted">${esc(e.detail || "")}</td></tr>`).join("") || `<tr><td colspan="3"><div class="empty"><b>Aucun événement</b>Le journal se remplit au fil de l'activité.</div></td></tr>`}</tbody>
+        <td>${esc(e.email || "—")}</td>
+        <td class="muted">${esc(e.detail || "")}</td></tr>`).join("") || `<tr><td colspan="4"><div class="empty"><b>Aucun événement</b>Le journal se remplit au fil de l'activité.</div></td></tr>`}</tbody>
     </table></div>`);
 }
 function vAdminSettings(){
