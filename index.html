@@ -3205,15 +3205,16 @@ function vAdminOverview(){
       <div class="card flat" style="padding:0">
         <div class="card-h" style="padding:20px 22px 0"><h3>Activité récente</h3><a class="linkbtn" href="#/admin/journal">Journal complet →</a></div>
         <div style="padding:14px 22px 20px;display:grid;gap:14px">
-          ${activity.map(e => `<div class="row" style="align-items:flex-start"><span class="badge" style="min-width:110px;justify-content:center">${esc(e.type.toUpperCase())}</span><div style="min-width:0"><div class="small" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(e.email || "—")}</div><div class="dim small">${fmtDate(e.t)}</div></div></div>`).join("") || `<p class="muted">Aucune activité pour l'instant.</p>`}
+          ${activity.map(e => `<div class="row" style="align-items:flex-start"><span class="badge" style="min-width:110px;justify-content:center">${esc(e.type.toUpperCase())}</span><div style="min-width:0"><div class="dim small">${fmtDate(e.t)}</div></div></div>`).join("") || `<p class="muted">Aucune activité pour l'instant.</p>`}
         </div>
       </div>
     </div>`);
 }
 function vAdminUsers(){
-  const total = allRows().filter(r => !r.isAdmin).length;
-  return appShell("/admin/utilisateurs", pageHead("Administration", "Utilisateurs", "Le nombre de comptes créés, sans le détail des personnes.") +
-    `<div class="grid g4">${kpi("Comptes créés", total, "inscriptions au total")}</div>`);
+  const accounts = allRows().filter(r => !r.isAdmin);
+  const sans = accounts.filter(r => !effPlan(r.email)).length;
+  return appShell("/admin/utilisateurs", pageHead("Administration", "Utilisateurs", "Le nombre de comptes créés. Les abonnés se trouvent dans Abonnements.") +
+    `<div class="grid g4">${kpi("Comptes créés", accounts.length, "inscriptions au total")}${kpi("Sans abonnement", sans, "comptes sans offre")}</div>`);
 }
 function fillAdminUsers(){
   const body = $("#admBody"); if (!body) return;
@@ -3385,12 +3386,11 @@ function vAdminLog(){
        ${types.map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join("")}
      </select>`) +
     `<div class="table-wrap"><table class="tbl logs">
-      <thead><tr><th>Date</th><th>Événement</th><th>Compte</th><th>Détail</th></tr></thead>
+      <thead><tr><th>Date</th><th>Événement</th><th>Détail</th></tr></thead>
       <tbody>${filtered.slice(0, 300).map(e => `<tr>
         <td>${fmtDate(e.t)}</td>
         <td><span class="badge">${esc(e.type.toUpperCase())}</span></td>
-        <td>${esc(e.email || "—")}</td>
-        <td class="muted">${esc(e.detail || "")}</td></tr>`).join("") || `<tr><td colspan="4"><div class="empty"><b>Aucun événement</b>Le journal se remplit au fil de l'activité.</div></td></tr>`}</tbody>
+        <td class="muted">${esc(e.detail || "")}</td></tr>`).join("") || `<tr><td colspan="3"><div class="empty"><b>Aucun événement</b>Le journal se remplit au fil de l'activité.</div></td></tr>`}</tbody>
     </table></div>`);
 }
 function vAdminSettings(){
