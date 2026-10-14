@@ -23,14 +23,16 @@ const CONFIG = {
   VERIFY_ENDPOINT: "/.netlify/functions/abo",   // serveur qui confirme l'abonnement après paiement (webhook Stripe)
   AI_ENDPOINT: "/.netlify/functions/ai-background",  // moteur IA réel (réponses longues, en arrière-plan)
   AI_RESULT: "/.netlify/functions/ai-result",        // récupère la réponse une fois prête
+  IMAGE_ENDPOINT: "/.netlify/functions/image-background",  // génération d'images en arrière-plan
+  IMAGE_RESULT: "/.netlify/functions/image-result",        // récupère l'image une fois prête
   USAGE_ENDPOINT: "/.netlify/functions/usage",       // messages restants aujourd'hui
   AVIS_ENDPOINT: "/.netlify/functions/avis"          // avis des utilisateurs (lecture publique, dépôt connecté)
 };
 
 const PLANS = {
-  essentiel: { name: "Essentiel", price: "6,99 €",  num: 6.99, priceAn: "99 €", numAn: 99, desc: "Pour découvrir KARAT au quotidien.", feats: ["Assistant IA polyvalent", "Messages limités", "3 générations d'images par jour","Analyse de fichiers texte, PDF et images", "Historique des conversations sur 30 jours", "1 vidéo IA offerte chaque mois", "Support par e-mail"] },
-  pro:       { name: "Pro",       price: "29,99 €", num: 29.99, priceAn: "299 €", numAn: 299, desc: "Pour les professionnels qui travaillent chaque jour.", feats: ["Tout Essentiel", "Messages limités", "Générations d'images illimitées","Retouche d'image à partir d'une photo de référence", "Analyse de plusieurs documents à la fois (jusqu'à 10 PDF par message)", "Réponses longues et détaillées, jusqu'à une quinzaine de pages", "Modes spécialisés : code, rédaction, analyse de données", "Historique illimité", "3 vidéos IA offertes chaque mois", "Support prioritaire"] },
-  expert:    { name: "Expert",    price: "49,99 €", num: 49.99, priceAn: "499 €", numAn: 499, desc: "Pour les équipes et les usages intensifs.", feats: ["Tout Pro, et en plus :", "Messages et images illimités", "Génération de vidéos IA avec le son, par mois", "Modèle d'IA le plus avancé, pour les tâches complexes", "Accompagnement dédié à la mise en place"] }
+  essentiel: { name: "Essentiel", price: "6,99 €",  num: 6.99, priceAn: "99 €", numAn: 99, desc: "Pour découvrir KARAT au quotidien.", feats: ["Assistant IA polyvalent", "Messages limités", "3 générations d'images par jour","Analyse de fichiers texte, PDF et images", "Historique des conversations sur 30 jours", "2 vidéos IA par semaine", "Support par e-mail"] },
+  pro:       { name: "Pro",       price: "29,99 €", num: 29.99, priceAn: "299 €", numAn: 299, desc: "Pour les professionnels qui travaillent chaque jour.", feats: ["Tout Essentiel", "Messages limités", "Générations d'images illimitées","Retouche d'image à partir d'une photo de référence", "Analyse de plusieurs documents à la fois (jusqu'à 10 PDF par message)", "Réponses longues et détaillées, jusqu'à une quinzaine de pages", "Modes spécialisés : code, rédaction, analyse de données", "Historique illimité", "4 vidéos IA par semaine", "Support prioritaire"] },
+  expert:    { name: "Expert",    price: "49,99 €", num: 49.99, priceAn: "499 €", numAn: 499, desc: "Pour les équipes et les usages intensifs.", feats: ["Tout Pro, et en plus :", "Messages et images illimités", "6 vidéos IA par semaine, avec le son", "Modèle d'IA le plus avancé, pour les tâches complexes", "Accompagnement dédié à la mise en place"] }
 };
 
 const MODES = {
@@ -1995,14 +1997,14 @@ function imgQuotaText(){
   return session ? "Version gratuite : 3 images tous les 2 jours." : "Connectez-vous pour générer des images.";
 }
 /* ---------- Vidéos (offre Expert) : le serveur vérifie l'offre et le quota ---------- */
-// Vidéos incluses par mois selon l'offre : doit rester identique à VIDEO_MONTHLY dans netlify/functions/video.js
-const VIDEO_MONTHLY = { essentiel: 1, pro: 3, expert: 6 };
+// Vidéos incluses par semaine selon l'offre : doit rester identique à VIDEO_WEEKLY dans netlify/functions/video.js
+const VIDEO_WEEKLY = { essentiel: 2, pro: 4, expert: 6 };
 function videoIncludedText(){
   const p = currentPlan();
   if (p === "admin") return "Accès administrateur : vidéos illimitées.";
-  const n = VIDEO_MONTHLY[p];
+  const n = VIDEO_WEEKLY[p];
   if (!n) return "Vidéos à l'unité : 1 crédit par vidéo.";
-  return `Offre ${PLANS[p].name} : ${n} vidéo${n > 1 ? "s" : ""} par mois incluse${n > 1 ? "s" : ""}, puis des crédits.`;
+  return `Offre ${PLANS[p].name} : ${n} vidéo${n > 1 ? "s" : ""} par semaine incluse${n > 1 ? "s" : ""}, puis des crédits.`;
 }
 function isExpertPlan(){ const p = currentPlan(); return p === "expert" || p === "admin"; }
 function vVideo(){
@@ -2160,7 +2162,7 @@ Object.assign(ACTIONS, {
         const st = await s.json().catch(() => ({}));
         if (!s.ok || st.status === "failed") throw new Error(st.error || "La génération a échoué");
         if (st.status === "completed"){
-          const restant = d.remaining === null || d.remaining === undefined ? "" : `<p class="muted small" style="margin-top:12px">Il vous reste ${d.remaining} vidéo${d.remaining > 1 ? "s" : ""} ce mois-ci.</p>`;
+          const restant = d.remaining === null || d.remaining === undefined ? "" : `<p class="muted small" style="margin-top:12px">Il vous reste ${d.remaining} vidéo${d.remaining > 1 ? "s" : ""} cette semaine.</p>`;
           $("#vid-out").innerHTML = `<p class="small">Vidéo prête : elle est enregistrée dans « Mes vidéos » ci-dessous.</p>${restant}`;
           loadVideos(); loadCredits();
           return;
@@ -2207,14 +2209,23 @@ Object.assign(ACTIONS, {
       toast("Choisissez une offre pour générer des images", true);
       return go("/tarifs");
     }
-    out.innerHTML = `<p class="muted small">Génération en cours, cela peut prendre quelques secondes…</p>`;
+    out.innerHTML = `<p class="muted small">Génération en cours, cela peut prendre une à deux minutes…</p>`;
     try {
-      const r = await fetch("/.netlify/functions/image", {
+      const jobId = "j" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+      const r = await fetch(CONFIG.IMAGE_ENDPOINT, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: session.email, prompt, ref: ui.imgRef || null })
+        body: JSON.stringify({ id: jobId, email: session.email, prompt, ref: ui.imgRef || null })
       });
-      const d = await r.json().catch(() => ({}));
-      if (!r.ok || !d.image) throw new Error(d.error || "Erreur");
+      if (!r.ok && r.status !== 202) throw new Error("Le service d'images est indisponible (erreur " + r.status + "). Réessayez dans un instant.");
+      let d = { status: "pending" };
+      for (let i = 0; i < 120 && d.status === "pending"; i++) {
+        await new Promise(res => setTimeout(res, 2000));
+        try { d = await (await fetch(CONFIG.IMAGE_RESULT + "?id=" + enc(jobId), { cache: "no-store" })).json(); }
+        catch (err) { d = { status: "pending" }; }
+      }
+      if (d.status === "pending") throw new Error("La génération prend plus de temps que prévu. L'image apparaîtra dans « Mes images » dans un instant.");
+      if (d.status === "error") throw new Error(d.error || "Erreur");
+      if (!d.image) throw new Error("Erreur");
       const restant = d.remaining === null || d.remaining === undefined ? "" : `<p class="muted small" style="margin-top:12px">Il vous reste ${d.remaining} image${d.remaining > 1 ? "s" : ""} aujourd'hui.</p>`;
       out.innerHTML = `<img src="${d.image}" alt="${esc(prompt)}" style="width:100%;max-width:520px;border-radius:14px;border:1px solid var(--line)">
         <div style="margin-top:14px"><a class="btn btn-line btn-sm" href="${d.image}" download="karat-image.png">Télécharger</a></div>${restant}${d.bonus ? `<p class="muted small" style="margin-top:6px">Points images restants : ${d.bonus}.</p>` : ""}`;
@@ -2312,6 +2323,21 @@ document.addEventListener("change", async e => {
   } catch (err) { toast(`« ${file.name} » n'a pas pu être lue. Essayez une photo JPG ou PNG.`, true); }
 });
 
+/* Si une image de la galerie ne s'affiche pas, affiche la réponse exacte du serveur (utile pour le diagnostic) */
+window.karatImgErr = async function (el) {
+  let info;
+  try {
+    const r = await fetch(el.dataset.src, { cache: "no-store" });
+    const txt = (await r.text()).slice(0, 140).replace(/\s+/g, " ");
+    info = "HTTP " + r.status + " : " + txt;
+  } catch (e) { info = "réseau : " + e.message; }
+  const box = document.createElement("div");
+  box.className = "small";
+  box.style.cssText = "color:#f88;margin-top:8px;word-break:break-word";
+  box.textContent = "Image indisponible (" + info + ")";
+  el.replaceWith(box);
+};
+
 /* ---------- Galerie « Mes images » : chaque image générée est conservée sur le site ---------- */
 async function loadImages(){
   const box = $("#img-list");
@@ -2326,7 +2352,7 @@ async function loadImages(){
       ? `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px">${items.map(im => {
           const src = `/.netlify/functions/image-file?email=${who}&id=${enc(im.id)}`;
           return `<div style="border:1px solid var(--line);border-radius:14px;padding:10px">
-            <img src="${src}" alt="${esc(im.prompt)}" loading="lazy" style="width:100%;border-radius:10px;display:block">
+            <img src="${src}" alt="${esc(im.prompt)}" loading="lazy" style="width:100%;border-radius:10px;display:block" data-src="${src}" onerror="karatImgErr(this)">
             <div class="small" style="margin-top:8px">${esc(im.prompt)}</div>
             <div class="small muted" style="margin-top:4px">${new Date(im.createdAt).toLocaleString("fr-FR")}</div>
             <a class="btn btn-line btn-sm" style="margin-top:8px" href="${src}" download="karat-image.png">Télécharger</a>
