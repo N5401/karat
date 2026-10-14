@@ -2,7 +2,7 @@
 // Fournisseur choisi par la variable VIDEO_PROVIDER : « google » (défaut) ou « atlas ».
 //   google : GOOGLE_API_KEY (clé Google AI Studio), son toujours inclus.
 //   atlas  : ATLAS_API_KEY, VIDEO_MODEL (défaut google/veo3.1/text-to-video), VIDEO_AUDIO (défaut « true »).
-// Règle : Essentiel inclut 1 vidéo par mois, Pro 3, Expert 6 ; au-delà, chaque vidéo coûte 1 crédit.
+// Règle : Essentiel inclut 2 vidéos par semaine, Pro 4, Expert 6 ; au-delà, chaque vidéo coûte 1 crédit.
 // Le crédit ou le quota n'est décompté qu'une fois la génération acceptée par le fournisseur.
 // video-result.js suit la génération, sauvegarde la vidéo et rend le crédit si elle échoue.
 // Variables communes : STRIPE_SECRET_KEY, STRIPE_CREDIT_PLINK, NETLIFY_TOKEN + SITE_ID (si besoin).
@@ -21,9 +21,9 @@ const GOOGLE_PREDICT = `https://generativelanguage.googleapis.com/v1beta/models/
 const VEO_IMAGE_MODEL = /^[\w.-]{3,80}$/.test(process.env.VEO_IMAGE_MODEL || "") ? process.env.VEO_IMAGE_MODEL : VEO_MODEL;
 const GOOGLE_PREDICT_IMAGE = `https://generativelanguage.googleapis.com/v1beta/models/${VEO_IMAGE_MODEL}:predictLongRunning`;
 const ATLAS_GENERATE = "https://api.atlascloud.ai/api/v1/model/generateVideo";
-// Vidéos incluses par mois selon l'offre (0 = crédits seulement ; Infinity = illimité).
-// Doit rester identique à VIDEO_MONTHLY dans app.js.
-const VIDEO_MONTHLY = { essentiel: 1, pro: 3, expert: 6, admin: Infinity };
+// Vidéos incluses par semaine selon l'offre (0 = crédits seulement ; Infinity = illimité).
+// Doit rester identique à VIDEO_WEEKLY dans app.js.
+const VIDEO_WEEKLY = { essentiel: 2, pro: 4, expert: 6, admin: Infinity };
 const RATIOS = ["16:9", "9:16"];
 
 const blobStore = (name) => (process.env.NETLIFY_TOKEN && process.env.SITE_ID)
@@ -36,7 +36,16 @@ const json = (statusCode, body) => ({
   body: JSON.stringify(body),
 });
 
-const monthKey = (email) => "video|" + encodeURIComponent(email) + "|" + new Date().toISOString().slice(0, 7);
+// Semaine ISO (lundi au dimanche, en UTC) : 2025-W03 par exemple
+function isoWeek(d){
+  const x = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  const day = x.getUTCDay() || 7;
+  x.setUTCDate(x.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(x.getUTCFullYear(), 0, 1));
+  const week = Math.ceil(((x - yearStart) / 86400000 + 1) / 7);
+  return x.getUTCFullYear() + "-W" + String(week).padStart(2, "0");
+}
+const weekKey = (email) => "videoweek|" + encodeURIComponent(email) + "|" + isoWeek(new Date());
 // Nom de fichier sûr pour les clés de stockage
 const safeName = (name) => String(name).replace(/[^\w.-]/g, "_");
 
@@ -73,22 +82,22 @@ exports.handler = async (event) => {
   let plan = null;
   try { plan = await planFor(email); } catch (e) { return json(503, { error: "Vérification de l'offre impossible, réessayez" }); }
   // Sans abonnement : aucune vidéo incluse, la génération se paie uniquement avec des crédits
-  const monthly = plan ? VIDEO_MONTHLY[plan] : 0;
+  const weekly = plan ? VIDEO_WEEKLY[plan] : 0;
 
-  // Quota inclus ce mois-ci, sinon crédits
+  // Quota inclus cette semaine, sinon crédits
   const store = blobStore("karat-quota");
-  const key = monthKey(email);
+  const key = weekKey(email);
   let used = 0;
   try { used = ((await store.get(key, { type: "json" })) || {}).n || 0; }
   catch (e) { console.error("KARAT video: lecture du compteur", e.message); }
 
-  const source = used < monthly ? "quota" : "credit";
+  const source = used < weekly ? "quota" : "credit";
   if (source === "credit") {
     let credits = 0;
     try { credits = await balanceOf(email); }
     catch (e) { console.error("KARAT video: lecture des crédits", e.message); return json(503, { error: "Solde de crédits indisponible, réessayez" }); }
     if (credits < 1) {
-      const incl = (monthly === Infinity || monthly === 0) ? "" : monthly + " vidéos incluses par mois sont utilisées. ";
+      const incl = (weekly === Infinity || weekly === 0) ? "" : weekly + " vidéos incluses par semaine sont utilisées. ";
       return json(402, { error: incl + "Achetez des crédits (5 € par vidéo de 8 secondes) pour continuer." });
     }
   }
@@ -156,6 +165,6 @@ exports.handler = async (event) => {
     catch (e) { console.error("KARAT video: décompte du crédit", e.message); }
   }
 
-  const remaining = source === "quota" && monthly !== Infinity ? monthly - used - 1 : null;
+  const remaining = source === "quota" && weekly !== Infinity ? weekly - used - 1 : null;
   return json(200, { id: name, remaining, source });
 };
