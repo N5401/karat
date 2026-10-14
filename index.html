@@ -4282,6 +4282,21 @@ document.addEventListener("change", async e => {
   } catch (err) { toast(`« ${file.name} » n'a pas pu être lue. Essayez une photo JPG ou PNG.`, true); }
 });
 
+/* Si une image de la galerie ne s'affiche pas, affiche la réponse exacte du serveur (utile pour le diagnostic) */
+window.karatImgErr = async function (el) {
+  let info;
+  try {
+    const r = await fetch(el.dataset.src, { cache: "no-store" });
+    const txt = (await r.text()).slice(0, 140).replace(/\s+/g, " ");
+    info = "HTTP " + r.status + " : " + txt;
+  } catch (e) { info = "réseau : " + e.message; }
+  const box = document.createElement("div");
+  box.className = "small";
+  box.style.cssText = "color:#f88;margin-top:8px;word-break:break-word";
+  box.textContent = "Image indisponible (" + info + ")";
+  el.replaceWith(box);
+};
+
 /* ---------- Galerie « Mes images » : chaque image générée est conservée sur le site ---------- */
 async function loadImages(){
   const box = $("#img-list");
@@ -4296,7 +4311,7 @@ async function loadImages(){
       ? `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px">${items.map(im => {
           const src = `/.netlify/functions/image-file?email=${who}&id=${enc(im.id)}`;
           return `<div style="border:1px solid var(--line);border-radius:14px;padding:10px">
-            <img src="${src}" alt="${esc(im.prompt)}" loading="lazy" style="width:100%;border-radius:10px;display:block" onerror="this.insertAdjacentHTML('afterend','<div class=&quot;small&quot; style=&quot;color:#f88;margin-top:8px&quot;>Image indisponible : vérifiez que image-file.js est déployé.</div>');this.remove()">
+            <img src="${src}" alt="${esc(im.prompt)}" loading="lazy" style="width:100%;border-radius:10px;display:block" data-src="${src}" onerror="karatImgErr(this)">
             <div class="small" style="margin-top:8px">${esc(im.prompt)}</div>
             <div class="small muted" style="margin-top:4px">${new Date(im.createdAt).toLocaleString("fr-FR")}</div>
             <a class="btn btn-line btn-sm" style="margin-top:8px" href="${src}" download="karat-image.png">Télécharger</a>
