@@ -1,10 +1,10 @@
 // KARAT — génération d'images via l'API OpenAI (gpt-image).
 // POST {email, prompt, ref?}  ref = photo de référence optionnelle (data:image/...;base64,...)
-// Quotas selon l'offre (voir _shared/acces.js) : version gratuite 3 images tous les 2 jours, Essentiel 3 par jour, Pro 5, Expert illimité.
+// Quotas selon l'offre (voir _shared/acces.js) : version gratuite 3 images tous les 2 jours (non cumulables), Essentiel 3 par jour, Pro et Expert illimité.
 // Variables Netlify : OPENAI_API_KEY, STRIPE_SECRET_KEY, NETLIFY_TOKEN, SITE_ID.
 // Chaque image est facturée par OpenAI : vérifiez votre solde sur platform.openai.com.
 
-const { planFor, imageQuota, addImageUse, cleanEmail, PLAN_LABEL, freeResetText } = require("./_shared/acces");
+const { planFor, imageQuota, addImageUse, cleanEmail, imageLimitText } = require("./_shared/acces");
 
 // Modèle et qualité : modifiables ici ou dans les variables Netlify.
 const IMAGE_MODEL = process.env.IMAGE_MODEL || "gpt-image-2.5-sunburst";
@@ -71,7 +71,7 @@ exports.handler = async (event) => {
   // Offre et quota du jour
   let plan, quota, bonus = 0;
   try {
-    plan = (await planFor(email)) || "gratuit";   // sans offre : version gratuite, 3 images tous les 2 jours
+    plan = (await planFor(email)) || "gratuit";   // sans offre : version gratuite
     quota = await imageQuota(email, plan);
     bonus = await readBonus(email);
   } catch (e) {
@@ -82,9 +82,7 @@ exports.handler = async (event) => {
   const useBonus = quota.used >= quota.limit;
   if (useBonus && bonus < 1){
     return json(429, {
-      error: plan === "gratuit"
-        ? `Vous avez utilisé vos 3 images gratuites de cette période. Elles se renouvellent le ${freeResetText()}. Pour en générer davantage dès maintenant, l'offre Essentiel (6,99 € par mois) en inclut 3 par jour.`
-        : `Limite atteinte : ${quota.limit} images par jour avec l'offre ${PLAN_LABEL[plan] || plan}. Revenez demain ou passez à une offre supérieure.`,
+      error: imageLimitText(plan, quota),
       remaining: 0,
     });
   }
@@ -115,8 +113,9 @@ exports.handler = async (event) => {
       console.error("KARAT image: erreur API", r.status, JSON.stringify(result).slice(0, 500));
       return json(502, { error: "Le générateur d'images a renvoyé une erreur" });
     }
-    if (useBonus) await writeBonus(email, bonus - 1);
-    else await addImageUse(email, quota.used, plan);
+    // Une image payée n'est jamais perdue à cause d'une erreur d'écriture du compteur
+    if (useBonus) await writeBonus(email, bonus - 1).catch(e => console.error("KARAT image: points", e.message));
+    else await addImageUse(email, quota.used, plan).catch(e => console.error("KARAT image: compteur", e.message));
     const imageId = await saveToGallery(email, result.data[0].b64_json, prompt);
     const unlimited = quota.limit === Infinity;
     return json(200, {
