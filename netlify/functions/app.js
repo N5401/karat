@@ -30,8 +30,8 @@ const CONFIG = {
 };
 
 const PLANS = {
-  essentiel: { name: "Essentiel", price: "6,99 €",  num: 6.99, priceAn: "99 €", numAn: 99, desc: "Pour découvrir KARAT au quotidien.", feats: ["Assistant IA polyvalent", "Messages limités", "3 générations d'images par jour","Analyse de fichiers texte, PDF et images", "Historique des conversations sur 30 jours", "2 vidéos IA par semaine", "Support par e-mail"] },
-  pro:       { name: "Pro",       price: "29,99 €", num: 29.99, priceAn: "299 €", numAn: 299, desc: "Pour les professionnels qui travaillent chaque jour.", feats: ["Tout Essentiel", "Messages limités", "Générations d'images illimitées","Retouche d'image à partir d'une photo de référence", "Analyse de plusieurs documents à la fois (jusqu'à 10 PDF par message)", "Réponses longues et détaillées, jusqu'à une quinzaine de pages", "Modes spécialisés : code, rédaction, analyse de données", "Historique illimité", "4 vidéos IA par semaine", "Support prioritaire"] },
+  essentiel: { name: "Essentiel", price: "6,99 €",  num: 6.99, priceAn: "99 €", numAn: 99, desc: "Pour découvrir KARAT au quotidien.", feats: ["Assistant IA polyvalent", "Messages limités", "3 générations d'images par jour","Analyse de fichiers texte, PDF et images", "Historique des conversations sur 30 jours", "2 vidéos IA par semaine, avec le son", "Support par e-mail"] },
+  pro:       { name: "Pro",       price: "29,99 €", num: 29.99, priceAn: "299 €", numAn: 299, desc: "Pour les professionnels qui travaillent chaque jour.", feats: ["Tout Essentiel", "Messages limités", "Générations d'images illimitées","Retouche d'image à partir d'une photo de référence", "Analyse de plusieurs documents à la fois (jusqu'à 10 PDF par message)", "Réponses longues et détaillées, jusqu'à une quinzaine de pages", "Modes spécialisés : code, rédaction, analyse de données", "Historique illimité", "4 vidéos IA par semaine, avec le son", "Support prioritaire"] },
   expert:    { name: "Expert",    price: "49,99 €", num: 49.99, priceAn: "499 €", numAn: 499, desc: "Pour les équipes et les usages intensifs.", feats: ["Tout Pro, et en plus :", "Messages et images illimités", "6 vidéos IA par semaine, avec le son", "Modèle d'IA le plus avancé, pour les tâches complexes", "Accompagnement dédié à la mise en place"] }
 };
 
@@ -66,6 +66,9 @@ const ONBOARD_RULES = [
 /* ---------- Icônes ---------- */
 const ICON = {
   home: '<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
+  mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>',
+  book: '<path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 19V5M9 7h7"/>',
+  star: '<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>',
   film: '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="M7 4v16M17 4v16M2 9h5M2 15h5M17 9h5M17 15h5"/>',
   bell: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
   image: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/>',
@@ -183,7 +186,7 @@ function currentPlan(){
   if (isAdmin(session.email)) return "admin";
   return planOf(session.email);
 }
-// Version gratuite : sans limite de durée. Le serveur limite les messages et les images (renouvelés tous les 2 jours).
+// Version gratuite : sans limite de durée. Le serveur limite les messages et les images (3 images tous les 2 jours pour la version gratuite).
 const paidAccess = () => { const p = currentPlan(); return p === "admin" || !!(p && PLANS[p]); };
 const hasAccess = () => !!session || paidAccess();
 // Abonné payant (ou admin) : on masque les promos d'abonnement et les rappels de paiement
@@ -215,6 +218,7 @@ const ROUTES = [
   { re: /^\/$/,                      fn: vLanding },
   { re: /^\/tarifs$/,                fn: vPricing },
   { re: /^\/documentation$/,         fn: vGuide },
+  { re: /^\/mises-a-jour$/,            fn: vUpdates },
   { re: /^\/connexion$/,             fn: vAuth },
   { re: /^\/bienvenue$/,             fn: vOnboard,        onboard: true },
   { re: /^\/app\/chat$/,             fn: vChat,           app: true },
@@ -281,6 +285,7 @@ function afterRender(path){
   if (path === "/" || path === "/tarifs") initFX();
   if (path === "/admin/utilisateurs"){ const s = $("[data-change='admin-filter']"); if (s) s.value = ui.adminFilter; fillAdminUsers(); }
   if (path === "/admin/abonnements"){ fillSubs(); if (adminToken()) fillStripeSubs(); }
+  if (path === "/admin" || path === "/admin/utilisateurs" || path === "/admin/journal") loadServerAccounts();
   if (path === "/admin/journal"){ const s = $("[data-change='log-filter']"); if (s) s.value = ui.logFilter; }
   if (path === "/admin/annonces") fillAnnonceList();
   if (path === "/"){ startAvis(); startHome(); }
@@ -299,6 +304,7 @@ function pubHeader(path){
       <a href="#/" class="${path === "/" ? "on" : ""}">Produit</a>
       <a href="#/tarifs" class="${path === "/tarifs" ? "on" : ""}">Tarifs</a>
       <a href="#/documentation" class="${path === "/documentation" ? "on" : ""}">Documentation</a>
+      <a href="#/mises-a-jour" class="${path === "/mises-a-jour" ? "on" : ""}">Mises à jour</a>
     </nav>
     <div class="row">
       ${onlinePill()}
@@ -318,9 +324,12 @@ function pubFooter(){
     <div class="wrap between wrap-x">
       <span class="logo" style="font-size:14px"><i style="width:20px;height:20px;border-radius:6px;flex-basis:20px"></i>KARAT</span>
       <span class="mono">© 2026 KARAT</span>
-      <span class="row"><a href="#/">Mentions légales</a><a href="#/">Confidentialité</a><a href="#/">CGV</a><a href="mailto:karatsupport@gmail.com">Contact</a></span>
+      <span class="row"><a href="#/">Mentions légales</a><a href="#/">Confidentialité</a><a href="#/">CGV</a><a href="#/mises-a-jour">Mises à jour</a><a href="mailto:karatsupport@gmail.com">Contact</a></span>
     </div></footer>`;
 }
+/* ---------- Menu du panel : catégories repliables, tiroir sur téléphone ---------- */
+const navState = {};   // catégories repliées pendant la session (rien n'est enregistré)
+const CHEV = '<svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
 function appShell(path, content){
   const adm = isAdmin(session?.email);
   const link = (href, icon, label, count) => {
@@ -328,30 +337,30 @@ function appShell(path, content){
     const n = count !== undefined ? `<span class="count">${count}</span>` : "";
     return `<a class="nav-item ${on}" href="#${href}" ${on ? 'aria-current="page"' : ""}>${ic(icon)} ${label}${n}</a>`;
   };
+  const category = (key, title, items) => {
+    const open = navState[key] !== false;
+    return `<section class="nav-group${open ? "" : " is-closed"}" data-group="${key}">
+      <button type="button" class="group-btn" data-action="nav-group" data-group="${key}" aria-expanded="${open}"><span>${title}</span>${CHEV}</button>
+      <div class="nav-items">${items}</div>
+    </section>`;
+  };
   const name = displayName(me()) || session.email;
-  const p = currentPlan();
   return `<div class="shell">
+    <header class="app-top">
+      <button type="button" class="burger" data-action="menu-toggle" aria-label="Ouvrir le menu" aria-expanded="false"><span></span><span></span><span></span></button>
+      <a href="#/app/chat" class="logo"><i></i>KARAT</a>
+      <span class="app-top-plan">${esc(planLabel())}</span>
+    </header>
+    <div class="scrim" data-action="menu-close"></div>
     <aside class="side">
       <a href="#/app/chat" class="logo"><i></i>KARAT</a>
+      <a href="#/app/chat" class="btn btn-accent btn-block side-cta">${ic("plus")} Nouvelle conversation</a>
       <a class="nav-item" href="#/">${ic("home")} Accueil</a>
-      <div class="group">Espace</div>
-      ${link("/app/chat", "chat", "Chat IA")}
-      ${link("/app/historique", "clock", "Historique", myChats().length)}
-      ${link("/app/modules", "grid", "Modules")}
-      ${link("/app/guide", "book", "Documentation")}
-      ${link("/app/images", "image", "Images")}
-      ${link("/app/video", "film", "Vidéos")}
-      ${link("/app/support", "mail", "Support")}
-      ${link("/app/offre", "card", "Abonnement")}
-      ${adm ? `<div class="group">Administration</div>
-        ${link("/admin", "shield", "Vue d'ensemble")}
-        ${link("/admin/utilisateurs", "users", "Utilisateurs", Object.keys(users).length)}
-        ${link("/admin/abonnements", "card", "Abonnements", allRows().filter(r => r.plan).length)}
-        ${link("/admin/journal", "list", "Journal")}
-        ${link("/admin/annonces", "bell", "Annonces")}
-        ${link("/admin/avis", "star", "Avis")}
-        ${link("/admin/attributions", "card", "Attributions")}
-        ${link("/admin/reglages", "settings", "Réglages")}` : ""}
+      ${category("assistant", "Assistant", link("/app/chat", "chat", "Chat IA") + link("/app/historique", "clock", "Historique", myChats().length) + link("/app/modules", "grid", "Modules"))}
+      ${category("creation", "Création", link("/app/images", "image", "Images") + link("/app/video", "film", "Vidéos"))}
+      ${category("compte", "Mon compte", link("/app/offre", "card", "Abonnement") + link("/app/support", "mail", "Support"))}
+      ${category("aide", "Aide", link("/app/guide", "book", "Documentation") + link("/mises-a-jour", "bell", "Mises à jour"))}
+      ${adm ? category("admin", "Administration", link("/admin", "shield", "Vue d'ensemble") + link("/admin/utilisateurs", "users", "Utilisateurs", Object.keys(users).length) + link("/admin/abonnements", "card", "Abonnements", allRows().filter(r => r.plan).length) + link("/admin/journal", "list", "Journal") + link("/admin/annonces", "bell", "Annonces") + link("/admin/avis", "star", "Avis") + link("/admin/attributions", "card", "Attributions") + link("/admin/reglages", "settings", "Réglages")) : ""}
       <div class="foot">
         <div class="plan-block">
           <span class="label">${adm ? "Accès" : "Offre"}</span>
@@ -472,6 +481,96 @@ function startHome(){
   }
 }
 
+
+/* ---------- Mises à jour (affichées sur la page dédiée et sur l'accueil) ---------- */
+const UPDATES = [
+  { date: "16 octobre 2026", tag: "Interface", title: "Nouvelle interface noir et bronze",
+    text: "Le site et le panel ont été repensés : fond noir, accents bronze et or, mise en page plus sobre et plus lisible.",
+    bullets: ["Accueil enrichi : publics visés, sécurité, dernières mises à jour", "Panneau d'administration revu, avec les mêmes données", "Une page dédiée à ces mises à jour"] },
+  { date: "Octobre 2026", tag: "Vidéos", title: "Vidéos IA incluses chaque semaine",
+    text: "Chaque abonnement inclut des vidéos IA de 8 secondes, avec le son. Le quota se renouvelle chaque semaine.",
+    bullets: ["Essentiel : 2 vidéos par semaine", "Pro : 4 vidéos par semaine", "Expert : 6 vidéos par semaine", "Au-delà du quota : 1 crédit par vidéo, soit 5 €"] },
+  { date: "Octobre 2026", tag: "Administration", title: "Tous les comptes visibles",
+    text: "L'administrateur voit désormais les personnes inscrites, quel que soit l'appareil utilisé pour créer leur compte.",
+    bullets: ["Nom, e-mail, téléphone et mode de connexion", "Date d'inscription et dernière connexion", "Les abonnés restent suivis dans l'onglet Abonnements"] },
+  { date: "Octobre 2026", tag: "Administration", title: "Tableau de bord et journal",
+    text: "La vue d'ensemble affiche les dernières inscriptions. Le journal comporte une colonne e-mail pour retrouver chaque événement.",
+    bullets: ["Dernières inscriptions affichées sur la vue d'ensemble", "Journal filtrable, avec l'e-mail de chaque personne"] },
+  { date: "Octobre 2026", tag: "Sécurité", title: "La sécurité des paiements expliquée",
+    text: "Une courte vidéo présente la sécurité de KARAT et le rôle de Stripe dans le traitement des paiements.",
+    video: "karat-securite-stripe-v4.mp4" }
+];
+
+function updTeaserHTML(){
+  return `<section class="lp-sec lp-sec-tight"><div class="lp-wrap">
+    <div class="lp-sec-head">
+      <div><div class="lp-kicker">Mises à jour</div><h2 class="lp-h2">Ce qui a changé récemment.</h2></div>
+      <a class="btn btn-line" href="#/mises-a-jour">Toutes les mises à jour</a>
+    </div>
+    <div class="upd-teaser">${UPDATES.slice(0, 3).map(u => `<a class="upd-mini" href="#/mises-a-jour">
+      <span class="upd-date">${esc(u.date)} · ${esc(u.tag)}</span>
+      <h3>${esc(u.title)}</h3>
+      <p>${esc(u.text)}</p>
+    </a>`).join("")}</div>
+  </div></section>`;
+}
+
+function landingUsesHTML(){
+  const uses = [
+    { i: "book",  t: "Étudiants",     d: "Comprendre un cours, résumer un document, préparer un exposé ou relire un devoir." },
+    { i: "card",  t: "Entrepreneurs", d: "Rédiger un e-mail, analyser un tableau de ventes, préparer une décision importante." },
+    { i: "code",  t: "Développeurs",  d: "Trouver un bug, optimiser une fonction, écrire des tests et relire un code." },
+    { i: "edit",  t: "Rédacteurs",    d: "Reformuler un passage, raccourcir un texte, adapter le ton à votre lecteur." },
+    { i: "image", t: "Créateurs",     d: "Générer des images, et des vidéos IA de 8 secondes avec le son selon votre offre." },
+    { i: "grid",  t: "Analystes",     d: "Lire un fichier CSV, repérer les tendances et proposer un graphique pertinent." }
+  ];
+  return `<section class="lp-sec" id="pour-qui"><div class="lp-wrap">
+    <div class="lp-sec-head">
+      <div><div class="lp-kicker">Pour qui</div><h2 class="lp-h2">Un outil pour chaque façon de travailler.</h2></div>
+      <p>Étudiants, entrepreneurs, développeurs ou rédacteurs : KARAT s'adapte à votre tâche.</p>
+    </div>
+    <div class="hm-feats">${uses.map(u => `<article class="hm-feat"><span class="hm-ico">${ic(u.i)}</span><h3>${u.t}</h3><p>${u.d}</p></article>`).join("")}</div>
+  </div></section>`;
+}
+
+function landingSecurityHTML(){
+  const items = [
+    { i: "card",   t: "Paiements gérés par Stripe", d: "KARAT ne stocke pas vos coordonnées bancaires. Le paiement passe par une plateforme reconnue." },
+    { i: "lock",   t: "Mots de passe chiffrés",     d: "Votre mot de passe n'est jamais enregistré en clair dans votre espace." },
+    { i: "shield", t: "Conversations privées",      d: "Chaque conversation n'est visible que depuis votre compte." },
+    { i: "clock",  t: "Résiliation en un clic",     d: "Vous changez d'offre ou résiliez depuis la page Abonnement, à tout moment." }
+  ];
+  return `<section class="lp-sec lp-sec-tight" id="securite"><div class="lp-wrap">
+    <div class="lp-sec-head">
+      <div><div class="lp-kicker">Sécurité</div><h2 class="lp-h2">Vos données et vos paiements, protégés.</h2></div>
+      <p>Des règles simples, expliquées clairement avant votre premier accès au panel.</p>
+    </div>
+    <div class="hm-sec-grid">${items.map(s => `<div class="hm-sec-item"><span class="hm-ico">${ic(s.i)}</span><div><h3>${s.t}</h3><p>${s.d}</p></div></div>`).join("")}</div>
+  </div></section>`;
+}
+
+function vUpdates(){
+  return `${pubHeader("/mises-a-jour")}
+  <section class="section" style="padding-top:70px"><div class="wrap">
+    <div class="head">
+      <div><div class="label">Mises à jour</div><h1 class="h-l" style="margin-top:14px">Ce qui change dans KARAT</h1></div>
+      <p>Les nouveautés, les améliorations et les changements d'offre, du plus récent au plus ancien.</p>
+    </div>
+    <div class="upd-list">
+      ${UPDATES.map(u => `<article class="upd-item">
+        <div class="upd-meta"><span class="upd-date">${esc(u.date)}</span><span class="badge accent">${esc(u.tag)}</span></div>
+        <div class="upd-body">
+          <h3>${esc(u.title)}</h3>
+          <p>${esc(u.text)}</p>
+          ${u.bullets ? `<ul>${u.bullets.map(b => `<li>${esc(b)}</li>`).join("")}</ul>` : ""}
+          ${u.video ? `<video class="upd-video" controls preload="none" src="${esc(u.video)}"></video>` : ""}
+        </div>
+      </article>`).join("")}
+    </div>
+  </div></section>
+  ${pubFooter()}`;
+}
+
 function vLanding(){
   const promo = promoHidden();
   const loggedIn = !!session;
@@ -559,7 +658,13 @@ function vLanding(){
     </div>
   </div></section>
 
+  ${landingUsesHTML()}
+
+  ${landingSecurityHTML()}
+
   ${avisSection()}
+
+  ${updTeaserHTML()}
 
   ${offres}
 
@@ -588,7 +693,7 @@ function vLanding(){
   <footer class="lp-foot"><div class="lp-wrap">
     <span class="logo"><i></i>KARAT</span>
     <small>© 2026 KARAT</small>
-    <nav><a href="#/">Mentions légales</a><a href="#/">Confidentialité</a><a href="#/">CGV</a><a href="mailto:karatsupport@gmail.com">Contact</a></nav>
+    <nav><a href="#/">Mentions légales</a><a href="#/">Confidentialité</a><a href="#/">CGV</a><a href="#/mises-a-jour">Mises à jour</a><a href="mailto:karatsupport@gmail.com">Contact</a></nav>
   </div></footer>
   </div>`;
 }
@@ -688,6 +793,15 @@ function startSession(s, isNew){
   go(isNew ? "/app/guide" : nextTarget());
   toast(`Bienvenue, ${s.name || s.email}`);
 }
+// Envoie le compte au serveur, pour que l'administrateur voie tous les comptes (une fiche par adresse, sans mot de passe)
+function sendAccount(u){
+  const body = JSON.stringify({ email: u.email, firstName: u.firstName || "", lastName: u.lastName || "", phone: u.phone || "", provider: u.provider || "", createdAt: u.createdAt || Date.now(), lastLogin: u.lastLogin || Date.now() });
+  // Une nouvelle tentative après 3 s si l'envoi échoue (réseau momentanément coupé)
+  const send = (left) => fetch("/.netlify/functions/inscriptions", { method: "POST", headers: { "Content-Type": "application/json" }, body, keepalive: true })
+    .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); })
+    .catch(() => { if (left > 0) setTimeout(() => send(left - 1), 3000); });
+  try { send(1); } catch (e) {}
+}
 async function onLogin(f){
   setErr("");
   const email = emailOf(f.querySelector('[name="email"]').value);
@@ -699,6 +813,7 @@ async function onLogin(f){
     if (!(await verifyPw(pw, u))) return setErr("Mot de passe incorrect.");
   }catch(e){ return setErr("Votre navigateur bloque le chiffrement. Ouvrez la page en https ou en local."); }
   u.lastLogin = Date.now(); saveUsers();
+  sendAccount(users[email]);
   startSession({ email, name: displayName(u) }, false);
 }
 async function onSignup(f){
@@ -718,6 +833,7 @@ async function onSignup(f){
     users[email] = { email, firstName: first, lastName: last, phone, hash, salt, provider: "password", createdAt: Date.now(), lastLogin: Date.now() };
     saveUsers();
   }catch(e){ return setErr("Votre navigateur bloque le chiffrement. Ouvrez la page en https ou en local."); }
+  sendAccount(users[email]);
   startSession({ email, name: `${first} ${last}` }, true);
 }
 function parseJwt(token){
@@ -739,6 +855,7 @@ window.handleGoogleCredential = function(resp){
       lastLogin: Date.now(), picture: p.picture
     };
     saveUsers();
+    sendAccount(users[email]);
     startSession({ email, name: p.name, picture: p.picture, provider: "Google" }, isNew);
   }catch(e){ setErr("Connexion Google impossible, réessayez."); }
 };
@@ -921,11 +1038,22 @@ function msgHTML(m){
 }
 function welcomeHTML(mode){
   const first = (me().firstName || "").trim();
+  const m = MODES[mode];
   return `<div class="welcome">
-    <div class="big"><svg viewBox="0 0 64 64" width="44" height="44" aria-hidden="true"><g stroke="#d7ff3f" stroke-width="7" stroke-linecap="round" fill="none"><line x1="20" y1="14" x2="20" y2="50"/><line x1="20" y1="32" x2="44" y2="16"/><line x1="20" y1="32" x2="48" y2="50"/></g><path d="M52 6 L54 12 L60 14 L54 16 L52 22 L50 16 L44 14 L50 12 Z" fill="#d7ff3f"/></svg></div>
-    <h2>Bonjour${first ? ", " + esc(first) : ""}</h2>
-    <p>${MODES[mode].desc}</p>
-    <div class="sugg">${SUGGESTIONS[mode].map(t => `<button type="button" data-action="suggest" data-text="${esc(t)}">${esc(t)}</button>`).join("")}</div>
+    <header class="wc-head">
+      <span class="wc-mark" aria-hidden="true"><svg viewBox="0 0 64 64" width="30" height="30"><g stroke="#d4a853" stroke-width="7" stroke-linecap="round" fill="none"><line x1="20" y1="14" x2="20" y2="50"/><line x1="20" y1="32" x2="44" y2="16"/><line x1="20" y1="32" x2="48" y2="50"/></g><path d="M52 6 L54 12 L60 14 L54 16 L52 22 L50 16 L44 14 L50 12 Z" fill="#d4a853"/></svg></span>
+      <div class="wc-text">
+        <span class="label">Module ${esc(m.name)}</span>
+        <h2>Bonjour${first ? `, <em>${esc(first)}</em>` : ""}</h2>
+        <p class="wc-desc">${m.desc}</p>
+      </div>
+    </header>
+    <ul class="wc-caps" aria-label="Ce que fait ce module">${m.bullets.map(b => `<li>${esc(b)}</li>`).join("")}</ul>
+    <section>
+      <div class="wc-sec">Pour commencer</div>
+      <div class="sugg-grid">${SUGGESTIONS[mode].map((t, i) => `<button type="button" class="sugg-card" data-action="suggest" data-text="${esc(t)}"><span class="n">0${i + 1}</span><span class="sugg-t">${esc(t)}</span><svg class="sugg-arr" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>`).join("")}</div>
+    </section>
+    <p class="wc-tip">Astuce : joignez une image ou un fichier avec le trombone, puis posez votre question.</p>
   </div>`;
 }
 function vChat(m){
@@ -1121,16 +1249,24 @@ async function importFiles(list){
   if (added){ saveFiles(); toast(`${added} fichier${added > 1 ? "s" : ""} ajouté${added > 1 ? "s" : ""}`); render(); }
 }
 function vModules(){
-  const cards = Object.keys(MODES).map(k => `
-    <div class="card mod">
-      <div class="mi">${svg(MODES[k].icon)}</div>
-      <h3>${MODES[k].name}</h3>
-      <p>${MODES[k].desc}</p>
-      <ul>${MODES[k].bullets.map(b => `<li>${esc(b)}</li>`).join("")}</ul>
-      <button class="btn btn-accent" data-action="use-module" data-mode="${k}">Utiliser ce module ${ic("arrow")}</button>
-    </div>`).join("");
+  const cur = ui.mode;
+  const cards = Object.keys(MODES).map((k, i) => {
+    const m = MODES[k], on = k === cur;
+    return `<article class="card mod${on ? " is-on" : ""}">
+      <div class="mod-top">
+        <span class="mi">${ic(m.icon)}</span>
+        ${on ? `<span class="badge accent">Module actif</span>` : `<span class="mod-num">0${i + 1}</span>`}
+      </div>
+      <div class="mod-body">
+        <h3>${m.name}</h3>
+        <p>${m.desc}</p>
+      </div>
+      <ul class="mod-list">${m.bullets.map(b => `<li>${esc(b)}</li>`).join("")}</ul>
+      <button type="button" class="btn ${on ? "btn-accent" : "btn-line"}" data-action="use-module" data-mode="${k}">${on ? "Nouvelle conversation" : "Utiliser ce module"} ${ic("arrow")}</button>
+    </article>`;
+  }).join("");
   return appShell("/app/modules", pageHead("Espace", "Modules", "Chaque module adapte le ton, la méthode et les réponses à votre besoin.") +
-    `<div class="grid g2">${cards}</div>`);
+    `<div class="grid g2 mods">${cards}</div>`);
 }
 
 /* =====================================================================
@@ -1148,7 +1284,7 @@ function vSubscription(){
             <p class="muted small" style="margin-top:6px">Active depuis le ${fmtDay(sub.since)} · prochain renouvellement le ${fmtDay(addMonths(sub.since, 1))}</p></div>
           <div class="row wrap-x">${promoHidden() ? "" : `<a class="btn btn-line btn-sm" href="#/tarifs">Changer d'offre</a>`}<button class="btn btn-ghost btn-sm" data-action="cancel-sub">Résilier</button></div>
         </div>`
-      : `<div class="plan-status"><div><div class="label">Statut</div><b>Version gratuite</b><p class="muted small" style="margin-top:6px">30 messages par jour et 3 images tous les 2 jours. Une offre vous en donne davantage.</p></div><a class="btn btn-accent btn-sm" href="#/tarifs">Voir les offres</a></div>`;
+      : `<div class="plan-status"><div><div class="label">Statut</div><b>Version gratuite</b><p class="muted small" style="margin-top:6px">30 messages par jour et 3 images tous les 2 jours, non cumulables. Une offre vous en donne davantage.</p></div><a class="btn btn-accent btn-sm" href="#/tarifs">Voir les offres</a></div>`;
   const features = p ? `<div class="card" style="margin-top:18px"><div class="card-h"><h3>Inclus dans votre offre</h3></div>
     <ul style="list-style:none;display:grid;gap:12px">${PLANS[p].feats.map(f => `<li class="row">${ic("check")} ${esc(f)}</li>`).join("")}</ul></div>` : "";
   return appShell("/app/offre", pageHead("Espace", "Abonnement", "Votre offre, son renouvellement et sa résiliation.") +
@@ -1160,9 +1296,9 @@ function vSubscription(){
    ADMINISTRATION
    ===================================================================== */
 function allRows(){
-  const emails = new Set([...Object.keys(users), ...Object.keys(subs)]);
+  const emails = new Set([...Object.keys(serverAccounts || {}), ...Object.keys(users), ...Object.keys(subs)]);
   return [...emails].map(email => {
-    const u = users[email] || {};
+    const u = users[email] || (serverAccounts || {})[email] || {};
     const s = subs[email] || {};
     return {
       email,
@@ -1261,6 +1397,31 @@ function vAdminOverview(){
       </div>
     </div>`);
 }
+// Comptes de tous les visiteurs, lus sur le serveur (il faut le jeton administrateur saisi dans Abonnements)
+let serverAccounts = null, serverError = "", serverLoading = false, serverAt = 0;
+
+function usersNote(){
+  if (serverError) return `<p class="muted small" style="margin-bottom:12px">Comptes des autres visiteurs indisponibles : ${esc(serverError)}</p>`;
+  if (!adminToken()) return `<p class="muted small" style="margin-bottom:12px">Saisissez le jeton administrateur dans Abonnements pour voir les comptes de tous les visiteurs.</p>`;
+  return "";
+}
+async function loadServerAccounts(force){
+  const tok = adminToken();
+  if (!tok || serverLoading) return;
+  // Relue à chaque ouverture (au plus toutes les 15 s, ou à la demande) pour voir les comptes créés depuis
+  if (!force && serverAt && Date.now() - serverAt < 15000) return;
+  serverLoading = true; serverAt = Date.now(); serverError = "";
+  try{
+    const r = await fetch("/.netlify/functions/inscriptions", { headers: { "x-admin-token": tok }, cache: "no-store" });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.error || "Erreur");
+    const map = {};
+    (d.accounts || []).forEach(a => { if (a && a.email) map[a.email] = a; });
+    serverAccounts = map;
+  }catch(e){ serverError = e.message || "Erreur"; }
+  serverLoading = false;
+  render();
+}
 function vAdminUsers(){
   return appShell("/admin/utilisateurs", pageHead("Administration", "Utilisateurs", "Coordonnées, offre et historique de chaque compte.",
     `<div class="search">${ic("search")}<input class="input" placeholder="Nom, e-mail, téléphone…" aria-label="Rechercher un utilisateur" data-input="admin-search" /></div>
@@ -1268,8 +1429,9 @@ function vAdminUsers(){
        <option value="all">Toutes les offres</option><option value="none">Sans offre</option>
        ${Object.keys(PLANS).map(p => `<option value="${p}">${PLANS[p].name}</option>`).join("")}
      </select>
+     <button class="btn btn-line btn-sm" data-action="refresh-accounts">Actualiser</button>
      <button class="btn btn-line btn-sm" data-action="export-users">${ic("download")} Exporter CSV</button>`) +
-    `<div class="table-wrap"><table class="tbl">
+    `${usersNote()}<div class="table-wrap"><table class="tbl">
       <thead><tr>${th("Nom", "name")}${th("E-mail", "email")}<th>Téléphone</th>${th("Inscrit le", "createdAt")}${th("Dernière connexion", "lastLogin")}<th>Mode</th>${th("Offre", "plan")}<th><span class="sr-only"></span></th></tr></thead>
       <tbody id="admBody"></tbody>
     </table><div class="pager" id="admPager"></div></div>`);
@@ -1516,26 +1678,12 @@ function onEditUser(f){
 /* =====================================================================
    EFFETS & ÉVÉNEMENTS
    ===================================================================== */
-function initFX(){
-  const io = new IntersectionObserver(es => es.forEach(e => {
-    if (e.isIntersecting){ e.target.classList.add("in"); io.unobserve(e.target); }
-  }), { threshold: .12 });
-  $$(".card, .plan, .head, .console, .preview").forEach(el => { el.classList.add("reveal"); io.observe(el); });
-  $$(".card, .plan").forEach(el => {
-    el.addEventListener("pointermove", e => {
-      const r = el.getBoundingClientRect();
-      const x = e.clientX - r.left, y = e.clientY - r.top;
-      el.style.setProperty("--mx", x + "px");
-      el.style.setProperty("--my", y + "px");
-      if (el.classList.contains("plan")){
-        el.style.transform = `perspective(900px) rotateX(${(y / r.height - .5) * -6}deg) rotateY(${(x / r.width - .5) * 6}deg) translateY(-4px)`;
-      }
-    });
-    el.addEventListener("pointerleave", () => { el.style.transform = ""; });
-  });
-}
+function initFX(){}
 
 const ACTIONS = {
+  "menu-toggle":   el => { const open = document.querySelector(".shell")?.classList.toggle("menu-open"); el.setAttribute("aria-expanded", String(!!open)); },
+  "menu-close":    () => document.querySelector(".shell")?.classList.remove("menu-open"),
+  "nav-group":     el => { const key = el.dataset.group; const isOpen = navState[key] !== false; navState[key] = !isOpen; el.closest(".nav-group")?.classList.toggle("is-closed", isOpen); el.setAttribute("aria-expanded", String(!isOpen)); },
   "logout":        () => askConfirm("Se déconnecter ?", "Votre conversation en cours sera effacée de cet appareil.", doLogout, "Se déconnecter"),
   "close-modal":   () => closeModal(),
   "confirm-ok":    () => { const f = pendingOk; pendingOk = null; closeModal(); f && f(); },
@@ -1616,6 +1764,7 @@ const ACTIONS = {
 
 document.addEventListener("click", e => {
   if (e.target.matches && e.target.matches("[data-veil]")) return closeModal();
+  if (e.target.closest && e.target.closest(".side a")) document.querySelector(".shell")?.classList.remove("menu-open");
   const el = e.target.closest("[data-action]");
   if (!el || el.disabled) return;
   const fn = ACTIONS[el.dataset.action];
@@ -1768,9 +1917,13 @@ function avisRail(){
       <b>Soyez le premier à laisser un avis.</b>
       <p class="muted small">Votre retour aide les prochains utilisateurs à décider.</p>
     </article></div>`;
-  const items = avisState.avis.map(avisCard).join("");
-  const dur = Math.max(18, avisState.avis.length * 7);
-  return `<div class="avis-rail" aria-label="Avis des utilisateurs"><div class="avis-track" style="animation-duration:${dur}s">${items}${items}</div></div>`;
+  const real = avisState.avis;
+  // Moins de 4 avis : pas de défilement, on les affiche côte à côte
+  if (real.length < 4) return `<div class="avis-rail avis-static" aria-label="Avis des utilisateurs">${real.map(avisCard).join("")}</div>`;
+  // Défilement continu : la série est répétée, la copie est masquée aux lecteurs d'écran
+  const half = real.map(avisCard).join("");
+  const dur = Math.max(24, real.length * 6);
+  return `<div class="avis-rail avis-loop" aria-label="Avis des utilisateurs"><div class="avis-track" style="animation-duration:${dur}s"><div class="avis-set">${half}</div><div class="avis-set" aria-hidden="true">${half}</div></div></div>`;
 }
 function avisSection(){
   return `<section class="lp-sec avis-sec" id="avis"><div class="lp-wrap">
@@ -1994,7 +2147,7 @@ function imgQuotaText(){
   if (p === "expert") return "Offre Expert : messages et images illimités.";
   if (p === "pro") return "Offre Pro : images illimitées.";
   if (p === "essentiel") return "Offre Essentiel : 3 images par jour.";
-  return session ? "Version gratuite : 3 images tous les 2 jours." : "Connectez-vous pour générer des images.";
+  return session ? "Version gratuite : 3 images tous les 2 jours, non cumulables." : "Connectez-vous pour générer des images.";
 }
 /* ---------- Vidéos (offre Expert) : le serveur vérifie l'offre et le quota ---------- */
 // Vidéos incluses par semaine selon l'offre : doit rester identique à VIDEO_WEEKLY dans netlify/functions/video.js
@@ -2198,6 +2351,10 @@ function vImages(){
 }
 
 Object.assign(ACTIONS, {
+  "refresh-accounts": () => { if (!adminToken()) return toast("Saisissez d'abord le jeton administrateur dans Abonnements", true); loadServerAccounts(true); toast("Liste actualisée"); }
+});
+
+Object.assign(ACTIONS, {
   "img-ref-pick": () => { const f = $("#imgRefFile"); if (f) f.click(); },
   "img-ref-remove": () => { const pr = ($("#img-prompt") || {}).value || ""; ui.imgRef = null; render(); loadImages(); const t = $("#img-prompt"); if (t) t.value = pr; },
   "img-generate": async () => {
@@ -2226,7 +2383,8 @@ Object.assign(ACTIONS, {
       if (d.status === "pending") throw new Error("La génération prend plus de temps que prévu. L'image apparaîtra dans « Mes images » dans un instant.");
       if (d.status === "error") throw new Error(d.error || "Erreur");
       if (!d.image) throw new Error("Erreur");
-      const restant = d.remaining === null || d.remaining === undefined ? "" : `<p class="muted small" style="margin-top:12px">Il vous reste ${d.remaining} image${d.remaining > 1 ? "s" : ""} aujourd'hui.</p>`;
+      const gratuit = !["essentiel", "pro", "expert", "admin"].includes(planOf(session && session.email));
+      const restant = d.remaining === null || d.remaining === undefined ? "" : `<p class="muted small" style="margin-top:12px">Il vous reste ${d.remaining} image${d.remaining > 1 ? "s" : ""}${gratuit ? " gratuite" + (d.remaining > 1 ? "s" : "") : " aujourd'hui"}.${gratuit && d.remaining === 0 ? " Elles se renouvellent dans les 2 jours, ou dès maintenant avec une offre payante." : ""}</p>`;
       out.innerHTML = `<img src="${d.image}" alt="${esc(prompt)}" style="width:100%;max-width:520px;border-radius:14px;border:1px solid var(--line)">
         <div style="margin-top:14px"><a class="btn btn-line btn-sm" href="${d.image}" download="karat-image.png">Télécharger</a></div>${restant}${d.bonus ? `<p class="muted small" style="margin-top:6px">Points images restants : ${d.bonus}.</p>` : ""}`;
         loadImages();
@@ -2271,13 +2429,13 @@ function vSupport(){
   const sujet = enc("Demande KARAT");
   const corps = enc("Bonjour,\n\nCompte KARAT : " + (session ? session.email : "") + "\n\nMon problème :\n\n");
   return appShell("/app/support", pageHead("Aide", "Support", "Une question, un problème ou une demande ? Écrivez-nous.") +
-    `<div class="card" style="max-width:640px;border-color:rgba(140,247,255,.35)">
-      <div class="card-h"><h3 style="color:#8cf7ff">Contacter l'équipe KARAT</h3></div>
+    `<div class="card" style="max-width:640px;border-color:rgba(239,207,136,.35)">
+      <div class="card-h"><h3 style="color:#efcf88">Contacter l'équipe KARAT</h3></div>
       <p class="muted" style="margin-top:8px;line-height:1.6">Décrivez votre problème par e-mail et indiquez l'adresse de votre compte : cela nous permet de répondre plus vite.</p>
       <div class="field" style="margin-top:20px"><label for="support-mail">ADRESSE E-MAIL</label>
-        <div class="row" style="gap:10px"><input id="support-mail" class="input" readonly value="${SUPPORT_EMAIL}" /><button class="btn btn-line" style="border-color:#8cf7ff;color:#8cf7ff" data-action="support-copy">Copier</button></div>
+        <div class="row" style="gap:10px"><input id="support-mail" class="input" readonly value="${SUPPORT_EMAIL}" /><button class="btn btn-line" style="border-color:#efcf88;color:#efcf88" data-action="support-copy">Copier</button></div>
       </div>
-      <a class="btn" style="margin-top:18px;background:#8cf7ff;color:#0a0a0a" href="mailto:${SUPPORT_EMAIL}?subject=${sujet}&body=${corps}">Écrire un e-mail</a>
+      <a class="btn" style="margin-top:18px;background:#efcf88;color:#0a0a0a" href="mailto:${SUPPORT_EMAIL}?subject=${sujet}&body=${corps}">Écrire un e-mail</a>
     </div>`);
 }
 Object.assign(ACTIONS, {
@@ -2538,7 +2696,7 @@ function vGuide(){
           <ul>
             <li>Un message compte pour 1, même si vous joignez plusieurs fichiers.</li>
             <li>Une réponse coupée, relancée avec « continue », compte comme un nouveau message.</li>
-            <li>Les messages se renouvellent chaque jour, à minuit (heure UTC). Les images de la version gratuite se renouvellent tous les 2 jours.</li>
+            <li>Les messages se renouvellent chaque jour, à minuit (heure UTC). Les images de la version gratuite se renouvellent tous les 2 jours, sans cumul.</li>
           </ul>`)}
 
         ${sec("compte", "07", "Compte et données", `
@@ -2554,7 +2712,7 @@ function vGuide(){
           <ul>
             <li>Pour résilier, cliquez sur « Résilier ». Votre accès reste actif jusqu'à la fin de la période payée.</li>
             <li>Pour changer d'offre, écrivez-nous depuis la page Support.</li>
-            <li>La version gratuite n'a pas de limite de durée : ses messages se renouvellent chaque jour, et ses images tous les 2 jours.</li>
+            <li>La version gratuite n'a pas de limite de durée : ses messages se renouvellent chaque jour, et ses images tous les 2 jours, sans cumul.</li>
           </ul>`)}
 
         ${sec("prudence", "09", "Prudence et règles d'usage", `
@@ -2568,7 +2726,7 @@ function vGuide(){
         ${sec("faq", "10", "Questions fréquentes", `
           ${qa("Pourquoi ma réponse s'arrête-t-elle ?", "Elle est plus longue que la limite de votre offre. Écrivez « continue » pour recevoir la suite.")}
           ${qa("Pourquoi vois-je « limite atteinte » ?", "Vous avez utilisé les messages de votre journée. Ils se renouvellent chaque jour, à minuit (heure UTC). Une offre supérieure vous en donne davantage.")}
-          ${qa("Pourquoi ne puis-je pas générer d'image ?", "Vous avez utilisé les images de votre période en cours. La version gratuite en inclut 3 tous les 2 jours, et les offres payantes en incluent davantage.")}
+          ${qa("Pourquoi ne puis-je pas générer d'image ?", "Vous avez utilisé les images de votre période de 2 jours. La version gratuite en inclut 3 tous les 2 jours, et les offres payantes en incluent davantage.")}
           ${qa("Mon historique a disparu.", "L'historique est enregistré dans le navigateur. Reconnectez-vous depuis le même navigateur et le même appareil.")}
           ${qa("Qui contacter ?", `Depuis la page Support, ou par e-mail à ${SUPPORT_EMAIL} en indiquant l'adresse de votre compte.`)}`)}
 
