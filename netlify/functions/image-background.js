@@ -4,7 +4,7 @@
 // Variables : OPENAI_API_KEY, IMAGE_MODEL, IMAGE_QUALITY, NETLIFY_TOKEN + SITE_ID (si besoin).
 
 const { getStore } = require("@netlify/blobs");
-const { planFor, imageQuota, addImageUse, cleanEmail, PLAN_LABEL, freeResetText } = require("./_shared/acces");
+const { planFor, imageQuota, addImageUse, cleanEmail, imageLimitText } = require("./_shared/acces");
 
 const IMAGE_MODEL = process.env.IMAGE_MODEL || "gpt-image-2.5-sunburst";
 const IMAGE_QUALITY = process.env.IMAGE_QUALITY || "medium";
@@ -14,6 +14,21 @@ const blobStore = (name) => (process.env.NETLIFY_TOKEN && process.env.SITE_ID)
   : getStore(name);
 
 const cleanId = (v) => String(v || "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 80);
+
+// Une seconde tentative en cas de coupure réseau ou de réponse 429 / 5xx du générateur
+async function withRetry(request){
+  let r = null, err = null;
+  for (let i = 0; i < 2; i++){
+    try {
+      r = await request();
+      if (r.status !== 429 && r.status < 500) return r;
+      err = null;
+    } catch (e) { r = null; err = e; }
+    if (i === 0) await new Promise(res => setTimeout(res, 4000));
+  }
+  if (r) return r;   // dernière réponse du générateur
+  throw err;
+}
 
 // Points images offerts par l'administrateur (karat-bonus) : utilisés une fois le quota du jour épuisé
 const bonusKey = (email) => "img|" + encodeURIComponent(email);
@@ -81,31 +96,30 @@ exports.handler = async (event) => {
     }
     const useBonus = quota.used >= quota.limit;
     if (useBonus && bonus < 1) {
-      return await fail(plan === "gratuit"
-        ? `Vous avez utilisé vos 3 images gratuites de cette période. Elles se renouvellent le ${freeResetText()}. Pour en générer davantage dès maintenant, l'offre Essentiel (6,99 € par mois) en inclut 3 par jour.`
-        : `Limite atteinte : ${quota.limit} images par jour avec l'offre ${PLAN_LABEL[plan] || plan}. Revenez demain ou passez à une offre supérieure.`);
+      return await fail(imageLimitText(plan, quota));
     }
 
     // Appel au générateur (peut durer plus d'une minute : d'où la fonction en arrière-plan)
-    let r;
-    if (ref) {
-      const form = new FormData();
-      form.append("model", IMAGE_MODEL);
-      form.append("prompt", prompt);
-      form.append("size", "1024x1024");
-      form.append("quality", IMAGE_QUALITY);
-      form.append("n", "1");
-      const mime = ref.slice(5, ref.indexOf(";"));
-      const bytes = Buffer.from(ref.slice(ref.indexOf(",") + 1), "base64");
-      form.append("image", new Blob([bytes], { type: mime }), "reference.jpg");
-      r = await fetch("https://api.openai.com/v1/images/edits", { method: "POST", headers: { Authorization: "Bearer " + apiKey }, body: form });
-    } else {
-      r = await fetch("https://api.openai.com/v1/images/generations", {
+    const request = () => {
+      if (ref) {
+        const form = new FormData();
+        form.append("model", IMAGE_MODEL);
+        form.append("prompt", prompt);
+        form.append("size", "1024x1024");
+        form.append("quality", IMAGE_QUALITY);
+        form.append("n", "1");
+        const mime = ref.slice(5, ref.indexOf(";"));
+        const bytes = Buffer.from(ref.slice(ref.indexOf(",") + 1), "base64");
+        form.append("image", new Blob([bytes], { type: mime }), "reference.jpg");
+        return fetch("https://api.openai.com/v1/images/edits", { method: "POST", headers: { Authorization: "Bearer " + apiKey }, body: form });
+      }
+      return fetch("https://api.openai.com/v1/images/generations", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: "Bearer " + apiKey },
         body: JSON.stringify({ model: IMAGE_MODEL, prompt, size: "1024x1024", quality: IMAGE_QUALITY, n: 1 }),
       });
-    }
+    };
+    const r = await withRetry(request);
     const result = await r.json().catch(() => ({}));
     if (!r.ok || !result.data || !result.data[0] || !result.data[0].b64_json) {
       console.error("KARAT image: erreur API", r.status, JSON.stringify(result).slice(0, 500));
@@ -113,8 +127,9 @@ exports.handler = async (event) => {
     }
     const b64 = result.data[0].b64_json;
 
-    if (useBonus) await writeBonus(email, bonus - 1);
-    else await addImageUse(email, quota.used, plan);
+    // Une image payée n'est jamais perdue à cause d'une erreur d'écriture du compteur
+    if (useBonus) await writeBonus(email, bonus - 1).catch(e => console.error("KARAT image: points", e.message));
+    else await addImageUse(email, quota.used, plan).catch(e => console.error("KARAT image: compteur", e.message));
     const imageId = await saveToGallery(email, b64, prompt);
     const unlimited = quota.limit === Infinity;
     await store.setJSON(key, {
