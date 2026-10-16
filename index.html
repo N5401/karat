@@ -264,12 +264,19 @@ th.sort{display:table-cell;cursor:pointer}
 
 /* ---------- Avis ---------- */
 .avis-sec{margin:0}
-.avis-rail{overflow-x:auto;scrollbar-width:none;padding:6px 0 12px}
+.avis-rail{padding:6px 0 12px}
 .avis-rail::-webkit-scrollbar{display:none}
-.avis-track{display:flex;gap:16px;width:max-content}
+.avis-loop{overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 7%,#000 93%,transparent);mask-image:linear-gradient(90deg,transparent,#000 7%,#000 93%,transparent)}
+.avis-track{display:flex;gap:16px;width:max-content;animation:avisScroll linear infinite}
+.avis-set{display:flex;gap:16px}
+.avis-loop:hover .avis-track{animation-play-state:paused}
+.avis-static{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+.avis-static .avis-card{width:auto;flex:none}
+@keyframes avisScroll{from{transform:translateX(0)}to{transform:translateX(calc(-50% - 8px))}}
 .avis-card{flex:0 0 320px;width:320px;min-height:200px;padding:24px;border-radius:var(--r);border:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column;gap:12px}
 .avis-text{color:var(--muted);font-size:14.5px;line-height:1.65;flex:1}
-.avis-by{font-size:12.5px;color:var(--dim)}
+.avis-by{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;font-size:12.5px;color:var(--dim)}
+.avis-by b{color:var(--muted);font-weight:600}
 .avis-stars-ro{display:inline-flex;gap:2px}
 .avis-stars-ro i{font-style:normal;color:#4a4236;font-size:16px}
 .avis-stars-ro i.on{color:var(--gold)}
@@ -345,13 +352,15 @@ th.sort{display:table-cell;cursor:pointer}
 .side{position:sticky;top:0;height:100vh;overflow-y:auto;background:var(--bg2);border-right:1px solid var(--line);padding:24px 16px;display:flex;flex-direction:column;gap:2px}
 .side>.logo{margin:0 10px 24px}
 .side .group{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);padding:20px 12px 8px}
-.nav-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:9px;color:var(--muted);font-size:14px;border:1px solid transparent;transition:color .2s,background-color .2s}
+.nav-item{position:relative;display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:9px;color:var(--muted);font-size:14px;border:1px solid transparent;transition:color .2s,background-color .2s}
 .nav-item:hover{color:var(--text);background:rgba(212,168,83,.05)}
-.nav-item.on{color:var(--gold2);background:rgba(212,168,83,.09);border-color:var(--line2)}
-.nav-item .ico{width:18px;height:18px}
+.nav-item.on{color:var(--gold2);background:linear-gradient(90deg,rgba(212,168,83,.14),rgba(212,168,83,.03));border-color:var(--line2)}
+.nav-item.on::before{content:"";position:absolute;left:-16px;top:9px;bottom:9px;width:2px;border-radius:2px;background:var(--metal)}
+.nav-item .ico{width:18px;height:18px;color:var(--dim)}
+.nav-item:hover .ico,.nav-item.on .ico{color:var(--gold)}
 .nav-item .count{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--dim);background:var(--raised);padding:2px 7px;border-radius:6px}
 .side .foot{margin-top:auto;padding-top:20px;border-top:1px solid var(--line)}
-.plan-block{padding:14px 16px;border:1px solid var(--line);border-radius:var(--r-sm);display:grid;gap:4px;margin-bottom:14px}
+.plan-block{padding:14px 16px;border:1px solid var(--line2);border-radius:var(--r-sm);background:linear-gradient(180deg,#171310,var(--panel));display:grid;gap:4px;margin-bottom:14px}
 .plan-block b{font-family:var(--display);font-size:22px;font-weight:500;line-height:1.2}
 .plan-block a{color:var(--gold2);font-size:13px}
 .me-card{display:flex;align-items:center;gap:10px;min-width:0}
@@ -391,13 +400,28 @@ th.sort{display:table-cell;cursor:pointer}
 .code-copy:hover,.copy-btn:hover{color:var(--gold2);border-color:var(--line2)}
 .typing{display:inline-flex;gap:5px;padding:4px 0}
 .typing i{width:6px;height:6px;border-radius:50%;background:var(--gold);opacity:.5}
-.welcome{max-width:820px;width:100%;margin:auto;display:grid;gap:22px}
-.welcome .big{border:1px solid var(--line);border-radius:var(--r);padding:32px;background:var(--panel)}
-.welcome h2{font-family:var(--display);font-weight:500;font-size:40px;line-height:1.1}
-.welcome p{color:var(--muted);margin-top:10px}
-.sugg{display:flex;flex-wrap:wrap;gap:8px}
-.sugg button{padding:9px 15px;border:1px solid var(--line2);border-radius:999px;color:var(--muted);font-size:13.5px}
-.sugg button:hover{color:var(--gold2);border-color:var(--gold)}
+.welcome{max-width:880px;width:100%;margin:auto;display:grid;gap:30px;padding:8px 0 4px}
+.wc-head{display:flex;gap:22px;align-items:flex-start}
+.wc-mark{flex:0 0 60px;width:60px;height:60px;border-radius:16px;border:1px solid var(--line2);background:linear-gradient(180deg,#181410,var(--panel));display:grid;place-items:center}
+.wc-mark svg{width:30px;height:30px}
+.wc-text{min-width:0}
+.wc-text .label{display:block;margin-bottom:12px}
+.welcome h2{font-family:var(--display);font-weight:500;font-size:46px;line-height:1.05}
+.welcome h2 em{font-style:italic;color:var(--gold2)}
+.welcome .wc-desc{color:var(--muted);margin-top:12px;font-size:15.5px;line-height:1.65;max-width:600px}
+.wc-caps{list-style:none;display:flex;flex-wrap:wrap;gap:10px 24px;padding-top:24px;border-top:1px solid var(--line)}
+.wc-caps li{position:relative;padding-left:16px;font-size:13.5px;color:var(--muted)}
+.wc-caps li::before{content:"";position:absolute;left:0;top:50%;width:6px;height:6px;margin-top:-3px;border-radius:50%;background:var(--metal)}
+.wc-sec{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-bottom:12px}
+.sugg-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.sugg-card{display:flex;flex-direction:column;gap:14px;min-height:132px;padding:18px;text-align:left;border:1px solid var(--line);border-radius:var(--r);background:var(--panel);transition:border-color .2s,background-color .2s}
+.sugg-card:hover{border-color:var(--gold);background:#161310}
+.sugg-card:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.sugg-card .n{font-family:var(--mono);font-size:11px;letter-spacing:.1em}
+.sugg-t{flex:1;font-size:15px;line-height:1.45;color:var(--text)}
+.sugg-arr{align-self:flex-end;width:18px;height:18px;fill:none;stroke:var(--gold);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;transition:transform .2s}
+.sugg-card:hover .sugg-arr{transform:translateX(3px)}
+.wc-tip{font-size:13px;color:var(--dim);line-height:1.6}
 .composer{padding:14px 28px 18px;border-top:1px solid var(--line);background:var(--bg2)}
 .inbox{display:flex;align-items:flex-end;gap:8px;border:1px solid var(--line2);border-radius:14px;background:var(--bg);padding:8px;max-width:820px;margin:0 auto}
 .inbox textarea#input{flex:1;min-height:24px;max-height:200px;height:auto;border:0;background:transparent;resize:none;padding:10px 8px;box-shadow:none}
@@ -417,10 +441,19 @@ th.sort{display:table-cell;cursor:pointer}
 .usage-hint{color:var(--gold2);margin-right:8px}
 
 /* ---------- Modules, historique, fichiers ---------- */
-.mod{border:1px solid var(--line);border-radius:var(--r);padding:24px;background:var(--panel);display:flex;flex-direction:column;gap:12px}
-.mod .mi{width:42px;height:42px;border-radius:11px;border:1px solid var(--line2);display:grid;place-items:center;color:var(--gold)}
-.mod h3{font-size:17px}
-.mod p{color:var(--muted);font-size:14px}
+.mod{border:1px solid var(--line);border-radius:var(--r);padding:26px;background:var(--panel);display:flex;flex-direction:column;gap:18px;transition:border-color .2s,background-color .2s}
+.mod:hover{border-color:var(--line2)}
+.mod.is-on{border-color:var(--gold);background:linear-gradient(180deg,#181410,var(--panel) 55%)}
+.mod-top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.mod .mi{width:48px;height:48px;flex:0 0 48px;border-radius:13px;border:1px solid var(--line2);background:var(--bg2);display:grid;place-items:center;color:var(--gold)}
+.mod .mi .ico{width:22px;height:22px;flex-basis:22px}
+.mod-num{font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--dim)}
+.mod-body h3{font-family:var(--display);font-weight:500;font-size:30px;line-height:1.1}
+.mod-body p{color:var(--muted);font-size:14.5px;line-height:1.6;margin-top:8px}
+.mod-list{list-style:none;display:grid;gap:10px;padding:18px 0;border-top:1px solid var(--line3);border-bottom:1px solid var(--line3)}
+.mod-list li{position:relative;padding-left:20px;font-size:14px;color:var(--text)}
+.mod-list li::before{content:"";position:absolute;left:0;top:.62em;width:8px;height:1px;background:var(--gold)}
+.mod .btn{margin-top:auto;width:100%}
 .group-h{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin:28px 0 10px}
 .conv{display:flex;border:1px solid var(--line);border-radius:12px;background:var(--panel);margin-bottom:8px}
 .conv>a,.conv>div{display:flex;gap:14px;align-items:center;min-width:0;width:100%;padding:14px 16px}
@@ -569,6 +602,46 @@ th.sort{display:table-cell;cursor:pointer}
   .chat{height:calc(100vh - 60px)}
   .main{padding:24px 16px 70px}
   .main:has(.chat){padding:0}
+}
+
+/* ---------- Correctifs : barres de défilement sombres, bulles de chat, bouton Copier ---------- */
+:root{color-scheme:dark}
+*{scrollbar-width:thin;scrollbar-color:rgba(212,168,83,.32) transparent}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(212,168,83,.28);border-radius:10px;border:2px solid transparent;background-clip:padding-box}
+::-webkit-scrollbar-thumb:hover{background:rgba(212,168,83,.5);background-clip:padding-box}
+::-webkit-scrollbar-corner{background:transparent}
+.msg{align-items:flex-start}
+.msg>div:last-child{min-width:0;display:flex;flex-direction:column;align-items:stretch;flex:1 1 auto;max-width:calc(100% - 44px)}
+.msg.me{justify-content:flex-start}
+.msg.me>div:last-child{flex:0 1 auto;align-items:flex-end}
+.msg.me .bubble{max-width:min(100%,600px)}
+.msg .bubble{max-width:100%}
+.msg-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px}
+.msg.me .msg-meta{justify-content:flex-end}
+.copy-btn{background:transparent !important;border:1px solid var(--line2) !important;color:var(--muted) !important;height:26px !important;padding:0 9px !important;font-size:11.5px !important;border-radius:7px !important}
+.copy-btn:hover{color:var(--gold2) !important;border-color:var(--gold) !important}
+.copy-btn .ico{width:13px;height:13px;flex-basis:13px}
+
+/* ---------- Accueil du chat, menu et avis défilants ---------- */
+.side-cta{margin:0 0 18px;height:42px;font-size:13.5px}
+@media (max-width:900px){.nav-item.on::before{left:-14px}}
+@media (max-width:640px){
+  .wc-mark{flex-basis:50px;width:50px;height:50px;border-radius:14px}
+  .wc-head{gap:16px}
+  .welcome{gap:20px}
+  .welcome h2{font-size:34px}
+  .wc-tip{display:none}
+  .sugg-grid{grid-template-columns:1fr;gap:8px}
+  .sugg-card{min-height:0;flex-direction:row;align-items:center;gap:12px;padding:14px 16px}
+  .sugg-t{font-size:14.5px}
+  .sugg-arr{align-self:center}
+}
+@media (prefers-reduced-motion:reduce){
+  .avis-track{animation:none}
+  .avis-loop{overflow-x:auto;-webkit-mask-image:none;mask-image:none}
+  .avis-set[aria-hidden="true"]{display:none}
 }
 
 </style>
@@ -936,6 +1009,7 @@ function appShell(path, content){
     <div class="scrim" data-action="menu-close"></div>
     <aside class="side">
       <a href="#/app/chat" class="logo"><i></i>KARAT</a>
+      <a href="#/app/chat" class="btn btn-accent btn-block side-cta">${ic("plus")} Nouvelle conversation</a>
       <a class="nav-item" href="#/">${ic("home")} Accueil</a>
       ${category("assistant", "Assistant", link("/app/chat", "chat", "Chat IA") + link("/app/historique", "clock", "Historique", myChats().length) + link("/app/modules", "grid", "Modules"))}
       ${category("creation", "Création", link("/app/images", "image", "Images") + link("/app/video", "film", "Vidéos"))}
@@ -1614,11 +1688,22 @@ function msgHTML(m){
 }
 function welcomeHTML(mode){
   const first = (me().firstName || "").trim();
+  const m = MODES[mode];
   return `<div class="welcome">
-    <div class="big"><svg viewBox="0 0 64 64" width="44" height="44" aria-hidden="true"><g stroke="#d4a853" stroke-width="7" stroke-linecap="round" fill="none"><line x1="20" y1="14" x2="20" y2="50"/><line x1="20" y1="32" x2="44" y2="16"/><line x1="20" y1="32" x2="48" y2="50"/></g><path d="M52 6 L54 12 L60 14 L54 16 L52 22 L50 16 L44 14 L50 12 Z" fill="#d4a853"/></svg></div>
-    <h2>Bonjour${first ? ", " + esc(first) : ""}</h2>
-    <p>${MODES[mode].desc}</p>
-    <div class="sugg">${SUGGESTIONS[mode].map(t => `<button type="button" data-action="suggest" data-text="${esc(t)}">${esc(t)}</button>`).join("")}</div>
+    <header class="wc-head">
+      <span class="wc-mark" aria-hidden="true"><svg viewBox="0 0 64 64" width="30" height="30"><g stroke="#d4a853" stroke-width="7" stroke-linecap="round" fill="none"><line x1="20" y1="14" x2="20" y2="50"/><line x1="20" y1="32" x2="44" y2="16"/><line x1="20" y1="32" x2="48" y2="50"/></g><path d="M52 6 L54 12 L60 14 L54 16 L52 22 L50 16 L44 14 L50 12 Z" fill="#d4a853"/></svg></span>
+      <div class="wc-text">
+        <span class="label">Module ${esc(m.name)}</span>
+        <h2>Bonjour${first ? `, <em>${esc(first)}</em>` : ""}</h2>
+        <p class="wc-desc">${m.desc}</p>
+      </div>
+    </header>
+    <ul class="wc-caps" aria-label="Ce que fait ce module">${m.bullets.map(b => `<li>${esc(b)}</li>`).join("")}</ul>
+    <section>
+      <div class="wc-sec">Pour commencer</div>
+      <div class="sugg-grid">${SUGGESTIONS[mode].map((t, i) => `<button type="button" class="sugg-card" data-action="suggest" data-text="${esc(t)}"><span class="n">0${i + 1}</span><span class="sugg-t">${esc(t)}</span><svg class="sugg-arr" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>`).join("")}</div>
+    </section>
+    <p class="wc-tip">Astuce : joignez une image ou un fichier avec le trombone, puis posez votre question.</p>
   </div>`;
 }
 function vChat(m){
@@ -1814,16 +1899,24 @@ async function importFiles(list){
   if (added){ saveFiles(); toast(`${added} fichier${added > 1 ? "s" : ""} ajouté${added > 1 ? "s" : ""}`); render(); }
 }
 function vModules(){
-  const cards = Object.keys(MODES).map(k => `
-    <div class="card mod">
-      <div class="mi">${svg(MODES[k].icon)}</div>
-      <h3>${MODES[k].name}</h3>
-      <p>${MODES[k].desc}</p>
-      <ul>${MODES[k].bullets.map(b => `<li>${esc(b)}</li>`).join("")}</ul>
-      <button class="btn btn-accent" data-action="use-module" data-mode="${k}">Utiliser ce module ${ic("arrow")}</button>
-    </div>`).join("");
+  const cur = ui.mode;
+  const cards = Object.keys(MODES).map((k, i) => {
+    const m = MODES[k], on = k === cur;
+    return `<article class="card mod${on ? " is-on" : ""}">
+      <div class="mod-top">
+        <span class="mi">${ic(m.icon)}</span>
+        ${on ? `<span class="badge accent">Module actif</span>` : `<span class="mod-num">0${i + 1}</span>`}
+      </div>
+      <div class="mod-body">
+        <h3>${m.name}</h3>
+        <p>${m.desc}</p>
+      </div>
+      <ul class="mod-list">${m.bullets.map(b => `<li>${esc(b)}</li>`).join("")}</ul>
+      <button type="button" class="btn ${on ? "btn-accent" : "btn-line"}" data-action="use-module" data-mode="${k}">${on ? "Nouvelle conversation" : "Utiliser ce module"} ${ic("arrow")}</button>
+    </article>`;
+  }).join("");
   return appShell("/app/modules", pageHead("Espace", "Modules", "Chaque module adapte le ton, la méthode et les réponses à votre besoin.") +
-    `<div class="grid g2">${cards}</div>`);
+    `<div class="grid g2 mods">${cards}</div>`);
 }
 
 /* =====================================================================
@@ -2470,9 +2563,13 @@ function avisRail(){
       <b>Soyez le premier à laisser un avis.</b>
       <p class="muted small">Votre retour aide les prochains utilisateurs à décider.</p>
     </article></div>`;
-  const items = avisState.avis.map(avisCard).join("");
-  const dur = Math.max(18, avisState.avis.length * 7);
-  return `<div class="avis-rail" aria-label="Avis des utilisateurs"><div class="avis-track" style="animation-duration:${dur}s">${items}${items}</div></div>`;
+  const real = avisState.avis;
+  // Moins de 4 avis : pas de défilement, on les affiche côte à côte
+  if (real.length < 4) return `<div class="avis-rail avis-static" aria-label="Avis des utilisateurs">${real.map(avisCard).join("")}</div>`;
+  // Défilement continu : la série est répétée, la copie est masquée aux lecteurs d'écran
+  const half = real.map(avisCard).join("");
+  const dur = Math.max(24, real.length * 6);
+  return `<div class="avis-rail avis-loop" aria-label="Avis des utilisateurs"><div class="avis-track" style="animation-duration:${dur}s"><div class="avis-set">${half}</div><div class="avis-set" aria-hidden="true">${half}</div></div></div>`;
 }
 function avisSection(){
   return `<section class="lp-sec avis-sec" id="avis"><div class="lp-wrap">
