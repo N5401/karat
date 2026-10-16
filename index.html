@@ -544,6 +544,33 @@ th.sort{display:table-cell;cursor:pointer}
   .hbar{grid-template-columns:78px minmax(0,1fr) 30px}
 }
 
+/* ---------- Menu du panel : catégories repliables ---------- */
+.side .group-btn{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;padding:18px 12px 8px;font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);text-align:left}
+.side .group-btn:hover{color:var(--gold2)}
+.side .chev{width:14px;height:14px;flex:0 0 14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .2s}
+.nav-group.is-closed .chev{transform:rotate(-90deg)}
+.nav-group.is-closed .nav-items{display:none}
+.app-top,.scrim{display:none}
+@media (max-width:900px){
+  .app-top{display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:70;height:60px;padding:0 16px;background:var(--bg2);border-bottom:1px solid var(--line)}
+  .app-top .logo{font-size:17px;letter-spacing:.12em}
+  .app-top .logo i{width:20px;height:20px;flex-basis:20px}
+  .app-top-plan{margin-left:auto;max-width:45%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--gold2)}
+  .burger{width:44px;height:44px;flex:0 0 44px;display:flex;flex-direction:column;justify-content:center;gap:6px;padding:0 11px;border-radius:10px;border:1px solid var(--line2)}
+  .burger span{display:block;height:2px;border-radius:2px;background:var(--gold2);transition:transform .2s,opacity .2s}
+  .menu-open .burger span:nth-child(1){transform:translateY(8px) rotate(45deg)}
+  .menu-open .burger span:nth-child(2){opacity:0}
+  .menu-open .burger span:nth-child(3){transform:translateY(-8px) rotate(-45deg)}
+  .shell{display:block}
+  .side{position:fixed;top:0;left:0;bottom:0;height:100vh;width:min(84vw,320px);z-index:90;transform:translateX(-105%);transition:transform .25s ease;background:var(--bg2);border-right:1px solid var(--line2);padding:20px 14px;overflow-y:auto}
+  .menu-open .side{transform:none}
+  .scrim{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.62)}
+  .menu-open .scrim{display:block}
+  .chat{height:calc(100vh - 60px)}
+  .main{padding:24px 16px 70px}
+  .main:has(.chat){padding:0}
+}
+
 </style>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 
@@ -882,6 +909,9 @@ function pubFooter(){
       <span class="row"><a href="#/">Mentions légales</a><a href="#/">Confidentialité</a><a href="#/">CGV</a><a href="#/mises-a-jour">Mises à jour</a><a href="mailto:karatsupport@gmail.com">Contact</a></span>
     </div></footer>`;
 }
+/* ---------- Menu du panel : catégories repliables, tiroir sur téléphone ---------- */
+const navState = {};   // catégories repliées pendant la session (rien n'est enregistré)
+const CHEV = '<svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
 function appShell(path, content){
   const adm = isAdmin(session?.email);
   const link = (href, icon, label, count) => {
@@ -889,31 +919,29 @@ function appShell(path, content){
     const n = count !== undefined ? `<span class="count">${count}</span>` : "";
     return `<a class="nav-item ${on}" href="#${href}" ${on ? 'aria-current="page"' : ""}>${ic(icon)} ${label}${n}</a>`;
   };
+  const category = (key, title, items) => {
+    const open = navState[key] !== false;
+    return `<section class="nav-group${open ? "" : " is-closed"}" data-group="${key}">
+      <button type="button" class="group-btn" data-action="nav-group" data-group="${key}" aria-expanded="${open}"><span>${title}</span>${CHEV}</button>
+      <div class="nav-items">${items}</div>
+    </section>`;
+  };
   const name = displayName(me()) || session.email;
-  const p = currentPlan();
   return `<div class="shell">
+    <header class="app-top">
+      <button type="button" class="burger" data-action="menu-toggle" aria-label="Ouvrir le menu" aria-expanded="false"><span></span><span></span><span></span></button>
+      <a href="#/app/chat" class="logo"><i></i>KARAT</a>
+      <span class="app-top-plan">${esc(planLabel())}</span>
+    </header>
+    <div class="scrim" data-action="menu-close"></div>
     <aside class="side">
       <a href="#/app/chat" class="logo"><i></i>KARAT</a>
       <a class="nav-item" href="#/">${ic("home")} Accueil</a>
-      <div class="group">Espace</div>
-      ${link("/app/chat", "chat", "Chat IA")}
-      ${link("/app/historique", "clock", "Historique", myChats().length)}
-      ${link("/app/modules", "grid", "Modules")}
-      ${link("/app/guide", "book", "Documentation")}
-      ${link("/mises-a-jour", "bell", "Mises à jour")}
-      ${link("/app/images", "image", "Images")}
-      ${link("/app/video", "film", "Vidéos")}
-      ${link("/app/support", "mail", "Support")}
-      ${link("/app/offre", "card", "Abonnement")}
-      ${adm ? `<div class="group">Administration</div>
-        ${link("/admin", "shield", "Vue d'ensemble")}
-        ${link("/admin/utilisateurs", "users", "Utilisateurs", Object.keys(users).length)}
-        ${link("/admin/abonnements", "card", "Abonnements", allRows().filter(r => r.plan).length)}
-        ${link("/admin/journal", "list", "Journal")}
-        ${link("/admin/annonces", "bell", "Annonces")}
-        ${link("/admin/avis", "star", "Avis")}
-        ${link("/admin/attributions", "card", "Attributions")}
-        ${link("/admin/reglages", "settings", "Réglages")}` : ""}
+      ${category("assistant", "Assistant", link("/app/chat", "chat", "Chat IA") + link("/app/historique", "clock", "Historique", myChats().length) + link("/app/modules", "grid", "Modules"))}
+      ${category("creation", "Création", link("/app/images", "image", "Images") + link("/app/video", "film", "Vidéos"))}
+      ${category("compte", "Mon compte", link("/app/offre", "card", "Abonnement") + link("/app/support", "mail", "Support"))}
+      ${category("aide", "Aide", link("/app/guide", "book", "Documentation") + link("/mises-a-jour", "bell", "Mises à jour"))}
+      ${adm ? category("admin", "Administration", link("/admin", "shield", "Vue d'ensemble") + link("/admin/utilisateurs", "users", "Utilisateurs", Object.keys(users).length) + link("/admin/abonnements", "card", "Abonnements", allRows().filter(r => r.plan).length) + link("/admin/journal", "list", "Journal") + link("/admin/annonces", "bell", "Annonces") + link("/admin/avis", "star", "Avis") + link("/admin/attributions", "card", "Attributions") + link("/admin/reglages", "settings", "Réglages")) : ""}
       <div class="foot">
         <div class="plan-block">
           <span class="label">${adm ? "Accès" : "Offre"}</span>
@@ -2206,6 +2234,9 @@ function onEditUser(f){
 function initFX(){}
 
 const ACTIONS = {
+  "menu-toggle":   el => { const open = document.querySelector(".shell")?.classList.toggle("menu-open"); el.setAttribute("aria-expanded", String(!!open)); },
+  "menu-close":    () => document.querySelector(".shell")?.classList.remove("menu-open"),
+  "nav-group":     el => { const key = el.dataset.group; const isOpen = navState[key] !== false; navState[key] = !isOpen; el.closest(".nav-group")?.classList.toggle("is-closed", isOpen); el.setAttribute("aria-expanded", String(!isOpen)); },
   "logout":        () => askConfirm("Se déconnecter ?", "Votre conversation en cours sera effacée de cet appareil.", doLogout, "Se déconnecter"),
   "close-modal":   () => closeModal(),
   "confirm-ok":    () => { const f = pendingOk; pendingOk = null; closeModal(); f && f(); },
@@ -2286,6 +2317,7 @@ const ACTIONS = {
 
 document.addEventListener("click", e => {
   if (e.target.matches && e.target.matches("[data-veil]")) return closeModal();
+  if (e.target.closest && e.target.closest(".side a")) document.querySelector(".shell")?.classList.remove("menu-open");
   const el = e.target.closest("[data-action]");
   if (!el || el.disabled) return;
   const fn = ACTIONS[el.dataset.action];
