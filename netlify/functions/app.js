@@ -2998,4 +2998,4 @@ document.addEventListener("visibilitychange", () => {
   if (document.hidden || !session) return;
   const before = planOf(session.email);
   syncPlan().then(() => { if (planOf(session.email) !== before) render(); });
-})
+});
