@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>KARAT — Assistant IA en français</title>
 <meta name="description" content="KARAT : assistant IA en français pour répondre, analyser vos fichiers, corriger votre code et rédiger vos textes." />
 <meta name="theme-color" content="#070706" />
@@ -570,7 +570,6 @@ th.sort{display:table-cell;cursor:pointer}
   .msgs{padding:18px 14px}
   .composer{padding:12px 14px 14px}
   .chat-top{padding:12px 14px}
-  .hint span:last-child{display:none}
   .welcome h2{font-size:32px}
   .avis-card{flex-basis:280px;width:280px}
   .kg-toc{grid-template-columns:1fr}
@@ -643,7 +642,181 @@ th.sort{display:table-cell;cursor:pointer}
   .avis-track{animation:none}
   .avis-loop{overflow-x:auto;-webkit-mask-image:none;mask-image:none}
   .avis-set[aria-hidden="true"]{display:none}
+  .msg{animation:none}
 }
+
+/* ---------- Chat : listes dans les réponses ---------- */
+.bubble ul,.bubble ol{margin:10px 0;padding-left:22px}
+.bubble li{margin:5px 0;padding-left:2px}
+.bubble li::marker{color:var(--gold2)}
+.bubble code{font-family:var(--mono);font-size:.9em;padding:1px 6px;border-radius:6px;background:rgba(212,168,83,.1)}
+
+/* ---------- Chat sur téléphone : présentation façon assistant IA ---------- */
+@keyframes msgIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media (max-width:900px){
+  .app-top{height:56px;padding:0 12px;gap:10px;background:rgba(7,7,6,.92);backdrop-filter:saturate(1.4) blur(10px);-webkit-backdrop-filter:saturate(1.4) blur(10px)}
+  .shell:has(.chat) .app-top-plan{display:none}
+  .chat{height:calc(100vh - 56px);height:calc(100dvh - 56px)}
+  .chat-top{padding:8px 10px;gap:8px;flex-wrap:nowrap;border-bottom:1px solid var(--line);background:var(--bg)}
+  .chat-top>.row:first-child{display:none}
+  .chat-top>.row.wrap-x{width:100%;flex-wrap:nowrap;gap:8px;min-width:0}
+  .chat-top .seg{flex:1 1 auto;min-width:0;overflow-x:auto;scrollbar-width:none;padding:3px;border-radius:12px;background:var(--panel)}
+  .chat-top .seg::-webkit-scrollbar{display:none}
+  .chat-top .seg button{height:34px;padding:0 13px;flex:0 0 auto;font-size:13.5px}
+  .chat-top .btn-line{flex:0 0 40px;width:40px;height:40px;padding:0;font-size:0;gap:0;display:grid;place-items:center;border-radius:12px}
+  .chat-top .btn-line svg{width:18px;height:18px}
+  .msgs{padding:20px 16px 16px;gap:24px}
+  .msg{gap:0;max-width:none;margin:0;animation:msgIn .28s ease both}
+  .msg .who{display:none}
+  .msg>div:last-child{max-width:100%}
+  .msg.ai .bubble{background:transparent;border:0;padding:0;font-size:16px;line-height:1.68;color:var(--text);max-width:100%}
+  .msg.ai .bubble p+p{margin-top:12px}
+  .msg.me{justify-content:flex-end}
+  .msg.me>div:last-child{max-width:86%;align-items:flex-end}
+  .msg.me .bubble{background:rgba(212,168,83,.14);border:1px solid rgba(212,168,83,.22);border-radius:22px 22px 6px 22px;padding:12px 16px;font-size:16px;line-height:1.5;max-width:100%}
+  .msg-meta{margin-top:8px;font-size:11.5px}
+  .msg.ai .msg-meta{gap:10px}
+  .copy-btn{height:32px !important;padding:0 12px !important;border-radius:999px !important}
+  .composer{padding:8px 12px calc(10px + env(safe-area-inset-bottom));border-top:0;background:var(--bg)}
+  .inbox{border-radius:26px;padding:6px;background:var(--panel);border-color:var(--line2);gap:4px}
+  .inbox:focus-within{border-color:var(--gold)}
+  .inbox textarea#input{font-size:16px;line-height:1.45;padding:10px 8px;min-height:40px}
+  .attach-btn{flex:0 0 40px;width:40px;height:40px;border-radius:50%}
+  .send{width:40px;height:40px;flex:0 0 40px;border-radius:50%}
+  .hint{margin:8px 0 0;font-size:11px;justify-content:center;text-align:center}
+  .hint>span:first-child{display:none}
+  .welcome{gap:24px;padding:4px 0 8px}
+  .wc-head{gap:14px}
+  .welcome h2{font-size:34px}
+  .side{box-shadow:0 0 60px rgba(0,0,0,.6);border-radius:0 20px 20px 0}
+  .side .nav-item{min-height:46px;font-size:15px}
+  .scrim{backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+}
+@media (max-width:900px) and (prefers-reduced-motion:reduce){.msg{animation:none}}
+
+/* ---------- Accueil du site : finitions ordinateur ---------- */
+.hm-h1{font-size:76px}
+.hm-demo{box-shadow:0 40px 90px -40px rgba(212,168,83,.28)}
+.hm-mod-card{transition:border-color .2s,transform .2s}
+.hm-mod-card:hover{transform:translateY(-3px);border-color:var(--gold)}
+.hm-feat{transition:border-color .2s,transform .2s}
+.hm-feat:hover{border-color:var(--line2);transform:translateY(-2px)}
+.plan.hot{box-shadow:0 30px 80px -40px rgba(212,168,83,.35)}
+.hm-sticky{display:none}
+
+/* ---------- Accueil du site sur téléphone ---------- */
+@media (max-width:900px){
+  .hm-hero{padding:36px 0 40px}
+  .hm-grid{gap:36px}
+  .hm-h1{font-size:44px;margin:18px 0 16px;line-height:1.05}
+  .hm-lead{font-size:16px;line-height:1.65}
+  .hm-ctas{margin-top:26px;gap:10px}
+  .hm-ctas .btn{width:100%;height:52px;font-size:15px}
+  .hm-note{text-align:center;margin-top:14px}
+  .hm-demo-top{flex-wrap:nowrap;padding:10px 12px;gap:8px}
+  .hm-dots{display:none}
+  .hm-tabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;width:100%;gap:4px}
+  .hm-tabs::-webkit-scrollbar{display:none}
+  .hm-tab{flex:0 0 auto;height:34px;padding:0 12px;font-size:13px}
+  .hm-demo-body{min-height:260px;padding:16px 14px}
+  .hm-msg{font-size:15px}
+  .hm-demo-input{margin:0 12px 12px}
+  .hm-trust{grid-template-columns:1fr 1fr}
+  .hm-trust>div{padding:16px 14px;border-left:0;border-top:1px solid var(--line);font-size:13px}
+  .hm-trust>div:nth-child(-n+2){border-top:0}
+  .hm-trust>div:nth-child(even){border-left:1px solid var(--line)}
+  .lp-sec{padding:64px 0}
+  .lp-sec-tight{padding:52px 0}
+  .lp-h2{font-size:34px}
+  .lp-sec-head{margin-bottom:24px;gap:14px}
+  .hm-mods{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -16px;padding:0 16px 6px;scrollbar-width:none}
+  .hm-mods::-webkit-scrollbar{display:none}
+  .hm-mod-card{flex:0 0 80%;scroll-snap-align:start;padding:22px}
+  .hm-steps{border-radius:14px}
+  .hm-step{padding:24px 20px}
+  .hm-n{font-size:38px}
+  .hm-feats{grid-template-columns:1fr;gap:10px}
+  .hm-feat{display:grid;grid-template-columns:44px minmax(0,1fr);column-gap:14px;padding:18px}
+  .hm-feat>*:not(.hm-ico){grid-column:2}
+  .hm-feat .hm-ico{margin:0}
+  .hm-feat h3{margin:2px 0 4px;font-size:16px}
+  .hm-feat p{font-size:14px}
+  .hm-sec-item{padding:18px}
+  .plans{display:flex;max-width:none;margin:0 -16px;padding:4px 16px 10px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;gap:12px}
+  .plans::-webkit-scrollbar{display:none}
+  .plan{flex:0 0 84%;scroll-snap-align:center;padding:26px 22px}
+  .hm-final{padding:44px 22px}
+  .hm-final h2{font-size:36px}
+  .hm-sticky{display:block;position:fixed;left:0;right:0;bottom:0;z-index:60;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:rgba(7,7,6,.94);border-top:1px solid var(--line);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+  .hm-sticky .btn{width:100%;height:50px;font-size:15px}
+  .lp:has(.hm-sticky){padding-bottom:76px}
+}
+@media (max-width:640px){
+  .hm-h1{font-size:40px}
+  .hm-trust>div{padding:14px 12px}
+}
+@media (prefers-reduced-motion:reduce){.hm-mod-card,.hm-feat{transition:none}}
+
+/* ---------- Accueil : démo plus vivante, Pour qui, repères, comparatif ---------- */
+.hm-demo-body{height:340px;min-height:0;overflow:hidden;align-content:start;grid-template-columns:minmax(0,1fr)}
+.hm-demo-body>*{min-width:0}
+.hm-demo-body .hm-msg{animation:hmIn .35s ease both}
+@keyframes hmIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.hm-pours{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.hm-pour{border:1px solid var(--line);border-radius:var(--r);background:var(--panel);padding:26px;display:flex;flex-direction:column;gap:12px;cursor:pointer;transition:border-color .2s,transform .2s}
+.hm-pour:hover{border-color:var(--gold);transform:translateY(-3px)}
+.hm-pour h3{font-size:18px;margin-top:8px}
+.hm-pour p{color:var(--muted);font-size:14.5px;line-height:1.6}
+.hm-pour .hm-pour-q{margin-top:auto;padding:14px 16px;border-radius:12px;background:var(--raised);color:var(--text);font-size:14px;line-height:1.55;font-style:italic}
+.hm-pour-mod{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);display:flex;align-items:center;gap:6px}
+.hm-pour-mod .ico{width:13px;height:13px}
+.hm-nums{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--panel)}
+.hm-nums>div{padding:30px 26px;border-left:1px solid var(--line)}
+.hm-nums>div:first-child{border-left:0}
+.hm-nums b{display:block;font-family:var(--display);font-weight:500;font-size:46px;line-height:1;color:var(--gold)}
+.hm-nums span{display:block;margin-top:12px;color:var(--muted);font-size:14px;line-height:1.5}
+.cmp-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--panel);scrollbar-width:thin}
+.cmp{width:100%;border-collapse:collapse;min-width:640px;font-size:14.5px}
+.cmp th,.cmp td{padding:18px 20px;text-align:left;border-bottom:1px solid var(--line);vertical-align:middle}
+.cmp thead th{font-family:var(--mono);font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:500;border-bottom:1px solid var(--line2)}
+.cmp tbody th{font-weight:500;color:var(--text)}
+.cmp td{color:var(--muted)}
+.cmp tbody tr:last-child th,.cmp tbody tr:last-child td{border-bottom:0}
+.cmp .hot{background:rgba(212,168,83,.07);color:var(--gold2)}
+.cmp thead th.hot{color:var(--gold)}
+.cmp-cta{display:flex;justify-content:center;margin-top:28px}
+@media (max-width:1100px){
+  .hm-pours{grid-template-columns:repeat(2,1fr)}
+  .hm-nums{grid-template-columns:repeat(2,1fr)}
+  .hm-nums>div:nth-child(3){border-left:0}
+  .hm-nums>div:nth-child(n+3){border-top:1px solid var(--line)}
+}
+@media (max-width:900px){
+  .hm-demo-body{height:300px}
+  .hm-pours{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -16px;padding:0 16px 6px;gap:12px;scrollbar-width:none}
+  .hm-pours::-webkit-scrollbar{display:none}
+  .hm-pour{flex:0 0 80%;scroll-snap-align:start;padding:22px}
+  .hm-nums>div{padding:22px 18px}
+  .hm-nums b{font-size:38px}
+  .cmp{min-width:600px}
+}
+@media (prefers-reduced-motion:reduce){
+  .hm-demo-body .hm-msg{animation:none}
+  .hm-pour{transition:none}
+}
+
+/* Comparatif sur téléphone : colonne des critères fixe, tableau défilant */
+.cmp-hint{display:none;font-size:12.5px;color:var(--dim);margin:0 0 10px}
+@media (max-width:900px){
+  .cmp-hint{display:block}
+  .cmp{min-width:560px}
+  .cmp th,.cmp td{padding:14px 12px;font-size:13.5px}
+  .cmp th:first-child,.cmp td:first-child{position:sticky;left:0;z-index:1;background:var(--panel);box-shadow:8px 0 12px -10px rgba(0,0,0,.6)}
+}
+
+/* Profils cliquables : ouvrent la démonstration du module correspondant */
+.hm-use{cursor:pointer}
+.hm-use:hover{border-color:var(--gold)}
 
 </style>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -1055,19 +1228,27 @@ const HM_ORDER = ["general", "code", "redaction", "data"];
 const HM_DEMO = {
   general: [
     { me: true, t: "Résume-moi ce rapport trimestriel en cinq points." },
-    { t: "Voici l'essentiel :<br>• Chiffre d'affaires en hausse de 12 %<br>• Coûts logistiques en baisse<br>• Un recrutement à prévoir au quatrième trimestre<br>• Retard sur le lancement de la boutique<br>• Trois actions prioritaires proposées." }
+    { t: "Voici l'essentiel :<br>• Chiffre d'affaires en hausse de 12 %<br>• Coûts logistiques en baisse<br>• Un recrutement à prévoir au quatrième trimestre<br>• Retard sur le lancement de la boutique<br>• Trois actions prioritaires proposées." },
+    { me: true, t: "Et quel point dois-je traiter en premier ?" },
+    { t: "Le recrutement : sans équipe supplémentaire au quatrième trimestre, le retard sur la boutique risque de s'aggraver. Je vous propose de commencer par là." }
   ],
   code: [
     { me: true, t: "Pourquoi ma fonction renvoie undefined ?" },
-    { t: "Le <code>return</code> manque : <code>forEach</code> ne renvoie rien. Utilisez plutôt <code>reduce</code> :", code: "return items.reduce((somme, i) => somme + i.prix, 0);" }
+    { t: "Le <code>return</code> manque : <code>forEach</code> ne renvoie rien. Utilisez plutôt <code>reduce</code> :", code: "return items.reduce((somme, i) => somme + i.prix, 0);" },
+    { me: true, t: "Et si la liste est vide ?" },
+    { t: "Avec un tableau vide, <code>reduce</code> renvoie la valeur de départ, ici <code>0</code>. Le résultat reste donc correct." }
   ],
   redaction: [
     { me: true, t: "Réécris ce message plus poliment : « Votre retard est inacceptable. »" },
-    { t: "« Je constate un retard de livraison et je vous remercie de bien vouloir m'indiquer une date prévue. »" }
+    { t: "« Je constate un retard de livraison et je vous remercie de bien vouloir m'indiquer une date prévue. »" },
+    { me: true, t: "Et pour une relance plus ferme, la semaine suivante ?" },
+    { t: "« Sans nouvelles de votre part depuis ma demande, je vous prie de me confirmer une date de livraison avant vendredi. »" }
   ],
   data: [
     { me: true, t: "Quelle est la tendance de ventes.csv ?" },
-    { t: "Les ventes progressent d'environ 8 % par mois depuis mars, avec un creux en juillet. Un graphique en courbe mensuel le montrera le mieux." }
+    { t: "Les ventes progressent d'environ 8 % par mois depuis mars, avec un creux en juillet. Un graphique en courbe mensuel le montrera le mieux." },
+    { me: true, t: "Et si je retire le mois de juillet ?" },
+    { t: "La tendance reste haussière : sans le creux de juillet, la progression moyenne passe à environ 9 % par mois." }
   ]
 };
 const hmMsg = it => `<div class="hm-msg${it.me ? " me" : ""}">${it.t}${it.code ? `<pre class="hm-code"><code>${esc(it.code)}</code></pre>` : ""}</div>`;
@@ -1081,7 +1262,7 @@ function hmRender(mod, instant){
   clearTimeout(hmTimer);
   document.querySelectorAll(".hm-tab").forEach(b => b.classList.toggle("on", b.dataset.hmMod === mod));
   const items = HM_DEMO[mod];
-  if (instant){ box.innerHTML = items.map(hmMsg).join(""); return; }
+  if (instant){ box.innerHTML = items.map(hmMsg).join(""); box.scrollTop = box.scrollHeight; return; }
   box.innerHTML = "";
   let t = 350;
   items.forEach(it => {
@@ -1121,6 +1302,11 @@ function startHome(){
   document.querySelectorAll(".hm-tab").forEach(b => b.addEventListener("click", () => {
     hmAuto = false;
     hmRender(b.dataset.hmMod, false);
+  }));
+  document.querySelectorAll(".hm-use[data-hm-mod]").forEach(c => c.addEventListener("click", () => {
+    hmAuto = false;
+    hmRender(c.dataset.hmMod, false);
+    document.querySelector(".hm-hero")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }));
   document.querySelectorAll(".hm-mod-card").forEach(c => c.addEventListener("click", () => {
     hmAuto = false;
@@ -1173,19 +1359,19 @@ function updTeaserHTML(){
 
 function landingUsesHTML(){
   const uses = [
-    { i: "book",  t: "Étudiants",     d: "Comprendre un cours, résumer un document, préparer un exposé ou relire un devoir." },
-    { i: "card",  t: "Entrepreneurs", d: "Rédiger un e-mail, analyser un tableau de ventes, préparer une décision importante." },
-    { i: "code",  t: "Développeurs",  d: "Trouver un bug, optimiser une fonction, écrire des tests et relire un code." },
-    { i: "edit",  t: "Rédacteurs",    d: "Reformuler un passage, raccourcir un texte, adapter le ton à votre lecteur." },
-    { i: "image", t: "Créateurs",     d: "Générer des images, et des vidéos IA de 8 secondes avec le son selon votre offre." },
-    { i: "grid",  t: "Analystes",     d: "Lire un fichier CSV, repérer les tendances et proposer un graphique pertinent." }
+    { i: "book",  t: "Étudiants",     m: "general",   d: "Comprendre un cours, résumer un document, préparer un exposé ou relire un devoir." },
+    { i: "card",  t: "Entrepreneurs", m: "redaction", d: "Rédiger un e-mail, analyser un tableau de ventes, préparer une décision importante." },
+    { i: "code",  t: "Développeurs",  m: "code",      d: "Trouver un bug, optimiser une fonction, écrire des tests et relire un code." },
+    { i: "edit",  t: "Rédacteurs",    m: "redaction", d: "Reformuler un passage, raccourcir un texte, adapter le ton à votre lecteur." },
+    { i: "image", t: "Créateurs",     m: "",          d: "Générer des images, et des vidéos IA de 8 secondes avec le son selon votre offre." },
+    { i: "grid",  t: "Analystes",     m: "data",      d: "Lire un fichier CSV, repérer les tendances et proposer un graphique pertinent." }
   ];
   return `<section class="lp-sec" id="pour-qui"><div class="lp-wrap">
     <div class="lp-sec-head">
       <div><div class="lp-kicker">Pour qui</div><h2 class="lp-h2">Un outil pour chaque façon de travailler.</h2></div>
-      <p>Étudiants, entrepreneurs, développeurs ou rédacteurs : KARAT s'adapte à votre tâche.</p>
+      <p>Étudiants, entrepreneurs, développeurs ou rédacteurs : cliquez sur un profil pour voir la démonstration correspondante.</p>
     </div>
-    <div class="hm-feats">${uses.map(u => `<article class="hm-feat"><span class="hm-ico">${ic(u.i)}</span><h3>${u.t}</h3><p>${u.d}</p></article>`).join("")}</div>
+    <div class="hm-feats">${uses.map(u => `<article class="hm-feat${u.m ? " hm-use" : ""}"${u.m ? ` data-hm-mod="${u.m}"` : ""}><span class="hm-ico">${ic(u.i)}</span><h3>${u.t}</h3><p>${u.d}</p></article>`).join("")}</div>
   </div></section>`;
 }
 
@@ -1261,6 +1447,33 @@ function vLanding(){
     <div class="plans">${["essentiel", "pro", "expert"].map(planCard).join("")}</div>
   </div></section>`;
 
+  const numsHTML = `<section class="lp-sec lp-sec-tight"><div class="lp-wrap">
+    <div class="hm-nums hm-rv">
+      <div><b>4</b><span>modules pour des tâches différentes</span></div>
+      <div><b>30</b><span>messages par jour en version gratuite</span></div>
+      <div><b>3</b><span>images tous les 2 jours en version gratuite</span></div>
+      <div><b>0 €</b><span>pour commencer, sans carte bancaire</span></div>
+    </div>
+  </div></section>`;
+  const cmpHTML = promo ? "" : `<section class="lp-sec lp-sec-tight" id="comparatif"><div class="lp-wrap">
+    <div class="lp-sec-head hm-rv">
+      <div><div class="lp-kicker">Comparatif</div><h2 class="lp-h2">Quelle offre pour vous ?</h2></div>
+      <p>Les limites affichées sont celles de l'application. Prix TTC, sans engagement.</p>
+    </div>
+    <p class="cmp-hint">Faites glisser le tableau pour voir toutes les offres.</p>
+    <div class="cmp-wrap hm-rv"><table class="cmp">
+      <thead><tr><th scope="col"></th><th scope="col">Gratuit</th><th scope="col">Essentiel</th><th scope="col" class="hot">Pro</th><th scope="col">Expert</th></tr></thead>
+      <tbody>
+        <tr><th scope="row">Prix</th><td>0 €</td><td>6,99 € / mois</td><td class="hot">29,99 € / mois</td><td>49,99 € / mois</td></tr>
+        <tr><th scope="row">Messages</th><td>30 par jour</td><td>Limités</td><td class="hot">Limités</td><td>Illimités</td></tr>
+        <tr><th scope="row">Images</th><td>3 tous les 2 jours</td><td>3 par jour</td><td class="hot">Illimitées</td><td>Illimitées</td></tr>
+        <tr><th scope="row">Vidéos IA avec son</th><td>Sur crédits</td><td>2 par semaine</td><td class="hot">4 par semaine</td><td>6 par semaine</td></tr>
+        <tr><th scope="row">Pour</th><td>Essayer KARAT</td><td>Usage quotidien</td><td class="hot">Professionnels</td><td>Équipes et usages intensifs</td></tr>
+      </tbody>
+    </table></div>
+    <div class="cmp-cta hm-rv"><a class="btn btn-line" href="#/tarifs">Voir le détail des offres</a></div>
+  </div></section>`;
+
   return `<div class="lp">
   ${pubHeader("/")}
 
@@ -1304,6 +1517,8 @@ function vLanding(){
     </div>
   </div></section>
 
+  ${numsHTML}
+
   <section class="lp-sec" id="features"><div class="lp-wrap">
     <div class="lp-sec-head hm-rv">
       <div><div class="lp-kicker">Fonctionnalités</div><h2 class="lp-h2">Tout ce qu'il faut, au même endroit.</h2></div>
@@ -1323,6 +1538,8 @@ function vLanding(){
   ${updTeaserHTML()}
 
   ${offres}
+
+  ${cmpHTML}
 
   <section class="lp-sec lp-sec-tight" id="faq"><div class="lp-wrap lp-faq">
     <div class="lp-faq-side">
@@ -1351,6 +1568,7 @@ function vLanding(){
     <small>© 2026 KARAT</small>
     <nav><a href="#/">Mentions légales</a><a href="#/">Confidentialité</a><a href="#/">CGV</a><a href="#/mises-a-jour">Mises à jour</a><a href="mailto:karatsupport@gmail.com">Contact</a></nav>
   </div></footer>
+  ${loggedIn ? "" : `<div class="hm-sticky"><a class="btn btn-accent" href="#/connexion?tab=signup">Essayer gratuitement ${ic("arrow")}</a></div>`}
   </div>`;
 }
 
@@ -1656,13 +1874,30 @@ async function verifyPayment(plan){
    PANEL IA
    ===================================================================== */
 /* Rendu des réponses : paragraphes, gras, code en ligne, blocs de code avec nom de fichier et bouton copier */
+// Mise en forme du texte : paragraphes, listes à puces (- ou *) et listes numérotées (1.)
+function mdInline(s){
+  return s.replace(/`([^`\n]+)`/g, "<code>$1</code>").replace(/\*\*([^*\n]+)\*\*/g, "<b>$1</b>");
+}
 function mdText(s){
-  return esc(s.trim()).split(/\n{2,}/).filter(Boolean).map(p => {
-    const h = p
-      .replace(/`([^`\n]+)`/g, "<code>$1</code>")
-      .replace(/\*\*([^*\n]+)\*\*/g, "<b>$1</b>")
-      .replace(/\n/g, "<br>");
-    return `<p>${h}</p>`;
+  return esc(s.trim()).split(/\n{2,}/).filter(Boolean).map(block => {
+    const out = [];
+    let buf = [], list = null;
+    const flushP = () => { if (buf.length){ out.push(`<p>${buf.map(mdInline).join("<br>")}</p>`); buf = []; } };
+    const flushL = () => { if (list){ out.push(`<${list.tag}>${list.items.map(i => `<li>${mdInline(i)}</li>`).join("")}</${list.tag}>`); list = null; } };
+    block.split("\n").forEach(ln => {
+      const bul = ln.match(/^\s*[-*•]\s+(.*)$/), num = ln.match(/^\s*\d+[.)]\s+(.*)$/);
+      if (bul || num){
+        const tag = bul ? "ul" : "ol";
+        flushP();
+        if (!list || list.tag !== tag){ flushL(); list = { tag, items: [] }; }
+        list.items.push((bul || num)[1]);
+      } else {
+        flushL();
+        buf.push(ln);
+      }
+    });
+    flushP(); flushL();
+    return out.join("");
   }).join("");
 }
 function renderMd(text){
