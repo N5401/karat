@@ -842,7 +842,7 @@ function currentPlan(){
   if (isAdmin(session.email)) return "admin";
   return planOf(session.email);
 }
-// Version gratuite : sans limite de durée. Le serveur limite les messages et les images (renouvelés tous les 2 jours).
+// Version gratuite : sans limite de durée. Le serveur limite les messages et les images (3 images tous les 2 jours pour la version gratuite).
 const paidAccess = () => { const p = currentPlan(); return p === "admin" || !!(p && PLANS[p]); };
 const hasAccess = () => !!session || paidAccess();
 // Abonné payant (ou admin) : on masque les promos d'abonnement et les rappels de paiement
@@ -1451,7 +1451,12 @@ function startSession(s, isNew){
 }
 // Envoie le compte au serveur, pour que l'administrateur voie tous les comptes (une fiche par adresse, sans mot de passe)
 function sendAccount(u){
-  try { fetch("/.netlify/functions/inscriptions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: u.email, firstName: u.firstName || "", lastName: u.lastName || "", phone: u.phone || "", provider: u.provider || "", createdAt: u.createdAt || Date.now(), lastLogin: u.lastLogin || Date.now() }), keepalive: true }).catch(() => {}); } catch (e) {}
+  const body = JSON.stringify({ email: u.email, firstName: u.firstName || "", lastName: u.lastName || "", phone: u.phone || "", provider: u.provider || "", createdAt: u.createdAt || Date.now(), lastLogin: u.lastLogin || Date.now() });
+  // Une nouvelle tentative après 3 s si l'envoi échoue (réseau momentanément coupé)
+  const send = (left) => fetch("/.netlify/functions/inscriptions", { method: "POST", headers: { "Content-Type": "application/json" }, body, keepalive: true })
+    .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); })
+    .catch(() => { if (left > 0) setTimeout(() => send(left - 1), 3000); });
+  try { send(1); } catch (e) {}
 }
 async function onLogin(f){
   setErr("");
@@ -1935,7 +1940,7 @@ function vSubscription(){
             <p class="muted small" style="margin-top:6px">Active depuis le ${fmtDay(sub.since)} · prochain renouvellement le ${fmtDay(addMonths(sub.since, 1))}</p></div>
           <div class="row wrap-x">${promoHidden() ? "" : `<a class="btn btn-line btn-sm" href="#/tarifs">Changer d'offre</a>`}<button class="btn btn-ghost btn-sm" data-action="cancel-sub">Résilier</button></div>
         </div>`
-      : `<div class="plan-status"><div><div class="label">Statut</div><b>Version gratuite</b><p class="muted small" style="margin-top:6px">30 messages par jour et 3 images tous les 2 jours. Une offre vous en donne davantage.</p></div><a class="btn btn-accent btn-sm" href="#/tarifs">Voir les offres</a></div>`;
+      : `<div class="plan-status"><div><div class="label">Statut</div><b>Version gratuite</b><p class="muted small" style="margin-top:6px">30 messages par jour et 3 images tous les 2 jours, non cumulables. Une offre vous en donne davantage.</p></div><a class="btn btn-accent btn-sm" href="#/tarifs">Voir les offres</a></div>`;
   const features = p ? `<div class="card" style="margin-top:18px"><div class="card-h"><h3>Inclus dans votre offre</h3></div>
     <ul style="list-style:none;display:grid;gap:12px">${PLANS[p].feats.map(f => `<li class="row">${ic("check")} ${esc(f)}</li>`).join("")}</ul></div>` : "";
   return appShell("/app/offre", pageHead("Espace", "Abonnement", "Votre offre, son renouvellement et sa résiliation.") +
@@ -2049,16 +2054,19 @@ function vAdminOverview(){
     </div>`);
 }
 // Comptes de tous les visiteurs, lus sur le serveur (il faut le jeton administrateur saisi dans Abonnements)
-let serverAccounts = null, serverError = "", serverLoading = false;
+let serverAccounts = null, serverError = "", serverLoading = false, serverAt = 0;
+
 function usersNote(){
   if (serverError) return `<p class="muted small" style="margin-bottom:12px">Comptes des autres visiteurs indisponibles : ${esc(serverError)}</p>`;
   if (!adminToken()) return `<p class="muted small" style="margin-bottom:12px">Saisissez le jeton administrateur dans Abonnements pour voir les comptes de tous les visiteurs.</p>`;
   return "";
 }
-async function loadServerAccounts(){
+async function loadServerAccounts(force){
   const tok = adminToken();
-  if (!tok || serverAccounts !== null || serverLoading || serverError) return;
-  serverLoading = true;
+  if (!tok || serverLoading) return;
+  // Relue à chaque ouverture (au plus toutes les 15 s, ou à la demande) pour voir les comptes créés depuis
+  if (!force && serverAt && Date.now() - serverAt < 15000) return;
+  serverLoading = true; serverAt = Date.now(); serverError = "";
   try{
     const r = await fetch("/.netlify/functions/inscriptions", { headers: { "x-admin-token": tok }, cache: "no-store" });
     const d = await r.json().catch(() => ({}));
@@ -2077,6 +2085,7 @@ function vAdminUsers(){
        <option value="all">Toutes les offres</option><option value="none">Sans offre</option>
        ${Object.keys(PLANS).map(p => `<option value="${p}">${PLANS[p].name}</option>`).join("")}
      </select>
+     <button class="btn btn-line btn-sm" data-action="refresh-accounts">Actualiser</button>
      <button class="btn btn-line btn-sm" data-action="export-users">${ic("download")} Exporter CSV</button>`) +
     `${usersNote()}<div class="table-wrap"><table class="tbl">
       <thead><tr>${th("Nom", "name")}${th("E-mail", "email")}<th>Téléphone</th>${th("Inscrit le", "createdAt")}${th("Dernière connexion", "lastLogin")}<th>Mode</th>${th("Offre", "plan")}<th><span class="sr-only"></span></th></tr></thead>
@@ -2794,7 +2803,7 @@ function imgQuotaText(){
   if (p === "expert") return "Offre Expert : messages et images illimités.";
   if (p === "pro") return "Offre Pro : images illimitées.";
   if (p === "essentiel") return "Offre Essentiel : 3 images par jour.";
-  return session ? "Version gratuite : 3 images tous les 2 jours." : "Connectez-vous pour générer des images.";
+  return session ? "Version gratuite : 3 images tous les 2 jours, non cumulables." : "Connectez-vous pour générer des images.";
 }
 /* ---------- Vidéos (offre Expert) : le serveur vérifie l'offre et le quota ---------- */
 // Vidéos incluses par semaine selon l'offre : doit rester identique à VIDEO_WEEKLY dans netlify/functions/video.js
@@ -2998,6 +3007,10 @@ function vImages(){
 }
 
 Object.assign(ACTIONS, {
+  "refresh-accounts": () => { if (!adminToken()) return toast("Saisissez d'abord le jeton administrateur dans Abonnements", true); loadServerAccounts(true); toast("Liste actualisée"); }
+});
+
+Object.assign(ACTIONS, {
   "img-ref-pick": () => { const f = $("#imgRefFile"); if (f) f.click(); },
   "img-ref-remove": () => { const pr = ($("#img-prompt") || {}).value || ""; ui.imgRef = null; render(); loadImages(); const t = $("#img-prompt"); if (t) t.value = pr; },
   "img-generate": async () => {
@@ -3026,7 +3039,8 @@ Object.assign(ACTIONS, {
       if (d.status === "pending") throw new Error("La génération prend plus de temps que prévu. L'image apparaîtra dans « Mes images » dans un instant.");
       if (d.status === "error") throw new Error(d.error || "Erreur");
       if (!d.image) throw new Error("Erreur");
-      const restant = d.remaining === null || d.remaining === undefined ? "" : `<p class="muted small" style="margin-top:12px">Il vous reste ${d.remaining} image${d.remaining > 1 ? "s" : ""} aujourd'hui.</p>`;
+      const gratuit = !["essentiel", "pro", "expert", "admin"].includes(planOf(session && session.email));
+      const restant = d.remaining === null || d.remaining === undefined ? "" : `<p class="muted small" style="margin-top:12px">Il vous reste ${d.remaining} image${d.remaining > 1 ? "s" : ""}${gratuit ? " gratuite" + (d.remaining > 1 ? "s" : "") : " aujourd'hui"}.${gratuit && d.remaining === 0 ? " Elles se renouvellent dans les 2 jours, ou dès maintenant avec une offre payante." : ""}</p>`;
       out.innerHTML = `<img src="${d.image}" alt="${esc(prompt)}" style="width:100%;max-width:520px;border-radius:14px;border:1px solid var(--line)">
         <div style="margin-top:14px"><a class="btn btn-line btn-sm" href="${d.image}" download="karat-image.png">Télécharger</a></div>${restant}${d.bonus ? `<p class="muted small" style="margin-top:6px">Points images restants : ${d.bonus}.</p>` : ""}`;
         loadImages();
@@ -3338,7 +3352,7 @@ function vGuide(){
           <ul>
             <li>Un message compte pour 1, même si vous joignez plusieurs fichiers.</li>
             <li>Une réponse coupée, relancée avec « continue », compte comme un nouveau message.</li>
-            <li>Les messages se renouvellent chaque jour, à minuit (heure UTC). Les images de la version gratuite se renouvellent tous les 2 jours.</li>
+            <li>Les messages se renouvellent chaque jour, à minuit (heure UTC). Les images de la version gratuite se renouvellent tous les 2 jours, sans cumul.</li>
           </ul>`)}
 
         ${sec("compte", "07", "Compte et données", `
@@ -3354,7 +3368,7 @@ function vGuide(){
           <ul>
             <li>Pour résilier, cliquez sur « Résilier ». Votre accès reste actif jusqu'à la fin de la période payée.</li>
             <li>Pour changer d'offre, écrivez-nous depuis la page Support.</li>
-            <li>La version gratuite n'a pas de limite de durée : ses messages se renouvellent chaque jour, et ses images tous les 2 jours.</li>
+            <li>La version gratuite n'a pas de limite de durée : ses messages se renouvellent chaque jour, et ses images tous les 2 jours, sans cumul.</li>
           </ul>`)}
 
         ${sec("prudence", "09", "Prudence et règles d'usage", `
@@ -3368,7 +3382,7 @@ function vGuide(){
         ${sec("faq", "10", "Questions fréquentes", `
           ${qa("Pourquoi ma réponse s'arrête-t-elle ?", "Elle est plus longue que la limite de votre offre. Écrivez « continue » pour recevoir la suite.")}
           ${qa("Pourquoi vois-je « limite atteinte » ?", "Vous avez utilisé les messages de votre journée. Ils se renouvellent chaque jour, à minuit (heure UTC). Une offre supérieure vous en donne davantage.")}
-          ${qa("Pourquoi ne puis-je pas générer d'image ?", "Vous avez utilisé les images de votre période en cours. La version gratuite en inclut 3 tous les 2 jours, et les offres payantes en incluent davantage.")}
+          ${qa("Pourquoi ne puis-je pas générer d'image ?", "Vous avez utilisé les images de votre période de 2 jours. La version gratuite en inclut 3 tous les 2 jours, et les offres payantes en incluent davantage.")}
           ${qa("Mon historique a disparu.", "L'historique est enregistré dans le navigateur. Reconnectez-vous depuis le même navigateur et le même appareil.")}
           ${qa("Qui contacter ?", `Depuis la page Support, ou par e-mail à ${SUPPORT_EMAIL} en indiquant l'adresse de votre compte.`)}`)}
 
