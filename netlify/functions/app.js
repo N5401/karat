@@ -1000,13 +1000,30 @@ async function verifyPayment(plan){
    PANEL IA
    ===================================================================== */
 /* Rendu des réponses : paragraphes, gras, code en ligne, blocs de code avec nom de fichier et bouton copier */
+// Mise en forme du texte : paragraphes, listes à puces (- ou *) et listes numérotées (1.)
+function mdInline(s){
+  return s.replace(/`([^`\n]+)`/g, "<code>$1</code>").replace(/\*\*([^*\n]+)\*\*/g, "<b>$1</b>");
+}
 function mdText(s){
-  return esc(s.trim()).split(/\n{2,}/).filter(Boolean).map(p => {
-    const h = p
-      .replace(/`([^`\n]+)`/g, "<code>$1</code>")
-      .replace(/\*\*([^*\n]+)\*\*/g, "<b>$1</b>")
-      .replace(/\n/g, "<br>");
-    return `<p>${h}</p>`;
+  return esc(s.trim()).split(/\n{2,}/).filter(Boolean).map(block => {
+    const out = [];
+    let buf = [], list = null;
+    const flushP = () => { if (buf.length){ out.push(`<p>${buf.map(mdInline).join("<br>")}</p>`); buf = []; } };
+    const flushL = () => { if (list){ out.push(`<${list.tag}>${list.items.map(i => `<li>${mdInline(i)}</li>`).join("")}</${list.tag}>`); list = null; } };
+    block.split("\n").forEach(ln => {
+      const bul = ln.match(/^\s*[-*•]\s+(.*)$/), num = ln.match(/^\s*\d+[.)]\s+(.*)$/);
+      if (bul || num){
+        const tag = bul ? "ul" : "ol";
+        flushP();
+        if (!list || list.tag !== tag){ flushL(); list = { tag, items: [] }; }
+        list.items.push((bul || num)[1]);
+      } else {
+        flushL();
+        buf.push(ln);
+      }
+    });
+    flushP(); flushL();
+    return out.join("");
   }).join("");
 }
 function renderMd(text){
@@ -2930,4 +2947,4 @@ document.addEventListener("visibilitychange", () => {
   if (document.hidden || !session) return;
   const before = planOf(session.email);
   syncPlan().then(() => { if (planOf(session.email) !== before) render(); });
-});
+});S
