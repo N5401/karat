@@ -479,6 +479,7 @@ function startHome(){
     hmRender(c.dataset.hmMod, false);
     document.querySelector(".hm-hero")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }));
+  document.querySelectorAll(".hm-use[data-hm-mod]").forEach(c => c.addEventListener("keydown", e => { if (e.key === "Enter") c.click(); }));
   document.querySelectorAll(".hm-mod-card").forEach(c => c.addEventListener("click", () => {
     hmAuto = false;
     hmRender(c.dataset.hmMod, false);
@@ -594,8 +595,16 @@ function vLanding(){
   const promo = promoHidden();
   const loggedIn = !!session;
   const tabs = HM_ORDER.map(k => `<button type="button" class="hm-tab" data-hm-mod="${k}">${MODES[k].name}</button>`).join("");
+  const shots = HM_ORDER.map(k => `
+    <article class="v2-shot hm-use hm-rv" data-hm-mod="${k}" tabindex="0" role="button" aria-label="Voir la démonstration du module ${MODES[k].name}">
+      <div class="v2-mini"><div class="v2-mini-in">
+        <div class="v2-mini-bar">${MODES[k].name}</div>
+        <div class="v2-mini-body">${HM_DEMO[k].slice(0, 3).map(hmMsg).join("")}</div>
+      </div></div>
+      <div class="v2-shot-cap"><b>${MODES[k].name}</b><span>${MODES[k].sub}</span></div>
+    </article>`).join("");
   const modCards = HM_ORDER.map((k, i) => `
-    <article class="hm-mod-card hm-rv" data-hm-mod="${k}">
+    <article class="hm-mod-card v2-mod hm-rv" data-hm-mod="${k}">
       <div class="hm-mod-top"><span class="hm-ico">${ic(MODES[k].icon)}</span><span class="hm-num">0${i + 1}</span></div>
       <h3>${MODES[k].name}</h3>
       <p>${MODES[k].desc}</p>
@@ -609,6 +618,7 @@ function vLanding(){
     { i: "chat",   t: "Un vrai échange", d: "KARAT garde le fil de la discussion et continue une réponse coupée sur simple demande." },
     { i: "shield", t: "Un espace privé", d: "Un compte personnel, des conversations visibles de vous seul, et un paiement géré par Stripe." }
   ];
+  const wide = [0, 3, 5];   // cases larges de la grille : une ligne sur trois occupe deux colonnes
   const primary = loggedIn
     ? `<a class="btn btn-accent" href="#/app/chat">Ouvrir le panel ${ic("arrow")}</a>`
     : `<a class="btn btn-accent" href="#/connexion?tab=signup">Essayer gratuitement ${ic("arrow")}</a>`;
@@ -654,18 +664,25 @@ function vLanding(){
   return `<div class="lp">
   ${pubHeader("/")}
 
-  <section class="hm-hero"><div class="lp-wrap hm-grid">
-    <div>
-      <span class="hm-eyebrow"><i></i>Assistant IA en français</span>
-      <h1 class="hm-h1">Plus de réponses utiles,<br/><span class="acc">moins de temps perdu.</span></h1>
-      <p class="hm-lead">KARAT répond, analyse vos fichiers, corrige votre code, rédige vos messages et lit vos tableaux. Dans un seul panel, avec un historique que vous retrouvez à tout moment.</p>
-      <div class="hm-ctas">${primary}${secondary}</div>
+  <section class="v2-hero hm-hero"><div class="lp-wrap v2-hero-grid">
+    <div class="v2-copy">
+      <div class="v2-app">
+        <span class="v2-appicon"><span class="logo"><i></i></span></span>
+        <div><div class="v2-app-name">KARAT</div><div class="v2-app-sub">Assistant IA en français</div></div>
+      </div>
+      <h1 class="v2-h1">Plus de réponses utiles,<br/><span class="v2-acc">moins de temps perdu.</span></h1>
+      <p class="v2-lead">KARAT répond, analyse vos fichiers, corrige votre code, rédige vos messages et lit vos tableaux. Dans un seul panel, avec un historique que vous retrouvez à tout moment.</p>
+      <div class="v2-ctas">${primary}${secondary}</div>
       ${note}
+      <ul class="v2-meta"><li>Gratuit pour commencer</li><li>4 modules</li><li>Paiement Stripe</li><li>Résiliable à tout moment</li></ul>
     </div>
-    <div class="hm-demo" aria-label="Exemple de conversation">
-      <div class="hm-demo-top"><span class="hm-dots"><i></i><i></i><i></i></span><div class="hm-tabs">${tabs}</div></div>
-      <div class="hm-demo-body" id="hm-body"></div>
-      <div class="hm-demo-input"><span>Posez votre question…</span><span class="hm-send">${ic("arrow")}</span></div>
+    <div class="v2-visual">
+      <div class="v2-frame"><div class="v2-screen hm-demo" aria-label="Exemple de conversation">
+        <span class="v2-notch" aria-hidden="true"></span>
+        <div class="hm-demo-top"><div class="hm-tabs">${tabs}</div></div>
+        <div class="hm-demo-body" id="hm-body"></div>
+        <div class="hm-demo-input"><span>Posez votre question…</span><span class="hm-send">${ic("arrow")}</span></div>
+      </div></div>
       <p class="hm-caption">Exemples de réponses, à titre d'illustration.</p>
     </div>
   </div></section>
@@ -677,12 +694,30 @@ function vLanding(){
     <div>${ic("clock")}<span><b>Résiliable</b>à tout moment</span></div>
   </div></div>
 
+  <section class="lp-sec v2-apercu" id="apercu">
+    <div class="lp-wrap"><div class="lp-sec-head hm-rv">
+      <div><div class="lp-kicker">Aperçu</div><h2 class="lp-h2">Une conversation adaptée à chaque module.</h2></div>
+      <p>Faites défiler les aperçus. Cliquez sur l'un d'eux pour voir sa démonstration complète.</p>
+    </div></div>
+    <div class="v2-rail">${shots}</div>
+  </section>
+
   <section class="lp-sec" id="modules"><div class="lp-wrap">
     <div class="lp-sec-head hm-rv">
       <div><div class="lp-kicker">Modules</div><h2 class="lp-h2">Un module pour chaque métier.</h2></div>
       <p>Chaque module adapte le ton, la méthode et les suggestions à votre tâche. Cliquez sur un module pour voir un exemple.</p>
     </div>
     <div class="hm-mods">${modCards}</div>
+  </div></section>
+
+  <section class="lp-sec" id="features"><div class="lp-wrap">
+    <div class="lp-sec-head hm-rv">
+      <div><div class="lp-kicker">Fonctionnalités</div><h2 class="lp-h2">Tout ce qu'il faut, au même endroit.</h2></div>
+      <p>Fichiers, historique, images et vidéos, sans changer d'outil.</p>
+    </div>
+    <div class="v2-bento">
+      ${feats.map((f, i) => `<article class="v2-card${wide.includes(i) ? " v2-card-wide" : ""} hm-rv"><span class="hm-ico">${ic(f.i)}</span><h3>${f.t}</h3><p>${f.d}</p></article>`).join("")}
+    </div>
   </div></section>
 
   <section class="lp-sec lp-sec-tight" id="comment"><div class="lp-wrap">
@@ -695,16 +730,6 @@ function vLanding(){
   </div></section>
 
   ${numsHTML}
-
-  <section class="lp-sec" id="features"><div class="lp-wrap">
-    <div class="lp-sec-head hm-rv">
-      <div><div class="lp-kicker">Fonctionnalités</div><h2 class="lp-h2">Tout ce qu'il faut, au même endroit.</h2></div>
-      <p>Fichiers, historique, images et vidéos, sans changer d'outil.</p>
-    </div>
-    <div class="hm-feats">
-      ${feats.map(f => `<article class="hm-feat hm-rv"><span class="hm-ico">${ic(f.i)}</span><h3>${f.t}</h3><p>${f.d}</p></article>`).join("")}
-    </div>
-  </div></section>
 
   ${landingUsesHTML()}
 
@@ -733,8 +758,9 @@ function vLanding(){
   </div></section>
 
   <section class="lp-sec lp-sec-tight"><div class="lp-wrap">
-    <div class="hm-final hm-rv">
-      <h2>Essayez KARAT aujourd'hui.</h2>
+    <div class="hm-final v2-final hm-rv">
+      <span class="v2-appicon"><span class="logo"><i></i></span></span>
+      <h2>Essayez <span class="v2-acc">KARAT</span> aujourd'hui.</h2>
       <p>Créez votre compte et posez votre première question en moins d'une minute.</p>
       <a class="btn btn-accent" href="${loggedIn ? "#/app/chat" : "#/connexion?tab=signup"}">${loggedIn ? "Ouvrir le panel" : "Créer mon compte"} ${ic("arrow")}</a>
     </div>
