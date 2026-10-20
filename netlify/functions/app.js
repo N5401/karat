@@ -399,19 +399,27 @@ const HM_ORDER = ["general", "code", "redaction", "data"];
 const HM_DEMO = {
   general: [
     { me: true, t: "Résume-moi ce rapport trimestriel en cinq points." },
-    { t: "Voici l'essentiel :<br>• Chiffre d'affaires en hausse de 12 %<br>• Coûts logistiques en baisse<br>• Un recrutement à prévoir au quatrième trimestre<br>• Retard sur le lancement de la boutique<br>• Trois actions prioritaires proposées." }
+    { t: "Voici l'essentiel :<br>• Chiffre d'affaires en hausse de 12 %<br>• Coûts logistiques en baisse<br>• Un recrutement à prévoir au quatrième trimestre<br>• Retard sur le lancement de la boutique<br>• Trois actions prioritaires proposées." },
+    { me: true, t: "Et quel point dois-je traiter en premier ?" },
+    { t: "Le recrutement : sans équipe supplémentaire au quatrième trimestre, le retard sur la boutique risque de s'aggraver. Je vous propose de commencer par là." }
   ],
   code: [
     { me: true, t: "Pourquoi ma fonction renvoie undefined ?" },
-    { t: "Le <code>return</code> manque : <code>forEach</code> ne renvoie rien. Utilisez plutôt <code>reduce</code> :", code: "return items.reduce((somme, i) => somme + i.prix, 0);" }
+    { t: "Le <code>return</code> manque : <code>forEach</code> ne renvoie rien. Utilisez plutôt <code>reduce</code> :", code: "return items.reduce((somme, i) => somme + i.prix, 0);" },
+    { me: true, t: "Et si la liste est vide ?" },
+    { t: "Avec un tableau vide, <code>reduce</code> renvoie la valeur de départ, ici <code>0</code>. Le résultat reste donc correct." }
   ],
   redaction: [
     { me: true, t: "Réécris ce message plus poliment : « Votre retard est inacceptable. »" },
-    { t: "« Je constate un retard de livraison et je vous remercie de bien vouloir m'indiquer une date prévue. »" }
+    { t: "« Je constate un retard de livraison et je vous remercie de bien vouloir m'indiquer une date prévue. »" },
+    { me: true, t: "Et pour une relance plus ferme, la semaine suivante ?" },
+    { t: "« Sans nouvelles de votre part depuis ma demande, je vous prie de me confirmer une date de livraison avant vendredi. »" }
   ],
   data: [
     { me: true, t: "Quelle est la tendance de ventes.csv ?" },
-    { t: "Les ventes progressent d'environ 8 % par mois depuis mars, avec un creux en juillet. Un graphique en courbe mensuel le montrera le mieux." }
+    { t: "Les ventes progressent d'environ 8 % par mois depuis mars, avec un creux en juillet. Un graphique en courbe mensuel le montrera le mieux." },
+    { me: true, t: "Et si je retire le mois de juillet ?" },
+    { t: "La tendance reste haussière : sans le creux de juillet, la progression moyenne passe à environ 9 % par mois." }
   ]
 };
 const hmMsg = it => `<div class="hm-msg${it.me ? " me" : ""}">${it.t}${it.code ? `<pre class="hm-code"><code>${esc(it.code)}</code></pre>` : ""}</div>`;
@@ -425,7 +433,7 @@ function hmRender(mod, instant){
   clearTimeout(hmTimer);
   document.querySelectorAll(".hm-tab").forEach(b => b.classList.toggle("on", b.dataset.hmMod === mod));
   const items = HM_DEMO[mod];
-  if (instant){ box.innerHTML = items.map(hmMsg).join(""); return; }
+  if (instant){ box.innerHTML = items.map(hmMsg).join(""); box.scrollTop = box.scrollHeight; return; }
   box.innerHTML = "";
   let t = 350;
   items.forEach(it => {
@@ -465,6 +473,11 @@ function startHome(){
   document.querySelectorAll(".hm-tab").forEach(b => b.addEventListener("click", () => {
     hmAuto = false;
     hmRender(b.dataset.hmMod, false);
+  }));
+  document.querySelectorAll(".hm-use[data-hm-mod]").forEach(c => c.addEventListener("click", () => {
+    hmAuto = false;
+    hmRender(c.dataset.hmMod, false);
+    document.querySelector(".hm-hero")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }));
   document.querySelectorAll(".hm-mod-card").forEach(c => c.addEventListener("click", () => {
     hmAuto = false;
@@ -517,19 +530,19 @@ function updTeaserHTML(){
 
 function landingUsesHTML(){
   const uses = [
-    { i: "book",  t: "Étudiants",     d: "Comprendre un cours, résumer un document, préparer un exposé ou relire un devoir." },
-    { i: "card",  t: "Entrepreneurs", d: "Rédiger un e-mail, analyser un tableau de ventes, préparer une décision importante." },
-    { i: "code",  t: "Développeurs",  d: "Trouver un bug, optimiser une fonction, écrire des tests et relire un code." },
-    { i: "edit",  t: "Rédacteurs",    d: "Reformuler un passage, raccourcir un texte, adapter le ton à votre lecteur." },
-    { i: "image", t: "Créateurs",     d: "Générer des images, et des vidéos IA de 8 secondes avec le son selon votre offre." },
-    { i: "grid",  t: "Analystes",     d: "Lire un fichier CSV, repérer les tendances et proposer un graphique pertinent." }
+    { i: "book",  t: "Étudiants",     m: "general",   d: "Comprendre un cours, résumer un document, préparer un exposé ou relire un devoir." },
+    { i: "card",  t: "Entrepreneurs", m: "redaction", d: "Rédiger un e-mail, analyser un tableau de ventes, préparer une décision importante." },
+    { i: "code",  t: "Développeurs",  m: "code",      d: "Trouver un bug, optimiser une fonction, écrire des tests et relire un code." },
+    { i: "edit",  t: "Rédacteurs",    m: "redaction", d: "Reformuler un passage, raccourcir un texte, adapter le ton à votre lecteur." },
+    { i: "image", t: "Créateurs",     m: "",          d: "Générer des images, et des vidéos IA de 8 secondes avec le son selon votre offre." },
+    { i: "grid",  t: "Analystes",     m: "data",      d: "Lire un fichier CSV, repérer les tendances et proposer un graphique pertinent." }
   ];
   return `<section class="lp-sec" id="pour-qui"><div class="lp-wrap">
     <div class="lp-sec-head">
       <div><div class="lp-kicker">Pour qui</div><h2 class="lp-h2">Un outil pour chaque façon de travailler.</h2></div>
-      <p>Étudiants, entrepreneurs, développeurs ou rédacteurs : KARAT s'adapte à votre tâche.</p>
+      <p>Étudiants, entrepreneurs, développeurs ou rédacteurs : cliquez sur un profil pour voir la démonstration correspondante.</p>
     </div>
-    <div class="hm-feats">${uses.map(u => `<article class="hm-feat"><span class="hm-ico">${ic(u.i)}</span><h3>${u.t}</h3><p>${u.d}</p></article>`).join("")}</div>
+    <div class="hm-feats">${uses.map(u => `<article class="hm-feat${u.m ? " hm-use" : ""}"${u.m ? ` data-hm-mod="${u.m}"` : ""}><span class="hm-ico">${ic(u.i)}</span><h3>${u.t}</h3><p>${u.d}</p></article>`).join("")}</div>
   </div></section>`;
 }
 
@@ -605,6 +618,33 @@ function vLanding(){
     <div class="plans">${["essentiel", "pro", "expert"].map(planCard).join("")}</div>
   </div></section>`;
 
+  const numsHTML = `<section class="lp-sec lp-sec-tight"><div class="lp-wrap">
+    <div class="hm-nums hm-rv">
+      <div><b>4</b><span>modules pour des tâches différentes</span></div>
+      <div><b>30</b><span>messages par jour en version gratuite</span></div>
+      <div><b>3</b><span>images tous les 2 jours en version gratuite</span></div>
+      <div><b>0 €</b><span>pour commencer, sans carte bancaire</span></div>
+    </div>
+  </div></section>`;
+  const cmpHTML = promo ? "" : `<section class="lp-sec lp-sec-tight" id="comparatif"><div class="lp-wrap">
+    <div class="lp-sec-head hm-rv">
+      <div><div class="lp-kicker">Comparatif</div><h2 class="lp-h2">Quelle offre pour vous ?</h2></div>
+      <p>Les limites affichées sont celles de l'application. Prix TTC, sans engagement.</p>
+    </div>
+    <p class="cmp-hint">Faites glisser le tableau pour voir toutes les offres.</p>
+    <div class="cmp-wrap hm-rv"><table class="cmp">
+      <thead><tr><th scope="col"></th><th scope="col">Gratuit</th><th scope="col">Essentiel</th><th scope="col" class="hot">Pro</th><th scope="col">Expert</th></tr></thead>
+      <tbody>
+        <tr><th scope="row">Prix</th><td>0 €</td><td>6,99 € / mois</td><td class="hot">29,99 € / mois</td><td>49,99 € / mois</td></tr>
+        <tr><th scope="row">Messages</th><td>30 par jour</td><td>Limités</td><td class="hot">Limités</td><td>Illimités</td></tr>
+        <tr><th scope="row">Images</th><td>3 tous les 2 jours</td><td>3 par jour</td><td class="hot">Illimitées</td><td>Illimitées</td></tr>
+        <tr><th scope="row">Vidéos IA avec son</th><td>Sur crédits</td><td>2 par semaine</td><td class="hot">4 par semaine</td><td>6 par semaine</td></tr>
+        <tr><th scope="row">Pour</th><td>Essayer KARAT</td><td>Usage quotidien</td><td class="hot">Professionnels</td><td>Équipes et usages intensifs</td></tr>
+      </tbody>
+    </table></div>
+    <div class="cmp-cta hm-rv"><a class="btn btn-line" href="#/tarifs">Voir le détail des offres</a></div>
+  </div></section>`;
+
   return `<div class="lp">
   ${pubHeader("/")}
 
@@ -648,6 +688,8 @@ function vLanding(){
     </div>
   </div></section>
 
+  ${numsHTML}
+
   <section class="lp-sec" id="features"><div class="lp-wrap">
     <div class="lp-sec-head hm-rv">
       <div><div class="lp-kicker">Fonctionnalités</div><h2 class="lp-h2">Tout ce qu'il faut, au même endroit.</h2></div>
@@ -667,6 +709,8 @@ function vLanding(){
   ${updTeaserHTML()}
 
   ${offres}
+
+  ${cmpHTML}
 
   <section class="lp-sec lp-sec-tight" id="faq"><div class="lp-wrap lp-faq">
     <div class="lp-faq-side">
@@ -695,6 +739,7 @@ function vLanding(){
     <small>© 2026 KARAT</small>
     <nav><a href="#/">Mentions légales</a><a href="#/">Confidentialité</a><a href="#/">CGV</a><a href="#/mises-a-jour">Mises à jour</a><a href="mailto:karatsupport@gmail.com">Contact</a></nav>
   </div></footer>
+  ${loggedIn ? "" : `<div class="hm-sticky"><a class="btn btn-accent" href="#/connexion?tab=signup">Essayer gratuitement ${ic("arrow")}</a></div>`}
   </div>`;
 }
 
@@ -2947,4 +2992,4 @@ document.addEventListener("visibilitychange", () => {
   if (document.hidden || !session) return;
   const before = planOf(session.email);
   syncPlan().then(() => { if (planOf(session.email) !== before) render(); });
-});S
+});
