@@ -1,0 +1,72 @@
+// KARAT - code client des inscriptions (app.js). A coller dans app.js, a la place des fonctions correspondantes.
+// 1) sendAccount : envoie chaque compte au serveur a l'inscription, a la connexion et a la connexion Google.
+// Envoie le compte au serveur, pour que l'administrateur voie tous les comptes (une fiche par adresse, sans mot de passe)
+function sendAccount(u){
+  const body = JSON.stringify({ email: u.email, firstName: u.firstName || "", lastName: u.lastName || "", phone: u.phone || "", provider: u.provider || "", createdAt: u.createdAt || Date.now(), lastLogin: u.lastLogin || Date.now() });
+  // Une nouvelle tentative après 3 s si l'envoi échoue (réseau momentanément coupé)
+  const send = (left) => fetch("/.netlify/functions/inscriptions", { method: "POST", headers: { "Content-Type": "application/json" }, body, keepalive: true })
+    .then(r => { if (!r.ok) throw new Error("HTTP " + r.status); })
+    .catch(() => { if (left > 0) setTimeout(() => send(left - 1), 3000); });
+  try { send(1); } catch (e) {}
+}
+async function onLogin(f){
+  setErr("");
+  const email = emailOf(f.querySelector('[name="email"]').value);
+  const pw = f.querySelector('[name="pw"]').value;
+  const u = users[email];
+  if (!u) return setErr("Aucun compte avec cet e-mail. Créez-le d'abord.");
+  if (!u.hash) return setErr("Ce compte utilise Google. Utilisez le bouton Google.");
+  try{
+    if (!(await verifyPw(pw, u))) return setErr("Mot de passe incorrect.");
+  }catch(e){ return setErr("Votre navigateur bloque le chiffrement. Ouvrez la page en https ou en local."); }
+  u.lastLogin = Date.now(); saveUsers();
+  sendAccount(users[email]);
+  startSession({ email, name: displayName(u) }, false);
+}
+async function onSignup(f){
+  setErr("");
+  const v = n => f.querySelector(`[name="${n}"]`).value.trim();
+  const first = v("first"), last = v("last"), email = emailOf(v("email")), phone = v("phone");
+  const pw = f.querySelector('[name="pw"]').value, pw2 = f.querySelector('[name="pw2"]').value;
+  if (!first || !last) return setErr("Renseignez votre prénom et votre nom.");
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return setErr("Adresse e-mail invalide.");
+  if (!/^\+?[0-9 .\-()]{8,20}$/.test(phone)) return setErr("Numéro de téléphone invalide.");
+  if (pw.length < 8) return setErr("Le mot de passe doit faire au moins 8 caractères.");
+  if (pw !== pw2) return setErr("Les deux mots de passe ne correspondent pas.");
+  if (!f.querySelector('[name="cgu"]').checked) return setErr("Acceptez les CGU pour continuer.");
+  if (users[email]) return setErr("Un compte existe déjà avec cet e-mail. Connectez-vous.");
+  try{
+    const { hash, salt } = await hashPw(pw);
+    users[email] = { email, firstName: first, lastName: last, phone, hash, salt, provider: "password", createdAt: Date.now(), lastLogin: Date.now() };
+    saveUsers();
+  }catch(e){ return setErr("Votre navigateur bloque le chiffrement. Ouvrez la page en https ou en local."); }
+  sendAccount(users[email]);
+  startSession({ email, name: `${first} ${last}` }, true);
+}
+
+// 2) loadServerAccounts : lit la liste des comptes cote admin (jeton administrateur requis).
+// Comptes de tous les visiteurs, lus sur le serveur (il faut le jeton administrateur saisi dans Abonnements)
+let serverAccounts = null, serverError = "", serverLoading = false, serverAt = 0;
+
+function usersNote(){
+  if (serverError) return `<p class="muted small" style="margin-bottom:12px">Comptes des autres visiteurs indisponibles : ${esc(serverError)}</p>`;
+  if (!adminToken()) return `<p class="muted small" style="margin-bottom:12px">Saisissez le jeton administrateur dans Abonnements pour voir les comptes de tous les visiteurs.</p>`;
+  return "";
+}
+async function loadServerAccounts(force){
+  const tok = adminToken();
+  if (!tok || serverLoading) return;
+  // Relue à chaque ouverture (au plus toutes les 15 s, ou à la demande) pour voir les comptes créés depuis
+  if (!force && serverAt && Date.now() - serverAt < 15000) return;
+  serverLoading = true; serverAt = Date.now(); serverError = "";
+  try{
+    const r = await fetch("/.netlify/functions/inscriptions", { headers: { "x-admin-token": tok }, cache: "no-store" });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.error || "Erreur");
+    const map = {};
+    (d.accounts || []).forEach(a => { if (a && a.email) map[a.email] = a; });
+    serverAccounts = map;
+  }catch(e){ serverError = e.message || "Erreur"; }
+  serverLoading = false;
+  render();
+}
