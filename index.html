@@ -825,6 +825,104 @@ th.sort{display:table-cell;cursor:pointer}
 .check{display:flex;gap:10px;align-items:flex-start;font-size:13px;color:var(--muted)}
 .check input{margin-top:3px;accent-color:var(--accent);width:15px;height:15px}
 
+/* ---------- Accueil v2 : présentation façon App Store (noir et or) ---------- */
+/* Apparition douce : on déplace avec « translate » pour ne pas écraser les effets de survol */
+.hm-rv{opacity:0;translate:0 22px;transition:opacity .8s cubic-bezier(.2,.7,.2,1),translate .8s cubic-bezier(.2,.7,.2,1)}
+.hm-rv.hm-in{opacity:1;translate:0 0}
+.v2-hero{position:relative;padding:72px 0 80px;overflow:hidden}
+.v2-hero::before{content:"";position:absolute;left:50%;top:-120px;width:1100px;height:680px;transform:translateX(-30%);background:radial-gradient(closest-side,rgba(212,168,83,.17),transparent 72%);pointer-events:none}
+.v2-hero>.lp-wrap{position:relative;z-index:1}
+.v2-hero-grid{display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center}
+.v2-app{display:flex;align-items:center;gap:18px;margin-bottom:30px}
+.v2-appicon{width:76px;height:76px;flex:0 0 76px;border-radius:21px;display:grid;place-items:center;background:linear-gradient(160deg,#1d1914,#070706);border:1px solid var(--line2);box-shadow:0 22px 44px -22px rgba(212,168,83,.55),inset 0 1px 0 rgba(255,255,255,.07)}
+.v2-appicon .logo{gap:0;font-size:0}
+.v2-appicon .logo i{width:42px;height:42px;flex-basis:42px}
+.v2-app-name{font-family:var(--display);font-size:30px;font-weight:600;letter-spacing:.18em;line-height:1}
+.v2-app-sub{margin-top:8px;font-size:14px;color:var(--muted)}
+.v2-h1{font-family:var(--display);font-weight:500;font-size:68px;line-height:1.02;letter-spacing:-.015em}
+.v2-acc{background:var(--metal);-webkit-background-clip:text;background-clip:text;color:transparent}
+.v2-lead{margin-top:24px;font-size:18px;color:var(--muted);max-width:540px;line-height:1.7}
+.v2-ctas{display:flex;gap:12px;flex-wrap:wrap;margin-top:34px}
+.v2-ctas .btn{height:52px;padding:0 26px;font-size:15px;border-radius:999px}
+.v2-meta{list-style:none;display:flex;flex-wrap:wrap;gap:10px 24px;margin-top:34px;padding-top:24px;border-top:1px solid var(--line);font-size:13.5px;color:var(--muted)}
+.v2-meta li{display:flex;align-items:center;gap:9px}
+.v2-meta li::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--gold);flex:none}
+.v2-visual{display:flex;flex-direction:column;align-items:center;gap:14px;position:relative}
+.v2-frame{width:min(360px,100%);padding:11px;border-radius:54px;background:linear-gradient(160deg,#2c2820,#0c0b09 42%,#1f1b15);border:1px solid var(--line2);box-shadow:0 70px 120px -50px rgba(0,0,0,.95),0 30px 80px -30px rgba(212,168,83,.32)}
+.v2-screen{position:relative;border:0;border-radius:44px;background:var(--bg2);overflow:hidden;box-shadow:none}
+.v2-notch{position:absolute;top:12px;left:50%;transform:translateX(-50%);width:98px;height:28px;border-radius:999px;background:#000;z-index:2}
+.v2-screen .hm-demo-top{padding:50px 14px 12px;border-bottom:1px solid var(--line)}
+.v2-screen .hm-tabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;width:100%;gap:4px;justify-content:center}
+.v2-screen .hm-tabs::-webkit-scrollbar{display:none}
+.v2-screen .hm-tab{flex:0 0 auto;padding:6px 9px;font-size:12px}
+.v2-screen .hm-demo-body{height:360px;padding:18px 16px}
+.v2-screen .hm-demo-input{margin:0 14px 14px}
+.v2-apercu{overflow:hidden}
+.v2-rail{display:flex;gap:24px;overflow-x:auto;scroll-snap-type:x mandatory;padding:8px max(24px,calc((100% - 1180px)/2 + 24px)) 30px;scrollbar-width:none;overscroll-behavior-x:contain}
+.v2-rail::-webkit-scrollbar{display:none}
+.v2-shot{flex:0 0 272px;scroll-snap-align:start;cursor:pointer;display:flex;flex-direction:column;gap:18px;border-radius:44px;outline:none;transition:transform .35s cubic-bezier(.2,.7,.2,1),opacity .8s cubic-bezier(.2,.7,.2,1),translate .8s cubic-bezier(.2,.7,.2,1)}
+.v2-shot:hover,.v2-shot:focus-visible{transform:translateY(-6px)}
+.v2-shot:focus-visible .v2-mini{border-color:var(--gold)}
+.v2-mini{height:480px;border-radius:44px;padding:10px;background:linear-gradient(160deg,#2c2820,#0c0b09 42%,#1f1b15);border:1px solid var(--line2);box-shadow:0 50px 90px -50px rgba(0,0,0,.95)}
+.v2-mini-in{height:100%;border-radius:35px;background:var(--bg2);overflow:hidden;display:flex;flex-direction:column}
+.v2-mini-bar{padding:44px 20px 14px;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
+.v2-mini-body{flex:1;min-height:0;overflow:hidden;padding:16px 14px;display:grid;align-content:start;gap:10px;-webkit-mask-image:linear-gradient(#000 74%,transparent);mask-image:linear-gradient(#000 74%,transparent)}
+.v2-mini-body .hm-msg{font-size:13px;line-height:1.55;padding:10px 12px;max-width:92%}
+.v2-shot-cap{display:flex;flex-direction:column;gap:4px;padding:0 6px}
+.v2-shot-cap b{font-family:var(--display);font-size:26px;font-weight:500;line-height:1.1}
+.v2-shot-cap span{font-size:13.5px;color:var(--muted)}
+.v2-bento{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.v2-bento .v2-card{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:22px;background:linear-gradient(180deg,#16140f,#0d0c0a);padding:30px;min-height:210px;display:flex;flex-direction:column;transition:border-color .25s,transform .25s,opacity .8s cubic-bezier(.2,.7,.2,1),translate .8s cubic-bezier(.2,.7,.2,1)}
+.v2-bento .v2-card:hover{border-color:var(--line2);transform:translateY(-3px)}
+.v2-bento .v2-card h3{font-size:19px;margin:auto 0 0;padding-top:24px}
+.v2-bento .v2-card p{color:var(--muted);font-size:14.5px;line-height:1.65;margin-top:8px}
+.v2-bento .v2-card-wide{grid-column:span 2;background:linear-gradient(135deg,rgba(212,168,83,.14),#0d0c0a 62%)}
+.v2-bento .v2-card-wide h3{font-family:var(--display);font-size:38px;font-weight:500;line-height:1.1}
+.v2-bento .v2-card-wide p{max-width:460px;font-size:16px}
+.v2-final{position:relative;overflow:hidden;border-color:var(--line2);background:radial-gradient(70% 130% at 50% 0%,rgba(212,168,83,.2),transparent 62%),var(--panel);border-radius:28px;padding:80px 40px}
+.v2-final .v2-appicon{margin:0 auto 26px}
+.v2-final h2{font-size:56px}
+.v2-final p{max-width:480px;margin-left:auto;margin-right:auto}
+@media (max-width:1100px){
+  .v2-h1{font-size:58px}
+  .v2-hero-grid{gap:40px}
+}
+@media (max-width:900px){
+  .lp{padding-left:0;padding-right:0}
+  .v2-hero{padding:40px 0 52px}
+  .v2-hero-grid{grid-template-columns:1fr;gap:44px}
+  .v2-app{margin-bottom:24px}
+  .v2-appicon{width:64px;height:64px;flex-basis:64px;border-radius:18px}
+  .v2-appicon .logo i{width:34px;height:34px;flex-basis:34px}
+  .v2-app-name{font-size:26px}
+  .v2-h1{font-size:46px;line-height:1.04}
+  .v2-lead{font-size:16px;margin-top:18px}
+  .v2-ctas{margin-top:26px;gap:10px}
+  .v2-ctas .btn{width:100%;height:54px}
+  .v2-meta{gap:8px 16px;font-size:13px;margin-top:26px;padding-top:20px}
+  .v2-frame{width:min(330px,100%)}
+  .v2-screen .hm-demo-body{height:320px;padding:16px 14px}
+  .v2-screen .hm-demo-top{padding-top:46px}
+  .v2-rail{gap:16px;padding:6px 16px 26px;scroll-padding:0 16px}
+  .v2-shot{flex:0 0 78%}
+  .v2-mini{height:440px}
+  .v2-bento{grid-template-columns:1fr;gap:12px}
+  .v2-bento .v2-card{min-height:0;padding:24px}
+  .v2-bento .v2-card-wide{grid-column:auto}
+  .v2-bento .v2-card h3,.v2-bento .v2-card-wide h3{font-size:19px;font-family:var(--sans);font-weight:600;line-height:1.3}
+  .v2-final{padding:54px 22px;border-radius:24px}
+  .v2-final h2{font-size:38px}
+  .v2-hero::before{width:700px;height:460px}
+}
+@media (max-width:640px){
+  .v2-h1{font-size:40px}
+}
+@media (prefers-reduced-motion:reduce){
+  .hm-rv{opacity:1;translate:none;transition:none}
+  .v2-shot,.v2-bento .v2-card{transition:none}
+  .v2-shot:hover,.v2-shot:focus-visible{transform:none}
+}
+
 </style>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 
@@ -1315,6 +1413,7 @@ function startHome(){
     hmRender(c.dataset.hmMod, false);
     document.querySelector(".hm-hero")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }));
+  document.querySelectorAll(".hm-use[data-hm-mod]").forEach(c => c.addEventListener("keydown", e => { if (e.key === "Enter") c.click(); }));
   document.querySelectorAll(".hm-mod-card").forEach(c => c.addEventListener("click", () => {
     hmAuto = false;
     hmRender(c.dataset.hmMod, false);
@@ -1430,8 +1529,16 @@ function vLanding(){
   const promo = promoHidden();
   const loggedIn = !!session;
   const tabs = HM_ORDER.map(k => `<button type="button" class="hm-tab" data-hm-mod="${k}">${MODES[k].name}</button>`).join("");
+  const shots = HM_ORDER.map(k => `
+    <article class="v2-shot hm-use hm-rv" data-hm-mod="${k}" tabindex="0" role="button" aria-label="Voir la démonstration du module ${MODES[k].name}">
+      <div class="v2-mini"><div class="v2-mini-in">
+        <div class="v2-mini-bar">${MODES[k].name}</div>
+        <div class="v2-mini-body">${HM_DEMO[k].slice(0, 3).map(hmMsg).join("")}</div>
+      </div></div>
+      <div class="v2-shot-cap"><b>${MODES[k].name}</b><span>${MODES[k].sub}</span></div>
+    </article>`).join("");
   const modCards = HM_ORDER.map((k, i) => `
-    <article class="hm-mod-card hm-rv" data-hm-mod="${k}">
+    <article class="hm-mod-card v2-mod hm-rv" data-hm-mod="${k}">
       <div class="hm-mod-top"><span class="hm-ico">${ic(MODES[k].icon)}</span><span class="hm-num">0${i + 1}</span></div>
       <h3>${MODES[k].name}</h3>
       <p>${MODES[k].desc}</p>
@@ -1445,6 +1552,7 @@ function vLanding(){
     { i: "chat",   t: "Un vrai échange", d: "KARAT garde le fil de la discussion et continue une réponse coupée sur simple demande." },
     { i: "shield", t: "Un espace privé", d: "Un compte personnel, des conversations visibles de vous seul, et un paiement géré par Stripe." }
   ];
+  const wide = [0, 3, 5];   // cases larges de la grille : une ligne sur trois occupe deux colonnes
   const primary = loggedIn
     ? `<a class="btn btn-accent" href="#/app/chat">Ouvrir le panel ${ic("arrow")}</a>`
     : `<a class="btn btn-accent" href="#/connexion?tab=signup">Essayer gratuitement ${ic("arrow")}</a>`;
@@ -1490,18 +1598,25 @@ function vLanding(){
   return `<div class="lp">
   ${pubHeader("/")}
 
-  <section class="hm-hero"><div class="lp-wrap hm-grid">
-    <div>
-      <span class="hm-eyebrow"><i></i>Assistant IA en français</span>
-      <h1 class="hm-h1">Plus de réponses utiles,<br/><span class="acc">moins de temps perdu.</span></h1>
-      <p class="hm-lead">KARAT répond, analyse vos fichiers, corrige votre code, rédige vos messages et lit vos tableaux. Dans un seul panel, avec un historique que vous retrouvez à tout moment.</p>
-      <div class="hm-ctas">${primary}${secondary}</div>
+  <section class="v2-hero hm-hero"><div class="lp-wrap v2-hero-grid">
+    <div class="v2-copy">
+      <div class="v2-app">
+        <span class="v2-appicon"><span class="logo"><i></i></span></span>
+        <div><div class="v2-app-name">KARAT</div><div class="v2-app-sub">Assistant IA en français</div></div>
+      </div>
+      <h1 class="v2-h1">Plus de réponses utiles,<br/><span class="v2-acc">moins de temps perdu.</span></h1>
+      <p class="v2-lead">KARAT répond, analyse vos fichiers, corrige votre code, rédige vos messages et lit vos tableaux. Dans un seul panel, avec un historique que vous retrouvez à tout moment.</p>
+      <div class="v2-ctas">${primary}${secondary}</div>
       ${note}
+      <ul class="v2-meta"><li>Gratuit pour commencer</li><li>4 modules</li><li>Paiement Stripe</li><li>Résiliable à tout moment</li></ul>
     </div>
-    <div class="hm-demo" aria-label="Exemple de conversation">
-      <div class="hm-demo-top"><span class="hm-dots"><i></i><i></i><i></i></span><div class="hm-tabs">${tabs}</div></div>
-      <div class="hm-demo-body" id="hm-body"></div>
-      <div class="hm-demo-input"><span>Posez votre question…</span><span class="hm-send">${ic("arrow")}</span></div>
+    <div class="v2-visual">
+      <div class="v2-frame"><div class="v2-screen hm-demo" aria-label="Exemple de conversation">
+        <span class="v2-notch" aria-hidden="true"></span>
+        <div class="hm-demo-top"><div class="hm-tabs">${tabs}</div></div>
+        <div class="hm-demo-body" id="hm-body"></div>
+        <div class="hm-demo-input"><span>Posez votre question…</span><span class="hm-send">${ic("arrow")}</span></div>
+      </div></div>
       <p class="hm-caption">Exemples de réponses, à titre d'illustration.</p>
     </div>
   </div></section>
@@ -1513,12 +1628,30 @@ function vLanding(){
     <div>${ic("clock")}<span><b>Résiliable</b>à tout moment</span></div>
   </div></div>
 
+  <section class="lp-sec v2-apercu" id="apercu">
+    <div class="lp-wrap"><div class="lp-sec-head hm-rv">
+      <div><div class="lp-kicker">Aperçu</div><h2 class="lp-h2">Une conversation adaptée à chaque module.</h2></div>
+      <p>Faites défiler les aperçus. Cliquez sur l'un d'eux pour voir sa démonstration complète.</p>
+    </div></div>
+    <div class="v2-rail">${shots}</div>
+  </section>
+
   <section class="lp-sec" id="modules"><div class="lp-wrap">
     <div class="lp-sec-head hm-rv">
       <div><div class="lp-kicker">Modules</div><h2 class="lp-h2">Un module pour chaque métier.</h2></div>
       <p>Chaque module adapte le ton, la méthode et les suggestions à votre tâche. Cliquez sur un module pour voir un exemple.</p>
     </div>
     <div class="hm-mods">${modCards}</div>
+  </div></section>
+
+  <section class="lp-sec" id="features"><div class="lp-wrap">
+    <div class="lp-sec-head hm-rv">
+      <div><div class="lp-kicker">Fonctionnalités</div><h2 class="lp-h2">Tout ce qu'il faut, au même endroit.</h2></div>
+      <p>Fichiers, historique, images et vidéos, sans changer d'outil.</p>
+    </div>
+    <div class="v2-bento">
+      ${feats.map((f, i) => `<article class="v2-card${wide.includes(i) ? " v2-card-wide" : ""} hm-rv"><span class="hm-ico">${ic(f.i)}</span><h3>${f.t}</h3><p>${f.d}</p></article>`).join("")}
+    </div>
   </div></section>
 
   <section class="lp-sec lp-sec-tight" id="comment"><div class="lp-wrap">
@@ -1531,16 +1664,6 @@ function vLanding(){
   </div></section>
 
   ${numsHTML}
-
-  <section class="lp-sec" id="features"><div class="lp-wrap">
-    <div class="lp-sec-head hm-rv">
-      <div><div class="lp-kicker">Fonctionnalités</div><h2 class="lp-h2">Tout ce qu'il faut, au même endroit.</h2></div>
-      <p>Fichiers, historique, images et vidéos, sans changer d'outil.</p>
-    </div>
-    <div class="hm-feats">
-      ${feats.map(f => `<article class="hm-feat hm-rv"><span class="hm-ico">${ic(f.i)}</span><h3>${f.t}</h3><p>${f.d}</p></article>`).join("")}
-    </div>
-  </div></section>
 
   ${landingUsesHTML()}
 
@@ -1569,8 +1692,9 @@ function vLanding(){
   </div></section>
 
   <section class="lp-sec lp-sec-tight"><div class="lp-wrap">
-    <div class="hm-final hm-rv">
-      <h2>Essayez KARAT aujourd'hui.</h2>
+    <div class="hm-final v2-final hm-rv">
+      <span class="v2-appicon"><span class="logo"><i></i></span></span>
+      <h2>Essayez <span class="v2-acc">KARAT</span> aujourd'hui.</h2>
       <p>Créez votre compte et posez votre première question en moins d'une minute.</p>
       <a class="btn btn-accent" href="${loggedIn ? "#/app/chat" : "#/connexion?tab=signup"}">${loggedIn ? "Ouvrir le panel" : "Créer mon compte"} ${ic("arrow")}</a>
     </div>
