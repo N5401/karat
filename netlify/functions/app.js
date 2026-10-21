@@ -624,6 +624,17 @@ function vLanding(){
     : `<a class="btn btn-accent" href="#/connexion?tab=signup">Essayer gratuitement ${ic("arrow")}</a>`;
   const secondary = promo ? "" : `<a class="btn btn-line" href="#/tarifs">Voir les offres</a>`;
   const note = loggedIn ? "" : `<p class="hm-note">Version gratuite sans carte bancaire · Résiliable à tout moment</p>`;
+  // Texte d'accueil : version personnalisée pour les personnes connectées
+  const heroTitle = loggedIn
+    ? `Bon retour.<br/><span class="v2-acc">Votre assistant est prêt.</span>`
+    : `Plus de réponses utiles,<br/><span class="v2-acc">moins de temps perdu.</span>`;
+  const heroLead = loggedIn
+    ? `Reprenez une conversation, joignez un fichier ou changez de module en un clic. Votre historique vous attend dans le panel.`
+    : `KARAT répond, analyse vos fichiers, corrige votre code, rédige vos messages et lit vos tableaux. Dans un seul panel, avec un historique que vous retrouvez à tout moment.`;
+  const heroMeta = (loggedIn
+    ? ["Historique enregistré", "4 modules", "Fichiers et images", "Offres modifiables à tout moment"]
+    : ["Gratuit pour commencer", "4 modules", "Paiement Stripe", "Résiliable à tout moment"]
+  ).map(m => `<li>${m}</li>`).join("");
 
   const offres = promo ? "" : `
   <section class="lp-sec" id="offres"><div class="lp-wrap">
@@ -670,11 +681,11 @@ function vLanding(){
         <span class="v2-appicon"><span class="logo"><i></i></span></span>
         <div><div class="v2-app-name">KARAT</div><div class="v2-app-sub">Assistant IA en français</div></div>
       </div>
-      <h1 class="v2-h1">Plus de réponses utiles,<br/><span class="v2-acc">moins de temps perdu.</span></h1>
-      <p class="v2-lead">KARAT répond, analyse vos fichiers, corrige votre code, rédige vos messages et lit vos tableaux. Dans un seul panel, avec un historique que vous retrouvez à tout moment.</p>
+      <h1 class="v2-h1">${heroTitle}</h1>
+      <p class="v2-lead">${heroLead}</p>
       <div class="v2-ctas">${primary}${secondary}</div>
       ${note}
-      <ul class="v2-meta"><li>Gratuit pour commencer</li><li>4 modules</li><li>Paiement Stripe</li><li>Résiliable à tout moment</li></ul>
+      <ul class="v2-meta">${heroMeta}</ul>
     </div>
     <div class="v2-visual">
       <div class="v2-frame"><div class="v2-screen hm-demo" aria-label="Exemple de conversation">
