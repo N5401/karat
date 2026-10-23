@@ -1,6 +1,6 @@
-// KARAT — lancement d'une vidéo Veo 3.1, pour les abonnés payants (crédits pour les offres sans vidéo incluse).
+// KARAT — lancement d'une vidéo (Gemini Omni), pour les abonnés payants (crédits pour les offres sans vidéo incluse).
 // Fournisseur choisi par la variable VIDEO_PROVIDER : « google » (défaut) ou « atlas ».
-//   google : GOOGLE_API_KEY (clé Google AI Studio), son toujours inclus.
+//   google : GOOGLE_API_KEY (clé Google AI Studio). La génération tourne dans video-background (arrière-plan).
 //   atlas  : ATLAS_API_KEY, VIDEO_MODEL (défaut google/veo3.1/text-to-video), VIDEO_AUDIO (défaut « true »).
 // Règle : Essentiel inclut 2 vidéos par semaine, Pro 4, Expert 6 ; au-delà, chaque vidéo coûte 1 crédit.
 // Le crédit ou le quota n'est décompté qu'une fois la génération acceptée par le fournisseur.
@@ -10,16 +10,12 @@
 const { getStore } = require("@netlify/blobs");
 const { planFor, cleanEmail } = require("./_shared/acces");
 const { balanceOf, takeCredit } = require("./_shared/credits");
+const { jobKey, refKey, refundOnce } = require("./_shared/videojob");
+const crypto = require("crypto");
 
 const PROVIDER = (process.env.VIDEO_PROVIDER || "google").toLowerCase() === "atlas" ? "atlas" : "google";
-// Modèle Veo côté Google, choisi par la variable VEO_MODEL (défaut : Veo 3.1 standard).
-// Par défaut : Veo 3.1 Lite (0,05 $/s en 720p, soit 0,40 $ pour 8 secondes).
-// Pour le modèle standard (3,20 $ par vidéo), mettez veo-3.1-generate-preview dans VEO_MODEL.
-const VEO_MODEL = /^[\w.-]{3,80}$/.test(process.env.VEO_MODEL || "") ? process.env.VEO_MODEL : "veo-3.1-lite-generate-preview";
-const GOOGLE_PREDICT = `https://generativelanguage.googleapis.com/v1beta/models/${VEO_MODEL}:predictLongRunning`;
-// Modèle utilisé quand une image d'exemple est fournie (par défaut le même que VEO_MODEL, donc le Lite et son prix de 0,37 €).
-const VEO_IMAGE_MODEL = /^[\w.-]{3,80}$/.test(process.env.VEO_IMAGE_MODEL || "") ? process.env.VEO_IMAGE_MODEL : VEO_MODEL;
-const GOOGLE_PREDICT_IMAGE = `https://generativelanguage.googleapis.com/v1beta/models/${VEO_IMAGE_MODEL}:predictLongRunning`;
+// Gemini Omni remplace Veo 3.1 (préversions arrêtées le 22 octobre 2026) : le modèle est choisi dans video-background.js.
+// Ce fichier ne lance pas la génération : il enregistre la demande puis appelle video-background.js
 const ATLAS_GENERATE = "https://api.atlascloud.ai/api/v1/model/generateVideo";
 // Vidéos incluses par semaine selon l'offre (0 = crédits seulement ; Infinity = illimité).
 // Doit rester identique à VIDEO_WEEKLY dans app.js.
@@ -49,11 +45,21 @@ const weekKey = (email) => "videoweek|" + encodeURIComponent(email) + "|" + isoW
 // Nom de fichier sûr pour les clés de stockage
 const safeName = (name) => String(name).replace(/[^\w.-]/g, "_");
 
-// Instance envoyée à Veo : le texte, et l'image d'exemple comme image de départ si elle est fournie
-function googleInstance(prompt, ref){
-  const inst = { prompt };
-  if (ref) inst.image = { bytesBase64Encoded: ref.slice(ref.indexOf(",") + 1), mimeType: ref.slice(5, ref.indexOf(";")) };
-  return inst;
+// Déclenche video-background.js : la réponse 202 arrive tout de suite, la génération se poursuit sans bloquer
+async function startBackground(event, email, id) {
+  const base = process.env.URL || (event.headers && event.headers.host ? "https://" + event.headers.host : "");
+  if (!base) return false;
+  try {
+    const r = await fetch(base + "/.netlify/functions/video-background", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, id }),
+    });
+    return r.status === 202 || r.ok;
+  } catch (e) {
+    console.error("KARAT video: lancement en arrière-plan", e.message);
+    return false;
+  }
 }
 
 exports.handler = async (event) => {
@@ -124,19 +130,9 @@ exports.handler = async (event) => {
       if (r.ok && d.data && d.data.id) name = "atlas:" + String(d.data.id);
       else { why = (d && (d.message || d.error)) || ""; console.error("KARAT video: Atlas refuse", r.status, JSON.stringify(d).slice(0, 500)); }
     } else {
-      const apiKey = process.env.GOOGLE_API_KEY;
-      if (!apiKey) return json(500, { error: "Génération vidéo non configurée (GOOGLE_API_KEY manquante)" });
-      const r = await fetch(ref ? GOOGLE_PREDICT_IMAGE : GOOGLE_PREDICT, {
-        method: "POST",
-        headers: { "x-goog-api-key": apiKey, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          instances: [googleInstance(prompt, ref)],
-          parameters: { aspectRatio, durationSeconds, resolution },
-        }),
-      });
-      const d = await r.json().catch(() => ({}));
-      if (r.ok && d.name) name = d.name;
-      else { why = (d && d.error && d.error.message) || ""; if (r.status === 429) busy = true; console.error("KARAT video: Google refuse", r.status, JSON.stringify(d).slice(0, 500)); }
+      // Gemini Omni ne renvoie pas d'opération à suivre : l'identifiant est créé ici, la génération suit en arrière-plan
+      if (!process.env.GOOGLE_API_KEY) return json(500, { error: "Génération vidéo non configurée (GOOGLE_API_KEY manquante)" });
+      name = "omni:" + crypto.randomUUID();
     }
   } catch (e) {
     console.error("KARAT video: service injoignable", PROVIDER, e.message);
@@ -149,12 +145,26 @@ exports.handler = async (event) => {
     return json(502, { error: "Le service vidéo a refusé la demande" + (why ? " : " + String(why).slice(0, 200) : "") });
   }
 
-  // On garde les informations de la demande, pour les retrouver quand la vidéo est prête
-  try {
-    await blobStore("karat-videos").setJSON("job|" + encodeURIComponent(email) + "|" + safeName(name), {
-      prompt, durationSeconds, aspectRatio, resolution, createdAt: Date.now(), source, refunded: false,
-    });
-  } catch (e) { console.error("KARAT video: écriture de la demande", e.message); }
+  const isOmni = name.startsWith("omni:");
+  const sid = safeName(name);
+  if (isOmni) {
+    // La demande est enregistrée avant tout lancement : la fonction d'arrière-plan ne la trouvera qu'ainsi
+    try {
+      const vstore = blobStore("karat-videos");
+      await vstore.setJSON(jobKey(email, sid), { prompt, durationSeconds, aspectRatio, resolution, createdAt: Date.now(), source, refunded: false, status: "queued" });
+      if (ref) await vstore.setJSON(refKey(email, sid), { ref });
+    } catch (e) {
+      console.error("KARAT video: écriture de la demande", e.message);
+      return json(503, { error: "Demande impossible à enregistrer, réessayez. Aucun crédit n'a été débité." });
+    }
+  } else {
+    // On garde les informations de la demande, pour les retrouver quand la vidéo est prête
+    try {
+      await blobStore("karat-videos").setJSON("job|" + encodeURIComponent(email) + "|" + safeName(name), {
+        prompt, durationSeconds, aspectRatio, resolution, createdAt: Date.now(), source, refunded: false,
+      });
+    } catch (e) { console.error("KARAT video: écriture de la demande", e.message); }
+  }
 
   // Décompte, seulement maintenant que la génération est acceptée
   if (source === "quota") {
@@ -163,6 +173,15 @@ exports.handler = async (event) => {
   } else {
     try { await takeCredit(email); }
     catch (e) { console.error("KARAT video: décompte du crédit", e.message); }
+  }
+
+  if (isOmni) {
+    const started = await startBackground(event, email, name);
+    if (!started) {
+      // Le lancement a échoué : le quota ou le crédit est rendu tout de suite
+      await refundOnce(email, sid);
+      return json(503, { error: "Le service vidéo est indisponible, réessayez. Aucun crédit n'a été débité." });
+    }
   }
 
   const remaining = source === "quota" && weekly !== Infinity ? weekly - used - 1 : null;

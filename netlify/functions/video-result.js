@@ -1,17 +1,18 @@
 // KARAT — suivi d'une vidéo (offre Expert), chez Google ou chez Atlas. Quand elle est prête, la fonction
 // la télécharge et la range dans Netlify Blobs, dans la liste de l'abonné.
-// Identifiants : « models/…/operations/… » = Google ; « atlas:… » = Atlas.
+// Identifiants : « models/…/operations/… » = Google Veo ; « omni:… » = Gemini Omni (suivi dans la demande) ; « atlas:… » = Atlas.
 // Variables : GOOGLE_API_KEY et/ou ATLAS_API_KEY, STRIPE_SECRET_KEY (offre).
 
 const { getStore } = require("@netlify/blobs");
 const { planFor, cleanEmail } = require("./_shared/acces");
-const { giveBack } = require("./_shared/credits");
+const { refundOnce } = require("./_shared/videojob");
 
 const GOOGLE_BASE = "https://generativelanguage.googleapis.com/v1beta/";
 const ATLAS_PREDICTION = "https://api.atlascloud.ai/api/v1/model/prediction/";
 const ALLOWED = ["essentiel", "pro", "expert", "admin"];
 const GOOGLE_OP = /^models\/[\w.-]+\/operations\/[\w.-]+$/;
 const ATLAS_ID = /^atlas:[\w-]{4,120}$/;
+const OMNI_ID = /^omni:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 const blobStore = (name) => (process.env.NETLIFY_TOKEN && process.env.SITE_ID)
   ? getStore({ name, siteID: process.env.SITE_ID, token: process.env.NETLIFY_TOKEN })
@@ -23,27 +24,6 @@ const json = (statusCode, body) => ({
   body: JSON.stringify(body),
 });
 const safeName = (name) => String(name).replace(/[^\w.-]/g, "_");
-
-// Rend le crédit (ou le quota du mois) une seule fois, quand la génération a échoué
-async function refundOnce(email, id) {
-  try {
-    const store = blobStore("karat-videos");
-    const jobKey = "job|" + encodeURIComponent(email) + "|" + id;
-    const job = await store.get(jobKey, { type: "json" });
-    if (!job || job.refunded) return;
-    if (job.source === "credit") {
-      await giveBack(email);
-    } else if (job.source === "quota") {
-      const qkey = "video|" + encodeURIComponent(email) + "|" + new Date(job.createdAt).toISOString().slice(0, 7);
-      const q = blobStore("karat-quota");
-      const n = ((await q.get(qkey, { type: "json" })) || {}).n || 0;
-      await q.setJSON(qkey, { n: Math.max(0, n - 1) });
-    }
-    await store.setJSON(jobKey, { ...job, refunded: true });
-  } catch (e) {
-    console.error("KARAT video-result: remboursement", e.message);
-  }
-}
 
 // Lit l'état chez le fournisseur et renvoie { state, uri?, headers?, error? }
 async function checkGoogle(name, apiKey) {
@@ -76,12 +56,12 @@ exports.handler = async (event) => {
   const q = event.queryStringParameters || {};
   const name = String(q.id || "");
   const isAtlas = ATLAS_ID.test(name);
-  if (!isAtlas && !GOOGLE_OP.test(name)) return json(400, { error: "Identifiant invalide" });
+  const isOmni = OMNI_ID.test(name);
+  if (!isAtlas && !isOmni && !GOOGLE_OP.test(name)) return json(400, { error: "Identifiant invalide" });
 
   const email = cleanEmail(q.email);
   let plan = null;
-  try { plan = await planFor(email); } catch (e) { return json(503, { error: "Vérification de l'offre impossible" }); }
-  if (!ALLOWED.includes(plan)) return json(403, { error: "La génération de vidéos est réservée à l'offre Expert." });
+  // Ouvert à tous : la vidéo est rattachée à l'e-mail de son compte
 
   const store = blobStore("karat-videos");
   const id = safeName(name);
@@ -92,6 +72,22 @@ exports.handler = async (event) => {
     const list = (await store.get(listKey, { type: "json" })) || [];
     if (list.some(v => v.id === id)) return json(200, { status: "completed", id });
   } catch (e) { console.error("KARAT video-result: lecture de la liste", e.message); }
+
+  // Gemini Omni : l'état est celui de la demande enregistrée, mise à jour par video-background.js
+  if (isOmni) {
+    let job = null;
+    try { job = await store.get("job|" + encodeURIComponent(email) + "|" + id, { type: "json" }); }
+    catch (e) { console.error("KARAT video-result: lecture de la demande", e.message); }
+    if (!job) return json(200, { status: "failed", error: "Demande de vidéo introuvable." });
+    if (job.status === "failed") return json(200, { status: "failed", error: job.error || "La génération a échoué" });
+    if (job.status === "done") return json(200, { status: "failed", error: "La vidéo est prête mais introuvable. Réessayez." });
+    // En attente ou en cours : au-delà de 20 minutes, la génération est considérée comme perdue, et le crédit est rendu
+    if (Date.now() - (job.createdAt || 0) > 20 * 60 * 1000) {
+      await refundOnce(email, id);
+      return json(200, { status: "failed", error: "La génération a expiré. Aucun crédit n'a été débité." });
+    }
+    return json(200, { status: "processing" });
+  }
 
   // État chez le fournisseur
   let st;
