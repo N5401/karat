@@ -1073,20 +1073,15 @@ function msgHTML(m){
 }
 function welcomeHTML(mode){
   const first = (me().firstName || "").trim();
-  const m = MODES[mode];
-  return `<div class="welcome">
-    <header class="wc-head">
-      <span class="wc-mark" aria-hidden="true"><img src="karat-avatar.png" alt="" width="60" height="60" decoding="async"></span>
-      <div class="wc-text">
-        <span class="label">Module ${esc(m.name)}</span>
-        <h2>Bonjour${first ? `, <em>${esc(first)}</em>` : ""}</h2>
-        <p class="wc-desc">${m.desc}</p>
-      </div>
+  const iconFor = t => /image|visuel|photo/i.test(t) ? "image" : /vid[ée]o|clip/i.test(t) ? "film" : /recherch|web/i.test(t) ? "search" : "edit";
+  return `<div class="welcome kh-welcome">
+    <header class="kh-w-head">
+      <span class="kh-w-label">Bonjour${first ? `, ${esc(first)}` : ""}</span>
+      <h2>Que créons-nous <em>aujourd'hui</em> ?</h2>
     </header>
-    <ul class="wc-caps" aria-label="Ce que fait ce module">${m.bullets.map(b => `<li>${esc(b)}</li>`).join("")}</ul>
-    <section>
-      <div class="wc-sec">Pour commencer</div>
-      <div class="sugg-grid">${SUGGESTIONS[mode].map((t, i) => `<button type="button" class="sugg-card" data-action="suggest" data-text="${esc(t)}"><span class="n">0${i + 1}</span><span class="sugg-t">${esc(t)}</span><svg class="sugg-arr" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>`).join("")}</div>
+    <section class="kh-w-sec">
+      <p class="kh-w-label kh-w-sub">Suggestions</p>
+      <ul class="kh-w-list" aria-label="Suggestions">${SUGGESTIONS[mode].slice(0, 4).map((t, i) => `<li><button type="button" class="kh-w-item" data-action="suggest" data-text="${esc(t)}">${ic(iconFor(t))}<span>${esc(t)}</span></button></li>`).join("")}</ul>
     </section>
     <p class="wc-tip">Astuce : joignez une image ou un fichier avec le trombone, puis posez votre question.</p>
   </div>`;
