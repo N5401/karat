@@ -627,7 +627,7 @@ function vLanding(){
   // Texte d'accueil : version personnalisée pour les personnes connectées
   const heroTitle = loggedIn
     ? `Bon retour.<br/><span class="v2-acc">Votre assistant est prêt.</span>`
-    : `Plus de réponses utiles,<br/><span class="v2-acc">moins de temps perdu.</span>`;
+    : `Votre assistant,<br/><span class="v2-acc">en français.</span>`;
   const heroLead = loggedIn
     ? `Reprenez une conversation, joignez un fichier ou changez de module en un clic. Votre historique vous attend dans le panel.`
     : `KARAT répond, analyse vos fichiers, corrige votre code, rédige vos messages et lit vos tableaux. Dans un seul panel, avec un historique que vous retrouvez à tout moment.`;
@@ -1129,6 +1129,7 @@ function renderMd(text){
   }).join("");
 }
 
+const AI_AVATAR = '<div class="who ai-av"><img src="karat-avatar.png" alt="KARAT" width="30" height="30" decoding="async"></div>';
 function msgHTML(m){
   const t = fmtTime(m.at);
   if (m.role === "user"){
@@ -1137,7 +1138,7 @@ function msgHTML(m){
     return `<div class="msg me"><div class="who">${esc(initial(displayName(me()) || session.email))}</div>
       <div><div class="bubble">${pics}${att}${esc(m.text)}</div><div class="msg-meta" style="justify-content:flex-end">${t}</div></div></div>`;
   }
-  return `<div class="msg ai"><div class="who">K</div>
+  return `<div class="msg ai">${AI_AVATAR}
     <div><div class="bubble">${renderMd(m.text)}</div>
     <div class="msg-meta"><span>${t}</span><button class="btn btn-ghost btn-sm copy-btn" data-action="copy" data-text="${esc(m.text)}" style="height:26px;padding:0 8px;font-size:11.5px">${ic("copy")} Copier</button></div></div></div>`;
 }
@@ -1146,7 +1147,7 @@ function welcomeHTML(mode){
   const m = MODES[mode];
   return `<div class="welcome">
     <header class="wc-head">
-      <span class="wc-mark" aria-hidden="true"><svg viewBox="0 0 64 64" width="30" height="30"><g stroke="#d4a853" stroke-width="7" stroke-linecap="round" fill="none"><line x1="20" y1="14" x2="20" y2="50"/><line x1="20" y1="32" x2="44" y2="16"/><line x1="20" y1="32" x2="48" y2="50"/></g><path d="M52 6 L54 12 L60 14 L54 16 L52 22 L50 16 L44 14 L50 12 Z" fill="#d4a853"/></svg></span>
+      <span class="wc-mark" aria-hidden="true"><img src="karat-avatar.png" alt="" width="60" height="60" decoding="async"></span>
       <div class="wc-text">
         <span class="label">Module ${esc(m.name)}</span>
         <h2>Bonjour${first ? `, <em>${esc(first)}</em>` : ""}</h2>
@@ -1167,7 +1168,7 @@ function vChat(m){
   if (id && !conv){ toast("Conversation introuvable", true); go("/app/chat"); return ""; }
   ui.convId = conv ? conv.id : null;
   const mode = conv ? conv.mode : ui.mode;
-  const typing = ui.typing ? `<div class="msg ai"><div class="who">K</div><div class="bubble"><span class="typing"><i></i><i></i><i></i></span></div></div>` : "";
+  const typing = ui.typing ? `<div class="msg ai">${AI_AVATAR}<div class="bubble"><span class="typing"><i></i><i></i><i></i></span></div></div>` : "";
   const body = (conv || ui.typing) ? (conv ? conv.messages.map(msgHTML).join("") : "") + typing : welcomeHTML(mode);
   const attached = ui.attached.map(fileById).filter(Boolean);
 
