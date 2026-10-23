@@ -61,6 +61,11 @@ exports.handler = async (event) => {
 <p>Il expire dans 10 minutes. Si vous n'êtes pas à l'origine de cette demande, ignorez ce message.</p>`,
     }),
   });
-  if (!r.ok) return json(502, { error: "Le code n'a pas pu être envoyé. Réessayez." });
+  if (!r.ok) {
+    // Le détail renvoyé par Resend reste dans les journaux Netlify (Functions > code-send), pas dans la page
+    const detail = await r.text().catch(() => "");
+    console.error("Envoi du code refusé par Resend", r.status, detail);
+    return json(502, { error: "Le code n'a pas pu être envoyé. Réessayez." });
+  }
   return json(200, { ok: true });
 };
