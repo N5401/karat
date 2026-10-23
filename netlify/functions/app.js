@@ -466,10 +466,9 @@ function hmRender(mod, instant){
 
 function startHome(){
   const box = document.getElementById("hm-body");
-  if (!box) return;
   const reduce = !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
   hmAuto = !reduce;
-  hmRender("general", reduce);
+  if (box) hmRender("general", reduce);
   document.querySelectorAll(".hm-tab").forEach(b => b.addEventListener("click", () => {
     hmAuto = false;
     hmRender(b.dataset.hmMod, false);
@@ -594,65 +593,61 @@ function vUpdates(){
 function vLanding(){
   const promo = promoHidden();
   const loggedIn = !!session;
-  const tabs = HM_ORDER.map(k => `<button type="button" class="hm-tab" data-hm-mod="${k}">${MODES[k].name}</button>`).join("");
-  const shots = HM_ORDER.map(k => `
-    <article class="v2-shot hm-use hm-rv" data-hm-mod="${k}" tabindex="0" role="button" aria-label="Voir la démonstration du module ${MODES[k].name}">
-      <div class="v2-mini"><div class="v2-mini-in">
-        <div class="v2-mini-bar">${MODES[k].name}</div>
-        <div class="v2-mini-body">${HM_DEMO[k].slice(0, 3).map(hmMsg).join("")}</div>
-      </div></div>
-      <div class="v2-shot-cap"><b>${MODES[k].name}</b><span>${MODES[k].sub}</span></div>
-    </article>`).join("");
-  const modCards = HM_ORDER.map((k, i) => `
-    <article class="hm-mod-card v2-mod hm-rv" data-hm-mod="${k}">
-      <div class="hm-mod-top"><span class="hm-ico">${ic(MODES[k].icon)}</span><span class="hm-num">0${i + 1}</span></div>
-      <h3>${MODES[k].name}</h3>
-      <p>${MODES[k].desc}</p>
-      <ul>${MODES[k].bullets.map(b => `<li>${b}</li>`).join("")}</ul>
-    </article>`).join("");
-  const feats = [
-    { i: "grid",   t: "Joignez vos fichiers", d: "PDF, CSV, images et code : ajoutez-les à votre question en un clic." },
-    { i: "clock",  t: "Un historique clair", d: "Vos conversations classées par date, à reprendre quand vous voulez." },
-    { i: "image",  t: "Des images sur demande", d: "Décrivez l'image souhaitée. Pro permet aussi de retoucher une photo de référence." },
-    { i: "film",   t: "Des vidéos avec le son", d: "Vidéos IA de 8 secondes, incluses dans certaines offres ou achetées à l'unité avec des crédits." },
-    { i: "chat",   t: "Un vrai échange", d: "KARAT garde le fil de la discussion et continue une réponse coupée sur simple demande." },
-    { i: "shield", t: "Un espace privé", d: "Un compte personnel, des conversations visibles de vous seul, et un paiement géré par Stripe." }
-  ];
-  const wide = [0, 3, 5];   // cases larges de la grille : une ligne sur trois occupe deux colonnes
   const primary = loggedIn
     ? `<a class="btn btn-accent" href="#/app/chat">Ouvrir le panel ${ic("arrow")}</a>`
-    : `<a class="btn btn-accent" href="#/connexion?tab=signup">Essayer gratuitement ${ic("arrow")}</a>`;
+    : `<a class="btn btn-accent" href="#/connexion?tab=signup">Commencer une conversation ${ic("arrow")}</a>`;
   const secondary = promo ? "" : `<a class="btn btn-line" href="#/tarifs">Voir les offres</a>`;
-  const note = loggedIn ? "" : `<p class="hm-note">Version gratuite sans carte bancaire · Résiliable à tout moment</p>`;
-  // Texte d'accueil : version personnalisée pour les personnes connectées
-  const heroTitle = loggedIn
-    ? `Bon retour.<br/><span class="v2-acc">Votre assistant est prêt.</span>`
-    : `Votre assistant,<br/><span class="v2-acc">en français.</span>`;
-  const heroLead = loggedIn
-    ? `Reprenez une conversation, joignez un fichier ou changez de module en un clic. Votre historique vous attend dans le panel.`
-    : `KARAT répond, analyse vos fichiers, corrige votre code, rédige vos messages et lit vos tableaux. Dans un seul panel, avec un historique que vous retrouvez à tout moment.`;
-  const heroMeta = (loggedIn
-    ? ["Historique enregistré", "4 modules", "Fichiers et images", "Offres modifiables à tout moment"]
-    : ["Gratuit pour commencer", "4 modules", "Paiement Stripe", "Résiliable à tout moment"]
-  ).map(m => `<li>${m}</li>`).join("");
+  const eyebrow = loggedIn ? `Bonjour, ${esc(displayName(me()) || "")}` : "KARAT · Assistant IA";
+
+  const hero = `<section class="kh-hero"><div class="lp-wrap kh-hero-grid">
+    <div class="kh-copy">
+      <p class="kh-eyebrow">${eyebrow}</p>
+      <h1 class="kh-h1">Votre assistant,<br/><em>en français.</em></h1>
+      <p class="kh-lead">Écrivez, créez des images et des vidéos, et retrouvez tout votre travail au même endroit.</p>
+      <div class="kh-ctas">${primary}${secondary}</div>
+    </div>
+    <div class="kh-visual" aria-label="Exemple de conversation">
+      <div class="kh-chat">
+        <div class="kh-chat-top"><span>Affiche menu du printemps</span><span class="kh-live">En ligne</span></div>
+        <div class="kh-me">Écris une affiche pour le menu de printemps, avec un ton chaleureux.</div>
+        <div class="kh-ai"><img src="karat-avatar.png" alt="" width="30" height="30"><div><p>Voici une proposition :</p><b>Le printemps se goûte.</b><p>Produits de saison, préparés avec soin.</p></div></div>
+        <div class="kh-input">Demander à KARAT</div>
+      </div>
+      <div class="kh-clip"><span class="kh-clip-thumb">▶</span><span><b>Clip prêt</b><small>Portrait 9:16 · 720p</small></span></div>
+    </div>
+  </div></section>`;
+
+  const tiles = `<section class="kh-tiles"><div class="lp-wrap kh-tiles-grid">
+    <div class="kh-tile">${ic("edit")}<b>Texte</b><span>Rédigez, corrigez, résumez.</span></div>
+    <div class="kh-tile">${ic("image")}<b>Images</b><span>Visuels prêts à publier.</span></div>
+    <div class="kh-tile">${ic("film")}<b>Vidéos</b><span>Des clips courts, en 720p.</span></div>
+    <div class="kh-tile">${ic("chat")}<b>Assistance</b><span>Une réponse à chaque question.</span></div>
+  </div></section>`;
+
+  const features = `<section class="kh-sec kh-sec-tight"><div class="lp-wrap">
+    <div class="kh-kicker">Ce que vous pouvez faire</div>
+    <h2 class="kh-h2">Un seul espace pour <em>tout créer.</em></h2>
+    <div class="kh-feat">
+      <article class="kh-card"><span class="kh-ico">${ic("edit")}</span><h3>Écrire et réviser</h3><p>Textes, lettres et annonces, dans le ton que vous choisissez.</p></article>
+      <article class="kh-card"><span class="kh-ico">${ic("image")}</span><h3>Créer des images</h3><p>Décrivez l'image voulue, puis ajustez-la en conversation.</p></article>
+      <article class="kh-card"><span class="kh-ico">${ic("film")}</span><h3>Produire des vidéos</h3><p>Un court clip à partir d'une idée, avec une image de référence si besoin.</p></article>
+    </div>
+  </div></section>`;
+
+  const idea = `<section class="kh-sec kh-sec-tight"><div class="lp-wrap"><div class="kh-video">
+    <div class="kh-kicker">Démonstration</div>
+    <h2 class="kh-h2">Une vidéo, de l’idée au clip.</h2>
+    <p class="kh-text">Décrivez la scène, ajoutez une image de référence si vous voulez, et KARAT produit un court clip en format portrait ou paysage.</p>
+    <div><a class="btn btn-line" href="${loggedIn ? "#/app/video" : "#/connexion?tab=signup"}">Essayer maintenant</a></div>
+  </div></div></section>`;
 
   const offres = promo ? "" : `
-  <section class="lp-sec" id="offres"><div class="lp-wrap">
-    <div class="lp-sec-head hm-rv">
-      <div><div class="lp-kicker">Tarifs</div><h2 class="lp-h2">Une offre pour chaque usage.</h2></div>
-      <p>TTC, sans engagement. Résiliable depuis votre espace.</p>
-    </div>
+  <section class="kh-sec" id="offres"><div class="lp-wrap">
+    <div class="kh-kicker">Offres</div>
+    <h2 class="kh-h2">Choisissez votre <em>rythme.</em></h2>
     <div class="plans">${["essentiel", "pro", "expert"].map(planCard).join("")}</div>
   </div></section>`;
 
-  const numsHTML = `<section class="lp-sec lp-sec-tight"><div class="lp-wrap">
-    <div class="hm-nums hm-rv">
-      <div><b>4</b><span>modules pour des tâches différentes</span></div>
-      <div><b>30</b><span>messages par jour en version gratuite</span></div>
-      <div><b>3</b><span>images tous les 2 jours en version gratuite</span></div>
-      <div><b>0 €</b><span>pour commencer, sans carte bancaire</span></div>
-    </div>
-  </div></section>`;
   const cmpHTML = promo ? "" : `<section class="lp-sec lp-sec-tight" id="comparatif"><div class="lp-wrap">
     <div class="lp-sec-head hm-rv">
       <div><div class="lp-kicker">Comparatif</div><h2 class="lp-h2">Quelle offre pour vous ?</h2></div>
@@ -674,83 +669,17 @@ function vLanding(){
 
   return `<div class="lp">
   ${pubHeader("/")}
-
-  <section class="v2-hero hm-hero"><div class="lp-wrap v2-hero-grid">
-    <div class="v2-copy">
-      <div class="v2-app">
-        <span class="v2-appicon"><span class="logo"><i></i></span></span>
-        <div><div class="v2-app-name">KARAT</div><div class="v2-app-sub">Assistant IA en français</div></div>
-      </div>
-      <h1 class="v2-h1">${heroTitle}</h1>
-      <p class="v2-lead">${heroLead}</p>
-      <div class="v2-ctas">${primary}${secondary}</div>
-      ${note}
-      <ul class="v2-meta">${heroMeta}</ul>
-    </div>
-    <div class="v2-visual">
-      <div class="v2-frame"><div class="v2-screen hm-demo" aria-label="Exemple de conversation">
-        <span class="v2-notch" aria-hidden="true"></span>
-        <div class="hm-demo-top"><div class="hm-tabs">${tabs}</div></div>
-        <div class="hm-demo-body" id="hm-body"></div>
-        <div class="hm-demo-input"><span>Posez votre question…</span><span class="hm-send">${ic("arrow")}</span></div>
-      </div></div>
-      <p class="hm-caption">Exemples de réponses, à titre d'illustration.</p>
-    </div>
-  </div></section>
-
-  <div class="lp-wrap"><div class="hm-trust hm-rv">
-    <div>${ic("star")}<span><b>Version gratuite</b>pour commencer</span></div>
-    <div>${ic("card")}<span><b>Paiement Stripe</b>sécurisé</span></div>
-    <div>${ic("shield")}<span><b>Espace privé</b>à votre nom</span></div>
-    <div>${ic("clock")}<span><b>Résiliable</b>à tout moment</span></div>
-  </div></div>
-
-  <section class="lp-sec v2-apercu" id="apercu">
-    <div class="lp-wrap"><div class="lp-sec-head hm-rv">
-      <div><div class="lp-kicker">Aperçu</div><h2 class="lp-h2">Une conversation adaptée à chaque module.</h2></div>
-      <p>Faites défiler les aperçus. Cliquez sur l'un d'eux pour voir sa démonstration complète.</p>
-    </div></div>
-    <div class="v2-rail">${shots}</div>
-  </section>
-
-  <section class="lp-sec" id="modules"><div class="lp-wrap">
-    <div class="lp-sec-head hm-rv">
-      <div><div class="lp-kicker">Modules</div><h2 class="lp-h2">Un module pour chaque métier.</h2></div>
-      <p>Chaque module adapte le ton, la méthode et les suggestions à votre tâche. Cliquez sur un module pour voir un exemple.</p>
-    </div>
-    <div class="hm-mods">${modCards}</div>
-  </div></section>
-
-  <section class="lp-sec" id="features"><div class="lp-wrap">
-    <div class="lp-sec-head hm-rv">
-      <div><div class="lp-kicker">Fonctionnalités</div><h2 class="lp-h2">Tout ce qu'il faut, au même endroit.</h2></div>
-      <p>Fichiers, historique, images et vidéos, sans changer d'outil.</p>
-    </div>
-    <div class="v2-bento">
-      ${feats.map((f, i) => `<article class="v2-card${wide.includes(i) ? " v2-card-wide" : ""} hm-rv"><span class="hm-ico">${ic(f.i)}</span><h3>${f.t}</h3><p>${f.d}</p></article>`).join("")}
-    </div>
-  </div></section>
-
-  <section class="lp-sec lp-sec-tight" id="comment"><div class="lp-wrap">
-    <div class="lp-sec-head hm-rv"><div><div class="lp-kicker">Démarrer</div><h2 class="lp-h2">Trois étapes, moins de deux minutes.</h2></div></div>
-    <div class="hm-steps">
-      <div class="hm-step hm-rv"><span class="hm-n">1</span><h3>Créez votre compte</h3><p>Par e-mail ou avec Google, en une minute.</p></div>
-      <div class="hm-step hm-rv"><span class="hm-n">2</span><h3>Posez votre première question</h3><p>La version gratuite est disponible tout de suite, sans carte bancaire.</p></div>
-      <div class="hm-step hm-rv"><span class="hm-n">3</span><h3>Passez à une offre si besoin</h3><p>Essentiel, Pro ou Expert, résiliable à tout moment.</p></div>
-    </div>
-  </div></section>
-
-  ${numsHTML}
-
-  ${landingUsesHTML()}
-
-  ${landingSecurityHTML()}
+  ${hero}
+  ${tiles}
+  ${features}
+  ${idea}
+  ${offres}
 
   ${avisSection()}
 
-  ${updTeaserHTML()}
+  ${landingSecurityHTML()}
 
-  ${offres}
+  ${updTeaserHTML()}
 
   ${cmpHTML}
 
