@@ -1989,6 +1989,10 @@ function vLanding(){
   <section class="kh-sec" id="offres"><div class="lp-wrap">
     <div class="kh-kicker">Offres</div>
     <h2 class="kh-h2">Choisissez votre <em>rythme.</em></h2>
+    <div class="row" style="justify-content:center;gap:10px;margin:0 0 26px">
+      <button class="btn ${billing === "mois" ? "btn-accent" : "btn-line"} btn-sm" data-action="billing" data-period="mois">Mensuel</button>
+      <button class="btn ${billing === "an" ? "btn-accent" : "btn-line"} btn-sm" data-action="billing" data-period="an">Annuel · 2 mois offerts</button>
+    </div>
     <div class="plans">${["essentiel", "pro", "expert"].map(planCard).join("")}</div>
   </div></section>`;
 
@@ -3075,7 +3079,7 @@ const ACTIONS = {
   "close-modal":   () => closeModal(),
   "confirm-ok":    () => { const f = pendingOk; pendingOk = null; closeModal(); f && f(); },
   "plan":          el => startPlan(el.dataset.plan, el.dataset.period || "mois"),
-  "billing":       el => { billing = el.dataset.period; render(); },
+  "billing":       el => { const y = window.scrollY; billing = el.dataset.period; render(); window.scrollTo(0, y); },
   "ack-confirm":   () => confirmAck(),
   "copy":          el => {
     copyText(el.dataset.text || "").then(() => toast("Réponse copiée"), () => toast("Copie impossible : sélectionnez le texte et copiez-le", true));
