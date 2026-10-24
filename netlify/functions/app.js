@@ -123,6 +123,7 @@ let logs  = store.get("karat_logs", []);
 const ui  = { mode: "general", attached: [], pendingImg: [], pendingFiles: [], convId: null, typing: false, adminFilter: "all", adminQ: "", sort: { key: "createdAt", dir: -1 }, page: 1, logFilter: "all" };
 const PAGE = 10;
 let pendingOk = null;
+let pendingLogin = null;   // connexion en attente du code envoyé par e-mail : { email, name }
 
 const saveUsers = () => store.set("karat_users", users);
 const saveSubs  = () => store.set("karat_subs", subs);
@@ -523,6 +524,12 @@ function startHome(){
 
 /* ---------- Mises à jour (affichées sur la page dédiée et sur l'accueil) ---------- */
 const UPDATES = [
+  { date: "24 octobre 2026", tag: "Sécurité", title: "Connexion par code envoyé par e-mail",
+    text: "Chaque connexion demande, en plus du mot de passe, un code à 6 chiffres envoyé à l'adresse e-mail du compte.",
+    bullets: ["Le code est valable 10 minutes et ne peut être utilisé qu'une seule fois", "Après 5 mauvais essais, il faut demander un nouveau code", "Trois codes maximum par adresse toutes les 15 minutes", "Un bouton « Renvoyer le code » permet de le recevoir à nouveau"] },
+  { date: "24 octobre 2026", tag: "Interface", title: "Conversation et barre latérale repensées",
+    text: "Le chat reprend le nouveau design : une barre latérale plus claire, un accueil plus direct et une zone de saisie complète.",
+    bullets: ["Les 5 dernières conversations apparaissent dans la barre latérale, avec le compte en bas", "Le groupe « Plus » est replié par défaut pour garder la navigation lisible", "L'accueil du chat propose 4 raccourcis : créer une image, créer une vidéo, écrire ou modifier un texte, rechercher sur le Web", "Le bouton « Outils » sous la zone de saisie affiche le mode de travail en cours et permet d'en changer", "Chaque réponse se copie d'un clic, et la conversation entière se copie depuis son en-tête", "Les onglets « Se connecter » et « Créer un compte » s'affichent correctement"] },
   { date: "20 octobre 2026", tag: "Accueil", title: "Une page d'accueil plus complète",
     text: "La présentation publique de KARAT est plus claire : un aperçu vivant, des profils d'utilisation et un comparatif des offres.",
     bullets: ["Un aperçu de conversation qui passe d'un module à l'autre", "La section « Pour qui » ouvre la démonstration du module correspondant", "Des repères concrets : 4 modules, 30 messages par jour et 3 images tous les 2 jours en version gratuite", "Un comparatif rapide des offres, juste avant les questions fréquentes", "Sur téléphone, un bouton « Essayer gratuitement » reste accessible en bas de l'écran"] },
@@ -671,6 +678,10 @@ function vLanding(){
   <section class="kh-sec" id="offres"><div class="lp-wrap">
     <div class="kh-kicker">Offres</div>
     <h2 class="kh-h2">Choisissez votre <em>rythme.</em></h2>
+    <div class="row" style="justify-content:center;gap:10px;margin:0 0 26px">
+      <button class="btn ${billing === "mois" ? "btn-accent" : "btn-line"} btn-sm" data-action="billing" data-period="mois">Mensuel</button>
+      <button class="btn ${billing === "an" ? "btn-accent" : "btn-line"} btn-sm" data-action="billing" data-period="an">Annuel · 2 mois offerts</button>
+    </div>
     <div class="plans">${["essentiel", "pro", "expert"].map(planCard).join("")}</div>
   </div></section>`;
 
@@ -735,6 +746,7 @@ function vPricing(){
 }
 
 function vAuth(_m, q){
+  if (pendingLogin) return authCodeHTML();
   const tab = q.get("tab") === "signup" ? "signup" : "login";
   const nx = enc(q.get("next") || "/app/chat");
   const gOn = googleOn();
@@ -805,9 +817,54 @@ async function onLogin(f){
   try{
     if (!(await verifyPw(pw, u))) return setErr("Mot de passe incorrect.");
   }catch(e){ return setErr("Votre navigateur bloque le chiffrement. Ouvrez la page en https ou en local."); }
-  u.lastLogin = Date.now(); saveUsers();
-  sendAccount(users[email]);
+  try{ await requestLoginCode(email); }
+  catch(e){ return setErr(e.message || "Impossible d'envoyer le code. Réessayez."); }
+  pendingLogin = { email, name: displayName(u) };
+  render();
+}
+// Demande au serveur d'envoyer un code à 6 chiffres par e-mail
+async function requestLoginCode(email){
+  let r;
+  try { r = await fetch("/.netlify/functions/code-send", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) }); }
+  catch (e) { throw new Error("Connexion impossible. Vérifiez votre réseau."); }
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || "Impossible d'envoyer le code. Réessayez.");
+}
+// Vérifie le code auprès du serveur, puis ouvre la session
+async function onCode(f){
+  setErr("");
+  if (!pendingLogin) return;
+  const email = pendingLogin.email;
+  const code = f.querySelector('[name="code"]').value.trim();
+  let r;
+  try { r = await fetch("/.netlify/functions/code-verify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, code }) }); }
+  catch (e) { return setErr("Vérification impossible. Réessayez."); }
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) return setErr(d.error || "Code incorrect.");
+  const u = users[email];
+  pendingLogin = null;
+  if (u){ u.lastLogin = Date.now(); saveUsers(); sendAccount(users[email]); }
   startSession({ email, name: displayName(u) }, false);
+}
+async function resendCode(){
+  if (!pendingLogin) return;
+  setErr("");
+  try { await requestLoginCode(pendingLogin.email); toast("Nouveau code envoyé"); }
+  catch (e) { setErr(e.message); }
+}
+function authCodeHTML(){
+  return `${pubHeader("/connexion")}
+  <div class="auth-wrap"><div class="auth-card">
+    <a class="logo" href="#/" style="margin-bottom:22px">KARAT</a>
+    <h1>Code de sécurité</h1>
+    <p class="sub">Un code à 6 chiffres vient d'être envoyé à <b>${esc(pendingLogin.email)}</b>. Il expire dans 10 minutes.</p>
+    <form id="codeForm" autocomplete="off">
+      <div class="field"><label for="c-code">CODE À 6 CHIFFRES</label><input id="c-code" class="input" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="000000" required /></div>
+      <button class="btn btn-accent btn-block" type="submit">Valider</button>
+    </form>
+    <div class="err" id="authErr" role="alert"></div>
+    <p class="small muted" style="margin-top:16px;text-align:center">Pas reçu ? <button type="button" class="linkbtn" data-action="code-resend">Renvoyer le code</button> · <button type="button" class="linkbtn" data-action="code-cancel">Annuler</button></p>
+  </div></div>`;
 }
 async function onSignup(f){
   setErr("");
@@ -1711,7 +1768,7 @@ const ACTIONS = {
   "close-modal":   () => closeModal(),
   "confirm-ok":    () => { const f = pendingOk; pendingOk = null; closeModal(); f && f(); },
   "plan":          el => startPlan(el.dataset.plan, el.dataset.period || "mois"),
-  "billing":       el => { billing = el.dataset.period; render(); },
+  "billing":       el => { const y = window.scrollY; billing = el.dataset.period; render(); window.scrollTo(0, y); },
   "ack-confirm":   () => confirmAck(),
   "copy":          el => {
     copyText(el.dataset.text || "").then(() => toast("Réponse copiée"), () => toast("Copie impossible : sélectionnez le texte et copiez-le", true));
@@ -1724,6 +1781,8 @@ const ACTIONS = {
   },
   "new-chat":      () => { ui.convId = null; ui.attached = []; go("/app/chat"); },
   "suggest":       el => sendMessage(el.dataset.text),
+  "code-resend":   () => resendCode(),
+  "code-cancel":   () => { pendingLogin = null; setErr(""); render(); },
   "tools-toggle":  el => { const pop = el.parentElement && el.parentElement.querySelector(".tools-pop"); if (pop){ const open = pop.hasAttribute("hidden"); pop.toggleAttribute("hidden", !open); el.setAttribute("aria-expanded", String(open)); } },
   "share-chat":    () => { const c = ui.convId && convById(ui.convId); if (!c) return toast("Ouvrez une conversation pour la copier", true); copyText(c.messages.map(m => (m.role === "user" ? "Vous : " : "KARAT : ") + m.text).join("\n\n")).then(() => toast("Conversation copiée"), () => toast("Copie impossible", true)); },
   "go-to":         el => go(el.dataset.href),
@@ -1801,7 +1860,7 @@ document.addEventListener("click", e => {
 
 document.addEventListener("submit", e => {
   const f = e.target;
-  const handlers = { loginForm: onLogin, signupForm: onSignup, composer: () => sendMessage(), editUserForm: onEditUser };
+  const handlers = { loginForm: onLogin, codeForm: onCode, signupForm: onSignup, composer: () => sendMessage(), editUserForm: onEditUser };
   if (handlers[f.id]){ e.preventDefault(); handlers[f.id](f); }
 });
 
