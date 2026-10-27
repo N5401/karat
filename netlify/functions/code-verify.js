@@ -1,56 +1,53 @@
-// KARAT — vérification du code de connexion
-// POST {email, code} -> {ok:true} si le code est bon.
+// KARAT — vérification du code à 6 chiffres.
+// POST {email, code} -> {ok:true, account} si le code est bon.
+//   Inscription en attente : le compte est créé maintenant, seulement si le code est bon.
+//   Connexion : le compte existant est renvoyé, avec la date de dernière connexion mise à jour.
 // Le code est supprimé dès qu'il est utilisé, expire au bout de 10 minutes et bloque après 5 essais.
-// Variables Netlify : CODE_SECRET (même valeur que code-send), NETLIFY_TOKEN et SITE_ID (déjà utilisés).
+// Variables Netlify : CODE_SECRET (même valeur que code-send), NETLIFY_TOKEN et SITE_ID.
 
-const { getStore } = require("@netlify/blobs");
-const crypto = require("crypto");
-
-const blobStore = (name) => (process.env.NETLIFY_TOKEN && process.env.SITE_ID)
-  ? getStore({ name, siteID: process.env.SITE_ID, token: process.env.NETLIFY_TOKEN })
-  : getStore(name);
-
-const json = (statusCode, body) => ({
-  statusCode,
-  headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
-  body: JSON.stringify(body),
-});
-
-const keyOf = (email) => crypto.createHash("sha256").update(email).digest("hex");
-const codeHash = (email, code) => crypto.createHmac("sha256", process.env.CODE_SECRET || "karat-code")
-  .update(email + ":" + code).digest("hex");
-const MAX_ATTEMPTS = 5;
+const A = require("./_shared/accounts");
 
 exports.handler = async (event) => {
-  if (event.httpMethod !== "POST") return json(405, { error: "Méthode non autorisée" });
-  let data;
-  try { data = JSON.parse(event.body || "{}"); } catch { return json(400, { error: "Requête invalide" }); }
-  const email = String(data.email || "").trim().toLowerCase();
-  const code = String(data.code || "").replace(/\s/g, "");
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json(400, { error: "E-mail invalide" });
-  if (!/^\d{6}$/.test(code)) return json(400, { error: "Entrez les 6 chiffres du code." });
+  if (event.httpMethod !== "POST") return A.json(405, { error: "Méthode non autorisée" });
+  const d = A.parseBody(event);
+  if (!d) return A.json(400, { error: "Requête invalide" });
+  const email = A.cleanEmail(d.email);
+  const code = String(d.code || "").replace(/\s/g, "");
+  if (!A.validEmail(email)) return A.json(400, { error: "E-mail invalide" });
+  if (!/^\d{6}$/.test(code)) return A.json(400, { error: "Entrez les 6 chiffres du code." });
 
-  const store = blobStore("karat-login-codes");
-  const k = keyOf(email);
-  const rec = await store.get("code-" + k, { type: "json" }).catch(() => null);
+  const codes = A.codesStore();
+  const accounts = A.accountsStore();
+  const ck = A.codeKey(email);
+  const rec = await codes.get(ck, { type: "json" }).catch(() => null);
 
-  if (!rec || Date.now() > rec.exp){
-    await store.delete("code-" + k).catch(() => {});
-    return json(400, { error: "Code expiré. Demandez-en un nouveau." });
+  if (!rec || !rec.hash || Date.now() > rec.exp) return A.json(400, { error: "Code expiré. Demandez-en un nouveau." });
+  if (rec.attempts >= A.MAX_ATTEMPTS){
+    await codes.delete(ck).catch(() => {});
+    return A.json(429, { error: "Trop d'essais. Demandez un nouveau code." });
   }
-  if (rec.attempts >= MAX_ATTEMPTS){
-    await store.delete("code-" + k).catch(() => {});
-    return json(429, { error: "Trop d'essais. Demandez un nouveau code." });
-  }
-
-  const good = crypto.timingSafeEqual(Buffer.from(rec.hash), Buffer.from(codeHash(email, code)));
-  if (!good){
+  if (!A.codeMatches(email, code, rec)){
     rec.attempts += 1;
-    await store.setJSON("code-" + k, rec);
-    const left = MAX_ATTEMPTS - rec.attempts;
-    return json(400, { error: left > 0 ? `Code incorrect. Il vous reste ${left} essai${left > 1 ? "s" : ""}.` : "Code incorrect." });
+    await codes.setJSON(ck, rec);
+    const left = A.MAX_ATTEMPTS - rec.attempts;
+    return A.json(400, { error: left > 0 ? `Code incorrect. Il vous reste ${left} essai${left > 1 ? "s" : ""}.` : "Code incorrect." });
+  }
+  await codes.delete(ck).catch(() => {});
+
+  const now = Date.now();
+  if (rec.purpose === "signup"){
+    if (!rec.pending) return A.json(400, { error: "Code expiré. Demandez-en un nouveau." });
+    if (await accounts.get(A.accKey(email), { type: "json" }).catch(() => null)){
+      return A.json(409, { error: "Un compte existe déjà avec cet e-mail. Connectez-vous." });
+    }
+    const acc = { email, ...rec.pending, provider: "password", createdAt: now, lastLogin: now };
+    await accounts.setJSON(A.accKey(email), acc);
+    return A.json(200, { ok: true, account: A.publicProfile(acc) });
   }
 
-  await store.delete("code-" + k).catch(() => {});
-  return json(200, { ok: true });
+  const acc = await accounts.get(A.accKey(email), { type: "json" }).catch(() => null);
+  if (!acc) return A.json(404, { error: "Compte introuvable." });
+  acc.lastLogin = now;
+  await accounts.setJSON(A.accKey(email), acc);
+  return A.json(200, { ok: true, account: A.publicProfile(acc) });
 };
