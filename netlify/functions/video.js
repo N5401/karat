@@ -2,7 +2,7 @@
 // Fournisseur choisi par la variable VIDEO_PROVIDER : « google » (défaut) ou « atlas ».
 //   google : GOOGLE_API_KEY (clé Google AI Studio). La génération tourne dans video-background (arrière-plan).
 //   atlas  : ATLAS_API_KEY, VIDEO_MODEL (défaut google/veo3.1/text-to-video), VIDEO_AUDIO (défaut « true »).
-// Règle : Essentiel inclut 2 vidéos par semaine, Pro 4, Expert 6 ; au-delà, chaque vidéo coûte 1 crédit.
+// Règle : Essentiel inclut 6 vidéos par semaine, Pro 8, Expert 12 ; au-delà, chaque vidéo coûte 1 crédit.
 // Le crédit ou le quota n'est décompté qu'une fois la génération acceptée par le fournisseur.
 // video-result.js suit la génération, sauvegarde la vidéo et rend le crédit si elle échoue.
 // Variables communes : STRIPE_SECRET_KEY, STRIPE_CREDIT_PLINK, NETLIFY_TOKEN + SITE_ID (si besoin).
@@ -19,7 +19,7 @@ const PROVIDER = (process.env.VIDEO_PROVIDER || "google").toLowerCase() === "atl
 const ATLAS_GENERATE = "https://api.atlascloud.ai/api/v1/model/generateVideo";
 // Vidéos incluses par semaine selon l'offre (0 = crédits seulement ; Infinity = illimité).
 // Doit rester identique à VIDEO_WEEKLY dans app.js.
-const VIDEO_WEEKLY = { essentiel: 2, pro: 4, expert: 6, admin: Infinity };
+const VIDEO_WEEKLY = { essentiel: 6, pro: 8, expert: 12, admin: Infinity };
 const RATIOS = ["16:9", "9:16"];
 
 const blobStore = (name) => (process.env.NETLIFY_TOKEN && process.env.SITE_ID)
