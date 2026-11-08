@@ -30,9 +30,9 @@ const CONFIG = {
 };
 
 const PLANS = {
-  essentiel: { name: "Essentiel", price: "6,99 €",  num: 6.99, priceAn: "99 €", numAn: 99, desc: "Pour découvrir KARAT au quotidien.", feats: ["Assistant IA polyvalent", "Messages limités", "3 générations d'images par jour","Analyse de fichiers texte, PDF et images", "Historique des conversations sur 30 jours", "2 vidéos IA par semaine, avec le son", "Support par e-mail"] },
-  pro:       { name: "Pro",       price: "29,99 €", num: 29.99, priceAn: "299 €", numAn: 299, desc: "Pour les professionnels qui travaillent chaque jour.", feats: ["Tout Essentiel", "Messages limités", "Générations d'images illimitées","Retouche d'image à partir d'une photo de référence", "Analyse de plusieurs documents à la fois (jusqu'à 10 PDF par message)", "Réponses longues et détaillées, jusqu'à une quinzaine de pages", "Modes spécialisés : code, rédaction, analyse de données", "Historique illimité", "4 vidéos IA par semaine, avec le son", "Support prioritaire"] },
-  expert:    { name: "Expert",    price: "49,99 €", num: 49.99, priceAn: "499 €", numAn: 499, desc: "Pour les équipes et les usages intensifs.", feats: ["Tout Pro, et en plus :", "Messages et images illimités", "6 vidéos IA par semaine, avec le son", "Modèle d'IA le plus avancé, pour les tâches complexes", "Accompagnement dédié à la mise en place"] }
+  essentiel: { name: "Essentiel", price: "6,99 €",  num: 6.99, priceAn: "99 €", numAn: 99, desc: "Pour découvrir KARAT au quotidien.", feats: ["Assistant IA polyvalent", "Messages limités", "3 générations d'images par jour","Analyse de fichiers texte, PDF et images", "Historique des conversations sur 30 jours", "6 vidéos IA par semaine, avec le son", "Support par e-mail"] },
+  pro:       { name: "Pro",       price: "29,99 €", num: 29.99, priceAn: "299 €", numAn: 299, desc: "Pour les professionnels qui travaillent chaque jour.", feats: ["Tout Essentiel", "Messages limités", "Générations d'images illimitées","Retouche d'image à partir d'une photo de référence", "Analyse de plusieurs documents à la fois (jusqu'à 10 PDF par message)", "Réponses longues et détaillées, jusqu'à une quinzaine de pages", "Modes spécialisés : code, rédaction, analyse de données", "Historique illimité", "8 vidéos IA par semaine, avec le son", "Support prioritaire"] },
+  expert:    { name: "Expert",    price: "49,99 €", num: 49.99, priceAn: "499 €", numAn: 499, desc: "Pour les équipes et les usages intensifs.", feats: ["Tout Pro, et en plus :", "Messages et images illimités", "12 vidéos IA par semaine, avec le son", "Modèle d'IA le plus avancé, pour les tâches complexes", "Accompagnement dédié à la mise en place"] }
 };
 
 const MODES = {
@@ -282,7 +282,7 @@ function afterRender(path){
     const box = $("#msgs"); if (box) box.scrollTop = box.scrollHeight;
     refreshUsage();
   }
-  if (path === "/connexion") initGoogle();
+  if (path === "/connexion"){ initGoogle(); initOtp(); }
   if (path === "/" || path === "/tarifs") initFX();
   if (path === "/admin/utilisateurs"){ const s = $("[data-change='admin-filter']"); if (s) s.value = ui.adminFilter; fillAdminUsers(); }
   if (path === "/admin/abonnements"){ fillSubs(); if (adminToken()) fillStripeSubs(); }
@@ -541,7 +541,7 @@ const UPDATES = [
     bullets: ["Accueil enrichi : publics visés, sécurité, dernières mises à jour", "Panneau d'administration revu, avec les mêmes données", "Une page dédiée à ces mises à jour"] },
   { date: "Octobre 2026", tag: "Vidéos", title: "Vidéos IA incluses chaque semaine",
     text: "Chaque abonnement inclut des vidéos IA de 8 secondes, avec le son. Le quota se renouvelle chaque semaine.",
-    bullets: ["Essentiel : 2 vidéos par semaine", "Pro : 4 vidéos par semaine", "Expert : 6 vidéos par semaine", "Au-delà du quota : 1 crédit par vidéo, soit 5 €"] },
+    bullets: ["Essentiel : 6 vidéos par semaine", "Pro : 8 vidéos par semaine", "Expert : 12 vidéos par semaine", "Au-delà du quota : 1 crédit par vidéo, soit 5 €"] },
   { date: "Octobre 2026", tag: "Administration", title: "Tous les comptes visibles",
     text: "L'administrateur voit désormais les personnes inscrites, quel que soit l'appareil utilisé pour créer leur compte.",
     bullets: ["Nom, e-mail, téléphone et mode de connexion", "Date d'inscription et dernière connexion", "Les abonnés restent suivis dans l'onglet Abonnements"] },
@@ -745,43 +745,95 @@ function vPricing(){
   ${pubFooter()}`;
 }
 
+const a2svg = (d, s = 18) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const A2I = {
+  mail: a2svg('<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3.5 7l8.5 6 8.5-6"/>'),
+  lock: a2svg('<rect x="5" y="11" width="14" height="10" rx="2.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>'),
+  phone: a2svg('<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/>'),
+  eye: a2svg('<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'),
+  eyeoff: a2svg('<path d="M3 3l18 18M10.6 6.1A10 10 0 0 1 12 6c6.5 0 10 6 10 6a17 17 0 0 1-3.2 3.9M6.6 6.6A17 17 0 0 0 2 12s3.5 7 10 7a10 10 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>'),
+  mailbig: a2svg('<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3.5 7l8.5 6 8.5-6"/>', 26),
+  back: a2svg('<path d="M15 6l-6 6 6 6"/>', 16),
+  chat: a2svg('<path d="M4 5h16v11H8l-4 4z"/>'),
+  image: a2svg('<rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-8 8"/>'),
+  shield: a2svg('<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>')
+};
+const a2Eye = () => `<button type="button" class="a2-eye" data-action="a2-eye" aria-label="Afficher le mot de passe">${A2I.eye}</button>`;
+const PW_LABEL = ["", "Faible", "Moyen", "Bon", "Fort"];
+const PW_COL = ["", "#5c5c58", "#8a8a86", "#c4c4c0", "#f4f4f1"];
+function pwScore(pw){
+  let s = 0;
+  if (pw.length >= 8) s++;
+  if (pw.length >= 12) s++;
+  if (/[a-z]/.test(pw) && /[A-Z]/.test(pw)) s++;
+  if (/\d/.test(pw) && /[^A-Za-z0-9]/.test(pw)) s++;
+  return pw ? Math.max(1, s) : 0;
+}
+function updatePwMeter(pw){
+  const s = pwScore(pw);
+  document.querySelectorAll("#a2-meter i").forEach((el, i) => { el.style.background = i < s ? PW_COL[s] : ""; });
+  const t = $("#a2-meter-t");
+  if (t) t.textContent = s ? PW_LABEL[s] : "8 caractères minimum, avec majuscules et chiffres de préférence";
+}
+function a2Brand(){
+  return `<section class="a2-brand">
+    <a class="a2-logo" href="#/">KARAT</a>
+    <h2 class="a2-quote">Un assistant IA en français, <em>pensé pour vous.</em></h2>
+    <div class="a2-feats">
+      <div class="a2-feat"><div class="a2-ic">${A2I.chat}</div><div><b>Conversations claires</b><span>Textes, idées, code et analyses, avec un historique que vous retrouvez en un clic.</span></div></div>
+      <div class="a2-feat"><div class="a2-ic">${A2I.image}</div><div><b>Images et vidéos</b><span>Générez, retouchez et retrouvez vos créations dans votre galerie.</span></div></div>
+      <div class="a2-feat"><div class="a2-ic">${A2I.shield}</div><div><b>Vos données protégées</b><span>Mots de passe chiffrés et code de sécurité à chaque connexion.</span></div></div>
+    </div>
+    <div class="a2-brand-foot"><a href="#/">Mentions légales</a><a href="#/">Confidentialité</a><a href="#/">CGV</a></div>
+  </section>`;
+}
+function a2LoginForm(){
+  return `<form id="loginForm" class="a2-form">
+    <div class="a2-alert" id="authErr" role="alert"></div>
+    <div class="a2-field"><label for="l-email">Adresse e-mail</label><div class="a2-inp">${A2I.mail}<input id="l-email" name="email" type="email" autocomplete="email" placeholder="vous@exemple.fr" required></div></div>
+    <div class="a2-field"><label for="l-pw">Mot de passe</label><div class="a2-inp">${A2I.lock}<input id="l-pw" name="pw" type="password" autocomplete="current-password" placeholder="Votre mot de passe" required>${a2Eye()}</div></div>
+    <button class="a2-btn" type="submit">Se connecter</button>
+    <p class="a2-foot">Un code de sécurité vous sera envoyé par e-mail à chaque connexion.</p>
+  </form>`;
+}
+function a2SignupForm(){
+  return `<form id="signupForm" class="a2-form">
+    <div class="a2-alert" id="authErr" role="alert"></div>
+    <div class="a2-row">
+      <div class="a2-field"><label for="s-first">Prénom</label><div class="a2-inp nol"><input id="s-first" name="first" autocomplete="given-name" placeholder="Prénom" required></div></div>
+      <div class="a2-field"><label for="s-last">Nom</label><div class="a2-inp nol"><input id="s-last" name="last" autocomplete="family-name" placeholder="Nom" required></div></div>
+    </div>
+    <div class="a2-field"><label for="s-email">Adresse e-mail</label><div class="a2-inp">${A2I.mail}<input id="s-email" name="email" type="email" autocomplete="email" placeholder="vous@exemple.fr" required></div></div>
+    <div class="a2-field"><label for="s-phone">Téléphone</label><div class="a2-inp">${A2I.phone}<input id="s-phone" name="phone" type="tel" autocomplete="tel" placeholder="+33 6 12 34 56 78" required></div></div>
+    <div class="a2-field"><label for="s-pw">Mot de passe</label><div class="a2-inp">${A2I.lock}<input id="s-pw" name="pw" type="password" autocomplete="new-password" placeholder="8 caractères minimum" required>${a2Eye()}</div>
+      <div class="a2-meter" id="a2-meter"><i></i><i></i><i></i><i></i></div>
+      <div class="a2-meter-t" id="a2-meter-t">8 caractères minimum, avec majuscules et chiffres de préférence</div></div>
+    <div class="a2-field"><label for="s-pw2">Confirmation</label><div class="a2-inp">${A2I.lock}<input id="s-pw2" name="pw2" type="password" autocomplete="new-password" placeholder="Répétez le mot de passe" required>${a2Eye()}</div></div>
+    <label class="a2-check"><input type="checkbox" name="cgu"><span>J'accepte les CGU et la politique de confidentialité.</span></label>
+    <button class="a2-btn" type="submit">Créer mon compte</button>
+  </form>`;
+}
 function vAuth(_m, q){
   if (pendingLogin) return authCodeHTML();
   const tab = q.get("tab") === "signup" ? "signup" : "login";
   const nx = enc(q.get("next") || "/app/chat");
   const gOn = googleOn();
-  return `${pubHeader("/connexion")}
-  <div class="auth-wrap"><div class="auth-card">
-    <a class="logo" href="#/" style="margin-bottom:22px"><i></i>KARAT</a>
-    <h1>${tab === "signup" ? "Créer un compte" : "Bon retour"}</h1>
-    <p class="sub">${tab === "signup" ? "Quelques informations pour commencer." : "Connectez-vous à votre espace KARAT."}</p>
-    <div class="seg" role="tablist">
-      <a href="#/connexion?tab=login&next=${nx}" class="${tab === "login" ? "on" : ""}" role="tab">Se connecter</a>
-      <a href="#/connexion?tab=signup&next=${nx}" class="${tab === "signup" ? "on" : ""}" role="tab">Créer un compte</a>
+  const signup = tab === "signup";
+  return `<div class="a2">
+  ${a2Brand()}
+  <section class="a2-panel"><div class="a2-card a2-fade">
+    <div class="a2-seg" data-tab="${tab}" role="tablist">
+      <span class="a2-thumb" aria-hidden="true"></span>
+      <a href="#/connexion?tab=login&next=${nx}" class="${signup ? "" : "on"}" role="tab">Se connecter</a>
+      <a href="#/connexion?tab=signup&next=${nx}" class="${signup ? "on" : ""}" role="tab">Créer un compte</a>
     </div>
-    ${tab === "login" ? `
-    <form id="loginForm">
-      <div class="field"><label for="l-email">E-MAIL</label><input id="l-email" class="input" name="email" type="email" autocomplete="email" required /></div>
-      <div class="field"><label for="l-pw">MOT DE PASSE</label><input id="l-pw" class="input" name="pw" type="password" autocomplete="current-password" required /></div>
-      <button class="btn btn-accent btn-block" type="submit">Se connecter</button>
-    </form>` : `
-    <form id="signupForm">
-      <div class="form-grid">
-        <div class="field"><label for="s-first">PRÉNOM</label><input id="s-first" class="input" name="first" autocomplete="given-name" required /></div>
-        <div class="field"><label for="s-last">NOM</label><input id="s-last" class="input" name="last" autocomplete="family-name" required /></div>
-        <div class="field full"><label for="s-email">E-MAIL</label><input id="s-email" class="input" name="email" type="email" autocomplete="email" required /></div>
-        <div class="field full"><label for="s-phone">TÉLÉPHONE</label><input id="s-phone" class="input" name="phone" type="tel" autocomplete="tel" placeholder="+33 6 12 34 56 78" required /></div>
-        <div class="field"><label for="s-pw">MOT DE PASSE</label><input id="s-pw" class="input" name="pw" type="password" autocomplete="new-password" placeholder="8 caractères min." required /></div>
-        <div class="field"><label for="s-pw2">CONFIRMATION</label><input id="s-pw2" class="input" name="pw2" type="password" autocomplete="new-password" required /></div>
-      </div>
-      <label class="check"><input type="checkbox" name="cgu" /> J'accepte les CGU et la politique de confidentialité.</label>
-      <button class="btn btn-accent btn-block" type="submit">Créer mon compte</button>
-    </form>`}
-    <div class="err" id="authErr" role="alert"></div>
-    <div class="or ${gOn ? "" : "hidden"}" id="orSep">ou</div>
-    <div class="gslot ${gOn ? "" : "hidden"}" id="gslot"><div id="gbtnWrap"></div></div>
-  </div></div>
-  ${pubFooter()}`;
+    <h1>${signup ? "Créer un compte" : "Bon retour"}</h1>
+    <p class="a2-sub">${signup ? "Quelques informations pour commencer." : "Connectez-vous à votre espace KARAT."}</p>
+    <div class="a2-gslot ${gOn ? "" : "hidden"}" id="gslot"><div id="gbtnWrap"></div></div>
+    <div class="a2-div ${gOn ? "" : "hidden"}" id="orSep">ou avec votre e-mail</div>
+    ${signup ? a2SignupForm() : a2LoginForm()}
+  </div></section>
+</div>`;
 }
 
 /* =====================================================================
@@ -807,19 +859,44 @@ function sendAccount(u){
     .catch(() => { if (left > 0) setTimeout(() => send(left - 1), 3000); });
   try { send(1); } catch (e) {}
 }
+// Appel au serveur des comptes et des codes ; renvoie le statut HTTP et la réponse JSON
+const ACCOUNT_NET_ERR = "Connexion impossible. Vérifiez votre réseau.";
+async function postJSON(url, body){
+  let r;
+  try { r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }); }
+  catch (e) { throw new Error(ACCOUNT_NET_ERR); }
+  const d = await r.json().catch(() => ({}));
+  return { ok: r.ok, status: r.status, d };
+}
+// Connexion : le mot de passe est vérifié sur le serveur (donc valable sur tous les appareils), puis un code part par e-mail
 async function onLogin(f){
   setErr("");
   const email = emailOf(f.querySelector('[name="email"]').value);
   const pw = f.querySelector('[name="pw"]').value;
-  const u = users[email];
-  if (!u) return setErr("Aucun compte avec cet e-mail. Créez-le d'abord.");
-  if (!u.hash) return setErr("Ce compte utilise Google. Utilisez le bouton Google.");
-  try{
-    if (!(await verifyPw(pw, u))) return setErr("Mot de passe incorrect.");
-  }catch(e){ return setErr("Votre navigateur bloque le chiffrement. Ouvrez la page en https ou en local."); }
-  try{ await requestLoginCode(email); }
-  catch(e){ return setErr(e.message || "Impossible d'envoyer le code. Réessayez."); }
-  pendingLogin = { email, name: displayName(u) };
+  let res;
+  try { res = await postJSON("/.netlify/functions/account-login", { email, password: pw }); }
+  catch (e) { return setErr(e.message); }
+  if (res.status === 404 && res.d.error === "no_account"){
+    // Compte créé avant les comptes en ligne : s'il existe sur ce navigateur et que le mot de passe est bon, on le transfère (une seule fois)
+    const local = users[email];
+    if (!local || !local.hash) return setErr("Aucun compte avec cet e-mail. Créez-le d'abord.");
+    let same = false;
+    try { same = await verifyPw(pw, local); }
+    catch (e) { return setErr("Votre navigateur bloque le chiffrement. Ouvrez la page en https ou en local."); }
+    if (!same) return setErr("Mot de passe incorrect.");
+    return sendSignup({ email, firstName: local.firstName || "", lastName: local.lastName || "", phone: local.phone || "", password: pw }, false);
+  }
+  if (!res.ok) return setErr(res.d.error || "Connexion impossible. Réessayez.");
+  pendingLogin = { email, name: displayName(users[email] || {}), isNew: false };
+  render();
+}
+// Inscription (ou transfert d'un ancien compte) : le serveur contrôle les champs et envoie un code ; le compte n'est créé qu'après le bon code
+async function sendSignup(data, isNew){
+  let res;
+  try { res = await postJSON("/.netlify/functions/account-signup", data); }
+  catch (e) { return setErr(e.message); }
+  if (!res.ok) return setErr(res.d.error || "Inscription impossible. Réessayez.");
+  pendingLogin = { email: data.email, name: `${data.firstName} ${data.lastName}`.trim(), isNew };
   render();
 }
 // Demande au serveur d'envoyer un code à 6 chiffres par e-mail
@@ -831,20 +908,23 @@ async function requestLoginCode(email){
   if (!r.ok) throw new Error(d.error || "Impossible d'envoyer le code. Réessayez.");
 }
 // Vérifie le code auprès du serveur, puis ouvre la session
+// Vérifie le code auprès du serveur : il renvoie le compte, qui est alors enregistré sur ce navigateur
 async function onCode(f){
   setErr("");
   if (!pendingLogin) return;
-  const email = pendingLogin.email;
-  const code = f.querySelector('[name="code"]').value.trim();
-  let r;
-  try { r = await fetch("/.netlify/functions/code-verify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, code }) }); }
+  const email = pendingLogin.email, isNew = !!pendingLogin.isNew;
+  const code = Array.from(f.querySelectorAll(".a2-otp input")).map(i => i.value).join("").trim();
+  let res;
+  try { res = await postJSON("/.netlify/functions/code-verify", { email, code }); }
   catch (e) { return setErr("Vérification impossible. Réessayez."); }
-  const d = await r.json().catch(() => ({}));
-  if (!r.ok) return setErr(d.error || "Code incorrect.");
-  const u = users[email];
+  if (!res.ok) return setErr(res.d.error || "Code incorrect.");
   pendingLogin = null;
-  if (u){ u.lastLogin = Date.now(); saveUsers(); sendAccount(users[email]); }
-  startSession({ email, name: displayName(u) }, false);
+  if (res.d.account){
+    users[email] = { ...res.d.account };
+    saveUsers();
+    sendAccount(users[email]);
+  }
+  startSession({ email, name: displayName(users[email] || {}) }, isNew);
 }
 async function resendCode(){
   if (!pendingLogin) return;
@@ -853,19 +933,42 @@ async function resendCode(){
   catch (e) { setErr(e.message); }
 }
 function authCodeHTML(){
-  return `${pubHeader("/connexion")}
-  <div class="auth-wrap"><div class="auth-card">
-    <a class="logo" href="#/" style="margin-bottom:22px">KARAT</a>
+  return `<div class="a2">
+  ${a2Brand()}
+  <section class="a2-panel"><div class="a2-card a2-fade">
+    <button type="button" class="a2-back" data-action="code-cancel">${A2I.back} Retour</button>
+    <div class="a2-badge">${A2I.mailbig}</div>
     <h1>Code de sécurité</h1>
-    <p class="sub">Un code à 6 chiffres vient d'être envoyé à <b>${esc(pendingLogin.email)}</b>. Il expire dans 10 minutes.</p>
-    <form id="codeForm" autocomplete="off">
-      <div class="field"><label for="c-code">CODE À 6 CHIFFRES</label><input id="c-code" class="input" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="000000" required /></div>
-      <button class="btn btn-accent btn-block" type="submit">Valider</button>
+    <p class="a2-sub">Un code à 6 chiffres vient d'être envoyé à <b class="a2-strong">${esc(pendingLogin.email)}</b>. Il expire dans 10 minutes.</p>
+    <form id="codeForm" class="a2-form" autocomplete="off">
+      <div class="a2-otp">${[0,1,2,3,4,5].map(i => `<input inputmode="numeric" maxlength="1" aria-label="Chiffre ${i+1}" autocomplete="${i === 0 ? "one-time-code" : "off"}">`).join("")}</div>
+      <div class="a2-alert" id="authErr" role="alert"></div>
+      <button class="a2-btn" type="submit">Valider</button>
     </form>
-    <div class="err" id="authErr" role="alert"></div>
-    <p class="small muted" style="margin-top:16px;text-align:center">Pas reçu ? <button type="button" class="linkbtn" data-action="code-resend">Renvoyer le code</button> · <button type="button" class="linkbtn" data-action="code-cancel">Annuler</button></p>
-  </div></div>`;
+    <div class="a2-resend">Pas reçu ? <button type="button" data-action="code-resend">Renvoyer le code</button> · <button type="button" data-action="code-cancel">Annuler</button></div>
+  </div></section>
+</div>`;
 }
+// Six cases à remplir une par une : saisie automatique, retour arrière et collage
+function initOtp(){
+  const boxes = Array.from(document.querySelectorAll(".a2-otp input"));
+  if (!boxes.length) return;
+  boxes.forEach((el, i) => {
+    el.addEventListener("input", () => { el.value = el.value.replace(/\D/g, "").slice(-1); if (el.value && boxes[i + 1]) boxes[i + 1].focus(); });
+    el.addEventListener("keydown", e => {
+      if (e.key === "Backspace" && !el.value && boxes[i - 1]){ boxes[i - 1].focus(); return; }
+      if (/^\d$/.test(e.key) && el.value && boxes[i + 1]){ e.preventDefault(); el.value = e.key; boxes[i + 1].focus(); }
+    });
+    el.addEventListener("paste", e => {
+      e.preventDefault();
+      const t = (e.clipboardData.getData("text") || "").replace(/\D/g, "").slice(0, 6);
+      t.split("").forEach((c, k) => { boxes[k].value = c; });
+      boxes[Math.min(t.length, 5)].focus();
+    });
+  });
+  boxes[0].focus();
+}
+// Inscription : contrôles de forme ici, vérification de l'adresse par code sur le serveur
 async function onSignup(f){
   setErr("");
   const v = n => f.querySelector(`[name="${n}"]`).value.trim();
@@ -877,14 +980,7 @@ async function onSignup(f){
   if (pw.length < 8) return setErr("Le mot de passe doit faire au moins 8 caractères.");
   if (pw !== pw2) return setErr("Les deux mots de passe ne correspondent pas.");
   if (!f.querySelector('[name="cgu"]').checked) return setErr("Acceptez les CGU pour continuer.");
-  if (users[email]) return setErr("Un compte existe déjà avec cet e-mail. Connectez-vous.");
-  try{
-    const { hash, salt } = await hashPw(pw);
-    users[email] = { email, firstName: first, lastName: last, phone, hash, salt, provider: "password", createdAt: Date.now(), lastLogin: Date.now() };
-    saveUsers();
-  }catch(e){ return setErr("Votre navigateur bloque le chiffrement. Ouvrez la page en https ou en local."); }
-  sendAccount(users[email]);
-  startSession({ email, name: `${first} ${last}` }, true);
+  await sendSignup({ email, firstName: first, lastName: last, phone, password: pw }, true);
 }
 function parseJwt(token){
   const b = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
@@ -918,7 +1014,7 @@ function initGoogle(){
     if (window.google && google.accounts && google.accounts.id){
       google.accounts.id.initialize({ client_id: CONFIG.GOOGLE_CLIENT_ID, callback: window.handleGoogleCredential, auto_select: false });
       slot.innerHTML = "";
-      google.accounts.id.renderButton(slot, { theme: "filled_black", size: "large", shape: "pill", text: "continue_with", width: 300 });
+      google.accounts.id.renderButton(slot, { theme: "filled_black", size: "large", shape: "pill", text: "continue_with", width: Math.min(400, Math.max(200, Math.floor(slot.clientWidth) || 320)) });
     } else if (tries++ < 25) setTimeout(tryRender, 300);
   };
   tryRender();
@@ -1782,6 +1878,7 @@ const ACTIONS = {
   "new-chat":      () => { ui.convId = null; ui.attached = []; go("/app/chat"); },
   "suggest":       el => sendMessage(el.dataset.text),
   "code-resend":   () => resendCode(),
+  "a2-eye":        el => { const inp = el.parentElement && el.parentElement.querySelector("input"); if (!inp) return; const show = inp.type === "password"; inp.type = show ? "text" : "password"; el.innerHTML = show ? A2I.eyeoff : A2I.eye; el.setAttribute("aria-label", show ? "Masquer le mot de passe" : "Afficher le mot de passe"); },
   "code-cancel":   () => { pendingLogin = null; setErr(""); render(); },
   "tools-toggle":  el => { const pop = el.parentElement && el.parentElement.querySelector(".tools-pop"); if (pop){ const open = pop.hasAttribute("hidden"); pop.toggleAttribute("hidden", !open); el.setAttribute("aria-expanded", String(open)); } },
   "share-chat":    () => { const c = ui.convId && convById(ui.convId); if (!c) return toast("Ouvrez une conversation pour la copier", true); copyText(c.messages.map(m => (m.role === "user" ? "Vous : " : "KARAT : ") + m.text).join("\n\n")).then(() => toast("Conversation copiée"), () => toast("Copie impossible", true)); },
@@ -1875,6 +1972,7 @@ document.addEventListener("change", e => {
 
 document.addEventListener("input", e => {
   const el = e.target;
+  if (el.id === "s-pw") return updatePwMeter(el.value);
   if (el.dataset.input === "admin-search"){ ui.adminQ = el.value; ui.page = 1; return fillAdminUsers(); }
   if (el.dataset.input === "sub-search") return fillSubs();
   if (el.dataset.input === "ok-field") return updateAckState();
@@ -2238,7 +2336,7 @@ function imgQuotaText(){
 }
 /* ---------- Vidéos (offre Expert) : le serveur vérifie l'offre et le quota ---------- */
 // Vidéos incluses par semaine selon l'offre : doit rester identique à VIDEO_WEEKLY dans netlify/functions/video.js
-const VIDEO_WEEKLY = { essentiel: 2, pro: 4, expert: 6 };
+const VIDEO_WEEKLY = { essentiel: 6, pro: 8, expert: 12 };
 function videoIncludedText(){
   const p = currentPlan();
   if (p === "admin") return "Accès administrateur : vidéos illimitées.";
@@ -2247,25 +2345,50 @@ function videoIncludedText(){
   return `Offre ${PLANS[p].name} : ${n} vidéo${n > 1 ? "s" : ""} par semaine incluse${n > 1 ? "s" : ""}, puis des crédits.`;
 }
 function isExpertPlan(){ const p = currentPlan(); return p === "expert" || p === "admin"; }
+/* ---------- Pages Images et Vidéos : mise en page en deux colonnes, cartes, états ---------- */
+const GX_DOC_RE = /(carte|pi[eè]ce)\s+d'identit[eé]|passeport|permis\s+de\s+conduire|titre\s+de\s+s[eé]jour|carte\s+vitale|acte\s+de\s+naissance|convocation|\bfaux\s+(document|papier|billet|dipl[oô]me|passeport|permis|justificatif|cachet)|cachet\s+(officiel|de\s+la|de\s+l'|du\s+minist)|(affiche|flyer|avis|annonce|recrutement|recrute)[^.\n]{0,60}(police|gendarmerie|sheriff|bcso|pr[eé]fecture|mairie|tribunal|minist[eè]re)/i;
+const GX_REFUSAL = "Cette demande concerne un document officiel (pièce d'identité, convocation, cachet ou affiche d'administration). KARAT ne peut pas la générer. Reformulez votre demande.";
+const gxErr = (title, msg) => `<div class="gx-err"><strong>${esc(title)}</strong>${esc(msg)}</div>`;
+const gxBar = id => `<div class="gx-progress"><i id="${id}"></i></div>`;
+const IMG_CHIPS = ["Logo sur un flyer, vert citron", "Affiche de concert rétro", "Miniature YouTube lisible", "Portrait style aquarelle"];
+const VID_CHIPS = ["Plan fixe d'une ville la nuit", "Produit tournant sur fond noir", "Titre animé pour une chaîne", "Scène calme au bord de la mer"];
+const gxChips = list => list.map(c => `<button type="button" class="gx-chip" data-action="prefill-text" data-text="${esc(c)}">${esc(c)}</button>`).join("");
+const gxSetCount = (id, n) => { const el = document.getElementById(id); if (el) el.textContent = n; };
+document.addEventListener("input", e => {
+  if (e.target.id === "img-prompt") gxSetCount("img-count", e.target.value.length);
+  if (e.target.id === "vid-prompt") gxSetCount("vid-count", e.target.value.length);
+});
+Object.assign(ACTIONS, {
+  "prefill-text": el => { const t = $("#img-prompt") || $("#vid-prompt"); if (!t) return; t.value = el.dataset.text || ""; t.dispatchEvent(new Event("input", { bubbles: true })); t.focus(); }
+});
+
 function vVideo(){
-  const who = isAdmin(session && session.email) ? " (accès administrateur illimité)" : "";
+  const admin = isAdmin(session && session.email);
+  const buy = admin ? "" : (CONFIG.CREDIT_LINK ? `<a class="btn btn-line btn-sm" href="${creditUrl()}">Acheter des crédits</a>` : `<span class="muted small">Achat de crédits bientôt disponible</span>`);
   const body = session
-    ? `<div class="card" style="max-width:720px">
-        <p class="muted small" style="margin-bottom:14px">${videoIncludedText()} Une génération prend environ 2 à 3 minutes.</p>
-        <div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">
-          <p class="small">Crédits disponibles : <b id="credit-balance">…</b> <span class="muted">· 5 € le crédit, 1 crédit = 1 vidéo de 8 secondes</span></p>
-          ${isAdmin(session && session.email) ? "" : CONFIG.CREDIT_LINK ? `<a class="btn btn-line btn-sm" href="${creditUrl()}">Acheter des crédits</a>` : `<span class="muted small">Achat de crédits bientôt disponible</span>`}
-        </div>
-        ${vidRefBlock()}
-        <div class="field" style="margin-bottom:16px"><label for="vid-prompt">DESCRIPTION</label><textarea id="vid-prompt" class="textarea" rows="10" maxlength="4000" style="height:auto;min-height:240px;resize:vertical;overflow-y:auto" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px';document.getElementById('vid-count').textContent=this.value.length+' / 4000'" placeholder="Ex : un bureau lumineux le matin, une tasse de café fumante, la caméra avance lentement. Vous pouvez détailler les personnages, les décors, les mouvements de caméra et l'ambiance sonore."></textarea><div id="vid-count" class="muted small" style="text-align:right;margin-top:6px">0 / 4000</div></div>
-        <div class="row" style="gap:12px;flex-wrap:wrap;margin-bottom:18px">
-          <div style="min-width:150px"><label class="small muted" for="vid-dur">Durée</label><select id="vid-dur" class="select" style="width:100%;margin-top:6px"><option value="8" selected>8 secondes</option></select></div>
-          <div style="min-width:150px"><label class="small muted" for="vid-res">Résolution</label><select id="vid-res" class="select" style="width:100%;margin-top:6px"><option value="720p" selected>720p</option></select></div>
-          <div style="min-width:170px"><label class="small muted" for="vid-ratio">Format</label><select id="vid-ratio" class="select" style="width:100%;margin-top:6px"><option value="16:9" selected>Paysage 16:9</option><option value="9:16">Portrait 9:16</option></select></div>
-        </div>
-        <button class="btn btn-accent" data-action="video-generate">Générer la vidéo</button>
-        <div id="vid-out" style="margin-top:22px"></div>
-        <div id="vid-list" style="margin-top:26px"></div>
+    ? `<div class="gx-layout">
+        <aside class="card gx-form">
+          <p class="muted small" style="margin:0">${esc(videoIncludedText())}</p>
+          <p class="small" style="margin:0">Crédits disponibles : <b id="credit-balance">…</b> <span class="muted">· 5 € le crédit, 1 crédit = 1 vidéo de 8 secondes</span></p>
+          ${buy}
+          ${vidRefBlock()}
+          <div class="gx-lbl">Description</div>
+          <textarea id="vid-prompt" class="textarea gx-ta" rows="5" maxlength="4000" placeholder="Ex : un plan fixe d'une ville la nuit, voix off en français"></textarea>
+          <div class="gx-count"><span id="vid-count">0</span> / 4000</div>
+          <div class="gx-chips">${gxChips(VID_CHIPS)}</div>
+          <div class="gx-row">
+            <div><label class="small muted" for="vid-dur">Durée</label><select id="vid-dur" class="select" style="width:100%"><option value="8" selected>8 secondes</option></select></div>
+            <div><label class="small muted" for="vid-ratio">Format</label><select id="vid-ratio" class="select" style="width:100%"><option value="16:9" selected>Paysage 16:9</option><option value="9:16">Portrait 9:16</option></select></div>
+          </div>
+          <input type="hidden" id="vid-res" value="720p" />
+          <button class="btn btn-accent gx-go" data-action="video-generate">Générer la vidéo</button>
+          <p class="gx-hint">Une vidéo prend environ 2 à 3 minutes. Vous pouvez quitter la page : elle reste dans Mes vidéos.</p>
+          <div id="vid-out"></div>
+        </aside>
+        <section class="gx-gallery">
+          <div class="gx-gal-h"><h2>Mes vidéos</h2><span class="muted small" id="vid-badge"></span></div>
+          <div id="vid-list"></div>
+        </section>
       </div>`
     : `<div class="card" style="max-width:720px">
         <p class="muted" style="margin-bottom:14px">La génération de vidéos est réservée aux abonnés payants.</p>
@@ -2332,19 +2455,22 @@ async function loadVideos(){
     const d = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(d.error || "Liste indisponible");
     const items = d.videos || [];
-    box.innerHTML = `<div class="small muted" style="margin-bottom:12px;letter-spacing:.08em">MES VIDÉOS</div>` + (items.length
-      ? items.map(v => {
+    const badge = $("#vid-badge"); if (badge) badge.textContent = items.length ? items.length + (items.length > 1 ? " vidéos" : " vidéo") : "";
+    box.innerHTML = items.length
+      ? `<div class="gx-grid">${items.map(v => {
           const src = `/.netlify/functions/video-file?email=${who}&id=${enc(v.id)}`;
-          return `<div style="border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:12px">
-            <video src="${src}" controls preload="metadata" playsinline style="width:100%;max-width:420px;border-radius:10px;display:block"></video>
-            <div class="small" style="margin-top:8px">${esc(v.prompt)}</div>
-            <div class="small muted" style="margin-top:4px">${new Date(v.createdAt).toLocaleString("fr-FR")}</div>
-            <button class="btn btn-line btn-sm" style="margin-top:8px" data-action="video-download" data-src="${src}">Télécharger</button>
-          </div>`;
-        }).join("")
-      : `<p class="muted small">Aucune vidéo pour l'instant.</p>`);
+          return `<article class="gx-card">
+            <div class="gx-media vid"><video src="${src}" controls preload="metadata" playsinline></video></div>
+            <div class="gx-body">
+              <p class="gx-prompt">${esc(v.prompt)}</p>
+              <div class="gx-meta">${new Date(v.createdAt).toLocaleString("fr-FR")}</div>
+              <div class="gx-actions"><button class="btn btn-line btn-sm" data-action="video-download" data-src="${src}" type="button">Télécharger</button></div>
+            </div>
+          </article>`;
+        }).join("")}</div>`
+      : `<p class="muted small">Aucune vidéo pour l'instant.</p>`;
   } catch (e) {
-    box.innerHTML = `<p class="muted small">${esc(e.message)}</p>`;
+    box.innerHTML = gxErr("Galerie indisponible", e.message);
   }
 }
 
@@ -2383,11 +2509,12 @@ Object.assign(ACTIONS, {
     if (!session) return go("/connexion?next=/app/video");
     // Ouvert à tous : sans vidéos incluses, la génération se paie en crédits (le serveur vérifie le solde)
     const prompt = ($("#vid-prompt")?.value || "").trim();
+    const out = $("#vid-out");
     if (prompt.length < 10) return toast("Décrivez la vidéo en quelques phrases", true);
+    if (GX_DOC_RE.test(prompt)) { out.innerHTML = gxErr("Demande refusée", GX_REFUSAL); return; }
     const btn = document.querySelector('[data-action="video-generate"]');
     if (btn) btn.disabled = true;
-    const out = $("#vid-out");
-    out.innerHTML = `<p class="muted small">Génération lancée. Une vidéo prend en général 2 à 3 minutes : gardez cette page ouverte.</p>`;
+    out.innerHTML = `<div class="gx-state">Démarrage de la génération…</div>`;
     try {
       const r = await fetch("/.netlify/functions/video", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -2395,22 +2522,28 @@ Object.assign(ACTIONS, {
       });
       const d = await r.json().catch(() => ({}));
       if (!r.ok || !d.id) throw new Error(d.error || "La génération a échoué");
+      const t0 = Date.now();
+      out.innerHTML = `<div class="gx-state" id="vid-state">En cours · 0 %</div>${gxBar("vid-bar")}`;
       for (let i = 0; i < 90; i++){                       // 90 × 5 s : environ 7 minutes au plus
         await new Promise(res => setTimeout(res, 5000));
         if (!$("#vid-out")) return;                       // la personne a quitté la page
+        const pct = Math.min(95, Math.round((Date.now() - t0) / 1500));
+        const bar = $("#vid-bar"); if (bar) bar.style.width = pct + "%";
+        const stt = $("#vid-state"); if (stt) stt.textContent = "En cours · " + pct + " %";
         const s = await fetch(`/.netlify/functions/video-result?id=${enc(d.id)}&email=${enc(session.email)}`, { cache: "no-store" });
         const st = await s.json().catch(() => ({}));
         if (!s.ok || st.status === "failed") throw new Error(st.error || "La génération a échoué");
         if (st.status === "completed"){
           const restant = d.remaining === null || d.remaining === undefined ? "" : `<p class="muted small" style="margin-top:12px">Il vous reste ${d.remaining} vidéo${d.remaining > 1 ? "s" : ""} cette semaine.</p>`;
-          $("#vid-out").innerHTML = `<p class="small">Vidéo prête : elle est enregistrée dans « Mes vidéos » ci-dessous.</p>${restant}`;
+          $("#vid-out").innerHTML = `<div class="gx-state">Vidéo prête</div>${gxBar("vid-bar")}<p class="small" style="margin:10px 0 0">Elle est enregistrée dans « Mes vidéos ».</p>${restant}`;
+          const done = $("#vid-bar"); if (done) done.style.width = "100%";
           loadVideos(); loadCredits();
           return;
         }
       }
       throw new Error("La génération prend trop de temps. Réessayez dans quelques minutes.");
     } catch (e) {
-      if ($("#vid-out")) $("#vid-out").innerHTML = `<p class="muted small">${esc(e.message)}</p>`;
+      if ($("#vid-out")) $("#vid-out").innerHTML = gxErr("Génération impossible", e.message);
     } finally {
       const b = document.querySelector('[data-action="video-generate"]');
       if (b) b.disabled = false;
@@ -2419,21 +2552,29 @@ Object.assign(ACTIONS, {
 });
 
 function vImages(){
-  const ref = ui.imgRef
-    ? `<div class="img-tray" style="margin:0 0 14px;padding:0"><div class="img-thumb"><img src="${ui.imgRef}" alt="Photo de référence"><button type="button" data-action="img-ref-remove" aria-label="Retirer la photo de référence"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div></div>`
-    : "";
+  const thumb = ui.imgRef
+    ? `<div class="img-thumb" style="margin:0"><img src="${ui.imgRef}" alt="Photo de référence"><button type="button" data-action="img-ref-remove" aria-label="Retirer la photo de référence"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>`
+    : `<span class="muted small">Ajoutez une photo du personnage, du produit ou du lieu à reproduire.</span>`;
   return appShell("/app/images", pageHead("Espace", "Génération d'images", "Décrivez l'image souhaitée, KARAT la génère pour vous.") +
-    `<div class="card" style="max-width:720px">
-      <p class="muted small" style="margin-bottom:14px">${esc(imgQuotaText())}</p>
-      ${ref}
-      <div class="field" style="margin-bottom:16px"><label for="img-prompt">DESCRIPTION</label><textarea id="img-prompt" class="textarea" rows="3" maxlength="1000" placeholder="Ex : fais le même logo sur ce flyer, en vert citron"></textarea></div>
-      <div class="row" style="gap:10px;flex-wrap:wrap">
-        <button class="btn btn-accent" data-action="img-generate">Générer l'image</button>
-        <button class="btn btn-line" data-action="img-ref-pick">${ic("image")} ${ui.imgRef ? "Changer la photo" : "Ajouter une photo de référence"}</button>
-      </div>
-      <input type="file" id="imgRefFile" accept="image/*" hidden />
-      <div id="img-out" style="margin-top:22px"></div>
-      <div id="img-list" style="margin-top:26px"></div>
+    `<div class="gx-layout">
+      <aside class="card gx-form">
+        <p class="muted small" style="margin:0">${esc(imgQuotaText())}</p>
+        <div class="gx-lbl">Description</div>
+        <textarea id="img-prompt" class="textarea gx-ta" rows="4" maxlength="1000" placeholder="Ex : une affiche de concert, style rétro, couleurs chaudes"></textarea>
+        <div class="gx-count"><span id="img-count">0</span> / 1000</div>
+        <div class="gx-chips">${gxChips(IMG_CHIPS)}</div>
+        <div class="gx-lbl">Photo de référence (facultatif)</div>
+        <div class="gx-drop">${thumb}</div>
+        <button type="button" class="btn btn-line btn-sm" data-action="img-ref-pick">${ic("image")} ${ui.imgRef ? "Changer la photo" : "Ajouter une photo de référence"}</button>
+        <input type="file" id="imgRefFile" accept="image/*" hidden />
+        <button class="btn btn-accent gx-go" data-action="img-generate">Générer l'image</button>
+        <p class="gx-hint">Une image prend environ 1 à 2 minutes.</p>
+        <div id="img-out"></div>
+      </aside>
+      <section class="gx-gallery">
+        <div class="gx-gal-h"><h2>Mes images</h2><span class="muted small" id="img-badge"></span></div>
+        <div id="img-list"></div>
+      </section>
     </div>`);
 }
 
@@ -2453,7 +2594,14 @@ Object.assign(ACTIONS, {
       toast("Choisissez une offre pour générer des images", true);
       return go("/tarifs");
     }
-    out.innerHTML = `<p class="muted small">Génération en cours, cela peut prendre une à deux minutes…</p>`;
+    if (GX_DOC_RE.test(prompt)) { out.innerHTML = gxErr("Demande refusée", GX_REFUSAL); return; }
+    const t0 = Date.now();
+    out.innerHTML = `<div class="gx-state" id="img-state">En cours · 0 %</div>${gxBar("img-bar")}`;
+    const tick = setInterval(() => {
+      const pct = Math.min(95, Math.round((Date.now() - t0) / 900));
+      const bar = $("#img-bar"); if (bar) bar.style.width = pct + "%";
+      const stt = $("#img-state"); if (stt) stt.textContent = "En cours · " + pct + " %";
+    }, 1000);
     try {
       const jobId = "j" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
       const r = await fetch(CONFIG.IMAGE_ENDPOINT, {
@@ -2472,11 +2620,13 @@ Object.assign(ACTIONS, {
       if (!d.image) throw new Error("Erreur");
       const gratuit = !["essentiel", "pro", "expert", "admin"].includes(planOf(session && session.email));
       const restant = d.remaining === null || d.remaining === undefined ? "" : `<p class="muted small" style="margin-top:12px">Il vous reste ${d.remaining} image${d.remaining > 1 ? "s" : ""}${gratuit ? " gratuite" + (d.remaining > 1 ? "s" : "") : " aujourd'hui"}.${gratuit && d.remaining === 0 ? " Elles se renouvellent dans les 2 jours, ou dès maintenant avec une offre payante." : ""}</p>`;
-      out.innerHTML = `<img src="${d.image}" alt="${esc(prompt)}" style="width:100%;max-width:520px;border-radius:14px;border:1px solid var(--line)">
-        <div style="margin-top:14px"><a class="btn btn-line btn-sm" href="${d.image}" download="karat-image.png">Télécharger</a></div>${restant}${d.bonus ? `<p class="muted small" style="margin-top:6px">Points images restants : ${d.bonus}.</p>` : ""}`;
-        loadImages();
+      clearInterval(tick);
+      out.innerHTML = `<img class="gx-result" src="${d.image}" alt="${esc(prompt)}">
+        <div class="gx-actions" style="margin-top:10px"><a class="btn btn-line btn-sm" href="${d.image}" download="karat-image.png">Télécharger</a></div>${restant}${d.bonus ? `<p class="muted small" style="margin-top:6px">Points images restants : ${d.bonus}.</p>` : ""}`;
+      loadImages();
     } catch (e) {
-      out.innerHTML = `<p class="muted small">${esc(e.message === "Erreur" ? "La génération a échoué. Réessayez dans un instant." : e.message)}</p>`;
+      clearInterval(tick);
+      out.innerHTML = gxErr("Génération impossible", e.message === "Erreur" ? "La génération a échoué. Réessayez dans un instant." : e.message);
     }
   }
 });
@@ -2593,22 +2743,24 @@ async function loadImages(){
     const d = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(d.error || "Liste indisponible");
     const items = d.images || [];
-    box.innerHTML = `<div class="small muted" style="margin-bottom:12px;letter-spacing:.08em">MES IMAGES</div>` + (items.length
-      ? `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px">${items.map(im => {
+    const badge = $("#img-badge"); if (badge) badge.textContent = items.length ? items.length + (items.length > 1 ? " images" : " image") : "";
+    box.innerHTML = items.length
+      ? `<div class="gx-grid">${items.map(im => {
           const src = `/.netlify/functions/image-file?email=${who}&id=${enc(im.id)}`;
-          return `<div style="border:1px solid var(--line);border-radius:14px;padding:10px">
-            <img src="${src}" alt="${esc(im.prompt)}" loading="lazy" style="width:100%;border-radius:10px;display:block" data-src="${src}" onerror="karatImgErr(this)">
-            <div class="small" style="margin-top:8px">${esc(im.prompt)}</div>
-            <div class="small muted" style="margin-top:4px">${new Date(im.createdAt).toLocaleString("fr-FR")}</div>
-            <a class="btn btn-line btn-sm" style="margin-top:8px" href="${src}" download="karat-image.png">Télécharger</a>
-          </div>`;
+          return `<article class="gx-card">
+            <div class="gx-media"><img src="${src}" alt="${esc(im.prompt)}" loading="lazy" data-src="${src}" onerror="karatImgErr(this)"></div>
+            <div class="gx-body">
+              <p class="gx-prompt">${esc(im.prompt)}</p>
+              <div class="gx-meta">${new Date(im.createdAt).toLocaleString("fr-FR")}</div>
+              <div class="gx-actions"><a class="btn btn-line btn-sm" href="${src}" download="karat-image.png">Télécharger</a></div>
+            </div>
+          </article>`;
         }).join("")}</div>`
-      : `<p class="muted small">Aucune image pour l'instant.</p>`);
+      : `<p class="muted small">Aucune image pour l'instant.</p>`;
   } catch (e) {
-    box.innerHTML = `<p class="muted small">${esc(e.message)}</p>`;
+    box.innerHTML = gxErr("Galerie indisponible", e.message);
   }
 }
-
 /* ---------- Administration : attribution de crédits vidéo et de points images, par e-mail ---------- */
 function vAdminGrants(){
   return appShell("/admin/attributions", pageHead("Administration", "Attributions", "Ajoutez des crédits vidéo ou des points images au compte d'un utilisateur, à partir de son adresse e-mail.") +
