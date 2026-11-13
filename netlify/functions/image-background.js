@@ -85,7 +85,13 @@ exports.handler = async (event) => {
     const prompt = String(data.prompt || "").trim().slice(0, 1000);
     if (!prompt) return await fail("Décrivez l'image souhaitée");
     if (DOC_RE.test(prompt)) return await fail(DOC_MSG);
-    const ref = typeof data.ref === "string" && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(data.ref) ? data.ref : null;
+    // Photos de référence : jusqu'à 4 (« ref » reste accepté pour l'ancienne version du site)
+    const DATA_RE = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/;
+    const rawRefs = Array.isArray(data.refs) ? data.refs : (data.ref ? [data.ref] : []);
+    const refs = rawRefs.filter(x => typeof x === "string" && DATA_RE.test(x)).slice(0, 4);
+    // Format du générateur : trois formats seulement ; le site recadre ensuite à la taille voulue
+    const SIZES = ["1024x1024", "1536x1024", "1024x1536"];
+    const size = SIZES.includes(data.size) ? data.size : "1024x1024";
 
     // Offre, quota du jour et points offerts
     let plan, quota, bonus;
@@ -103,26 +109,33 @@ exports.handler = async (event) => {
     }
 
     // Appel au générateur (peut durer plus d'une minute : d'où la fonction en arrière-plan)
-    const request = () => {
-      if (ref) {
+    const request = (sz) => {
+      if (refs.length) {
         const form = new FormData();
         form.append("model", IMAGE_MODEL);
         form.append("prompt", prompt);
-        form.append("size", "1024x1024");
+        form.append("size", sz);
         form.append("quality", IMAGE_QUALITY);
         form.append("n", "1");
-        const mime = ref.slice(5, ref.indexOf(";"));
-        const bytes = Buffer.from(ref.slice(ref.indexOf(",") + 1), "base64");
-        form.append("image", new Blob([bytes], { type: mime }), "reference.jpg");
+        refs.forEach((ref, i) => {
+          const mime = ref.slice(5, ref.indexOf(";"));
+          const bytes = Buffer.from(ref.slice(ref.indexOf(",") + 1), "base64");
+          form.append("image[]", new Blob([bytes], { type: mime }), `reference-${i + 1}.jpg`);
+        });
         return fetch("https://api.openai.com/v1/images/edits", { method: "POST", headers: { Authorization: "Bearer " + apiKey }, body: form });
       }
       return fetch("https://api.openai.com/v1/images/generations", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: "Bearer " + apiKey },
-        body: JSON.stringify({ model: IMAGE_MODEL, prompt, size: "1024x1024", quality: IMAGE_QUALITY, n: 1 }),
+        body: JSON.stringify({ model: IMAGE_MODEL, prompt, size: sz, quality: IMAGE_QUALITY, n: 1 }),
       });
     };
-    const r = await withRetry(request);
+    // Si le format demandé est refusé par le générateur, on repart en carré pour ne pas perdre la demande
+    let r = await withRetry(() => request(size));
+    if (!r.ok && size !== "1024x1024") {
+      console.error("KARAT image: format", size, "refusé, nouvel essai en 1024x1024");
+      r = await withRetry(() => request("1024x1024"));
+    }
     const result = await r.json().catch(() => ({}));
     if (!r.ok || !result.data || !result.data[0] || !result.data[0].b64_json) {
       console.error("KARAT image: erreur API", r.status, JSON.stringify(result).slice(0, 500));
