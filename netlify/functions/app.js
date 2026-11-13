@@ -2351,6 +2351,70 @@ const GX_REFUSAL = "Cette demande concerne un document officiel (pièce d'identi
 const gxErr = (title, msg) => `<div class="gx-err"><strong>${esc(title)}</strong>${esc(msg)}</div>`;
 const gxBar = id => `<div class="gx-progress"><i id="${id}"></i></div>`;
 const IMG_CHIPS = ["Logo sur un flyer, vert citron", "Affiche de concert rétro", "Miniature YouTube lisible", "Portrait style aquarelle"];
+
+// Formats proposés : le générateur produit le format le plus proche, puis KARAT recadre à la taille exacte
+const IMG_FORMATS = [
+  { group: "Formats généraux", items: [
+    { id: "1:1", label: "Carré 1:1", w: 1024, h: 1024 },
+    { id: "3:2", label: "Paysage 3:2", w: 1536, h: 1024 },
+    { id: "4:3", label: "Paysage 4:3", w: 1024, h: 768 },
+    { id: "16:9", label: "Écran 16:9", w: 1920, h: 1080 },
+    { id: "21:9", label: "Cinéma 21:9", w: 2560, h: 1080 },
+    { id: "2:3", label: "Portrait 2:3", w: 1024, h: 1536 },
+    { id: "3:4", label: "Portrait 3:4", w: 960, h: 1280 },
+    { id: "9:16", label: "Téléphone 9:16", w: 1080, h: 1920 } ] },
+  { group: "Réseaux sociaux", items: [
+    { id: "ig-carre", label: "Instagram carré", w: 1080, h: 1080 },
+    { id: "ig-portrait", label: "Instagram portrait", w: 1080, h: 1350 },
+    { id: "ig-story", label: "Story et Reels", w: 1080, h: 1920 },
+    { id: "fb", label: "Facebook", w: 1200, h: 630 },
+    { id: "linkedin", label: "LinkedIn", w: 1200, h: 627 },
+    { id: "x", label: "X (Twitter)", w: 1600, h: 900 },
+    { id: "yt", label: "Miniature YouTube", w: 1280, h: 720 },
+    { id: "pinterest", label: "Pinterest", w: 1000, h: 1500 } ] },
+  { group: "Impression", items: [
+    { id: "a4", label: "A4 portrait (300 dpi)", w: 2480, h: 3508 },
+    { id: "a4-paysage", label: "A4 paysage (300 dpi)", w: 3508, h: 2480 },
+    { id: "a5", label: "A5 portrait (300 dpi)", w: 1748, h: 2480 },
+    { id: "carte", label: "Carte de visite 90×50 mm", w: 1063, h: 591 } ] },
+  { group: "Web", items: [
+    { id: "banniere", label: "Bannière large", w: 1920, h: 600 },
+    { id: "entete", label: "En-tête de site", w: 1440, h: 600 },
+    { id: "icone", label: "Icône carrée 512", w: 512, h: 512 } ] },
+  { group: "Personnalisé", items: [ { id: "custom", label: "Dimensions personnalisées", custom: true } ] }
+];
+let imgFmtId = "1:1", imgCustomW = 1080, imgCustomH = 1080, imgRefs = [];
+const clampDim = v => Math.min(4096, Math.max(256, Math.round(Number(v)) || 1024));
+const imgAllFormats = () => IMG_FORMATS.flatMap(g => g.items);
+function imgTargetFormat(){
+  const it = imgAllFormats().find(f => f.id === imgFmtId) || imgAllFormats()[0];
+  const w = it.custom ? clampDim(imgCustomW) : it.w;
+  const h = it.custom ? clampDim(imgCustomH) : it.h;
+  return { name: `karat-image-${w}x${h}`, w, h };
+}
+// Format envoyé au générateur : le plus proche des trois formats possibles
+function genSize(w, h){ const r = w / h; return r >= 1.25 ? "1536x1024" : r <= 0.8 ? "1024x1536" : "1024x1024"; }
+function fmtHint(fmt){
+  const [gw, gh] = genSize(fmt.w, fmt.h).split("x").map(Number);
+  const agrandie = Math.max(fmt.w, fmt.h) > Math.max(gw, gh);
+  return `Votre image : ${fmt.w} × ${fmt.h} px. KARAT la génère au format le plus proche (${gw} × ${gh}), puis la recadre à vos dimensions exactes.` + (agrandie ? " Elle est agrandie : la netteté peut être un peu réduite." : "");
+}
+// Recadre et redimensionne l'image générée aux dimensions exactes (centre conservé)
+function fitImage(src, fmt){
+  return new Promise((res, rej) => {
+    const im = new Image();
+    im.onload = () => {
+      const c = document.createElement("canvas"); c.width = fmt.w; c.height = fmt.h;
+      const ctx = c.getContext("2d"); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
+      const s = Math.max(fmt.w / im.naturalWidth, fmt.h / im.naturalHeight);
+      const dw = im.naturalWidth * s, dh = im.naturalHeight * s;
+      ctx.drawImage(im, (fmt.w - dw) / 2, (fmt.h - dh) / 2, dw, dh);
+      try { res(c.toDataURL("image/png")); } catch (e) { rej(e); }
+    };
+    im.onerror = rej;
+    im.src = src;
+  });
+}
 const VID_CHIPS = ["Plan fixe d'une ville la nuit", "Produit tournant sur fond noir", "Titre animé pour une chaîne", "Scène calme au bord de la mer"];
 const gxChips = list => list.map(c => `<button type="button" class="gx-chip" data-action="prefill-text" data-text="${esc(c)}">${esc(c)}</button>`).join("");
 const gxSetCount = (id, n) => { const el = document.getElementById(id); if (el) el.textContent = n; };
@@ -2552,9 +2616,9 @@ Object.assign(ACTIONS, {
 });
 
 function vImages(){
-  const thumb = ui.imgRef
-    ? `<div class="img-thumb" style="margin:0"><img src="${ui.imgRef}" alt="Photo de référence"><button type="button" data-action="img-ref-remove" aria-label="Retirer la photo de référence"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>`
-    : `<span class="muted small">Ajoutez une photo du personnage, du produit ou du lieu à reproduire.</span>`;
+  const fmt = imgTargetFormat();
+  const thumbs = imgRefs.map((src, i) => `<div class="img-thumb" style="margin:0"><img src="${src}" alt="Photo de référence ${i + 1}"><button type="button" data-action="img-ref-remove" data-index="${i}" aria-label="Retirer la photo ${i + 1}"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>`).join("");
+  const opts = IMG_FORMATS.map(g => `<optgroup label="${g.group}">${g.items.map(it => `<option value="${it.id}" ${it.id === imgFmtId ? "selected" : ""}>${it.label}${it.w ? ` · ${it.w} × ${it.h}` : ""}</option>`).join("")}</optgroup>`).join("");
   return appShell("/app/images", pageHead("Espace", "Génération d'images", "Décrivez l'image souhaitée, KARAT la génère pour vous.") +
     `<div class="gx-layout">
       <aside class="card gx-form">
@@ -2563,10 +2627,20 @@ function vImages(){
         <textarea id="img-prompt" class="textarea gx-ta" rows="4" maxlength="1000" placeholder="Ex : une affiche de concert, style rétro, couleurs chaudes"></textarea>
         <div class="gx-count"><span id="img-count">0</span> / 1000</div>
         <div class="gx-chips">${gxChips(IMG_CHIPS)}</div>
-        <div class="gx-lbl">Photo de référence (facultatif)</div>
-        <div class="gx-drop">${thumb}</div>
-        <button type="button" class="btn btn-line btn-sm" data-action="img-ref-pick">${ic("image")} ${ui.imgRef ? "Changer la photo" : "Ajouter une photo de référence"}</button>
-        <input type="file" id="imgRefFile" accept="image/*" hidden />
+        <div class="gx-lbl">Format</div>
+        <select id="img-fmt" class="select" style="width:100%">${opts}</select>
+        <div class="gx-custom" id="img-custom" ${imgFmtId === "custom" ? "" : "hidden"}>
+          <label class="small muted" for="img-w">Largeur (px)</label>
+          <label class="small muted" for="img-h">Hauteur (px)</label>
+          <input id="img-w" class="input" type="number" min="256" max="4096" step="8" value="${imgCustomW}">
+          <input id="img-h" class="input" type="number" min="256" max="4096" step="8" value="${imgCustomH}">
+        </div>
+        <p class="gx-hint" id="img-fmt-hint">${esc(fmtHint(fmt))}</p>
+        <div class="gx-lbl">Photos de référence (facultatif, 4 maximum)</div>
+        <div class="gx-refs">${thumbs}</div>
+        ${imgRefs.length ? "" : `<span class="muted small">Ajoutez des photos du personnage, du produit ou du lieu à reproduire.</span>`}
+        <button type="button" class="btn btn-line btn-sm" data-action="img-ref-pick" ${imgRefs.length < 4 ? "" : "disabled"}>${ic("image")} ${imgRefs.length ? "Ajouter une autre photo" : "Ajouter des photos"}</button>
+        <input type="file" id="imgRefFile" accept="image/*" multiple hidden />
         <button class="btn btn-accent gx-go" data-action="img-generate">Générer l'image</button>
         <p class="gx-hint">Une image prend environ 1 à 2 minutes.</p>
         <div id="img-out"></div>
@@ -2584,9 +2658,10 @@ Object.assign(ACTIONS, {
 
 Object.assign(ACTIONS, {
   "img-ref-pick": () => { const f = $("#imgRefFile"); if (f) f.click(); },
-  "img-ref-remove": () => { const pr = ($("#img-prompt") || {}).value || ""; ui.imgRef = null; render(); loadImages(); const t = $("#img-prompt"); if (t) t.value = pr; },
+  "img-ref-remove": el => { const pr = ($("#img-prompt") || {}).value || ""; imgRefs.splice(Number(el.dataset.index), 1); render(); loadImages(); const t = $("#img-prompt"); if (t) t.value = pr; },
   "img-generate": async () => {
     const prompt = ($("#img-prompt")?.value || "").trim();
+    const fmt = imgTargetFormat();
     const out = $("#img-out");
     if (!prompt) return toast("Décrivez l'image souhaitée", true);
     if (!session) return go("/connexion?next=/app/images");
@@ -2606,7 +2681,7 @@ Object.assign(ACTIONS, {
       const jobId = "j" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
       const r = await fetch(CONFIG.IMAGE_ENDPOINT, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: jobId, email: session.email, prompt, ref: ui.imgRef || null })
+        body: JSON.stringify({ id: jobId, email: session.email, prompt, refs: imgRefs.slice(), size: genSize(fmt.w, fmt.h) })
       });
       if (!r.ok && r.status !== 202) throw new Error("Le service d'images est indisponible (erreur " + r.status + "). Réessayez dans un instant.");
       let d = { status: "pending" };
@@ -2621,8 +2696,9 @@ Object.assign(ACTIONS, {
       const gratuit = !["essentiel", "pro", "expert", "admin"].includes(planOf(session && session.email));
       const restant = d.remaining === null || d.remaining === undefined ? "" : `<p class="muted small" style="margin-top:12px">Il vous reste ${d.remaining} image${d.remaining > 1 ? "s" : ""}${gratuit ? " gratuite" + (d.remaining > 1 ? "s" : "") : " aujourd'hui"}.${gratuit && d.remaining === 0 ? " Elles se renouvellent dans les 2 jours, ou dès maintenant avec une offre payante." : ""}</p>`;
       clearInterval(tick);
-      out.innerHTML = `<img class="gx-result" src="${d.image}" alt="${esc(prompt)}">
-        <div class="gx-actions" style="margin-top:10px"><a class="btn btn-line btn-sm" href="${d.image}" download="karat-image.png">Télécharger</a></div>${restant}${d.bonus ? `<p class="muted small" style="margin-top:6px">Points images restants : ${d.bonus}.</p>` : ""}`;
+      const shown = await fitImage(d.image, fmt).catch(() => d.image);
+      out.innerHTML = `<img class="gx-result" src="${shown}" alt="${esc(prompt)}">
+        <div class="gx-actions" style="margin-top:10px"><a class="btn btn-line btn-sm" href="${shown}" download="${fmt.name}.png">Télécharger</a></div>${restant}${d.bonus ? `<p class="muted small" style="margin-top:6px">Points images restants : ${d.bonus}.</p>` : ""}`;
       loadImages();
     } catch (e) {
       clearInterval(tick);
@@ -2632,18 +2708,32 @@ Object.assign(ACTIONS, {
 });
 
 document.addEventListener("change", async e => {
-  if (!e.target || e.target.id !== "imgRefFile") return;
-  const file = (e.target.files || [])[0];
+  if (!e.target) return;
+  if (e.target.id === "img-fmt") {
+    imgFmtId = e.target.value;
+    const c = $("#img-custom"); if (c) c.hidden = imgFmtId !== "custom";
+    const h = $("#img-fmt-hint"); if (h) h.textContent = fmtHint(imgTargetFormat());
+    return;
+  }
+  if (e.target.id !== "imgRefFile") return;
+  const files = Array.from(e.target.files || []);
   e.target.value = "";
-  if (!file) return;
+  if (!files.length) return;
+  const libres = 4 - imgRefs.length;
+  if (libres <= 0) return toast("Vous pouvez ajouter 4 photos au maximum", true);
   const pr = ($("#img-prompt") || {}).value || "";
-  try {
-    const im = await shrinkImage(file);
-    ui.imgRef = im.data;
-    render();
-    loadImages();
-    const t = $("#img-prompt"); if (t) t.value = pr;
-  } catch (err) { toast(`« ${file.name} » n'a pas pu être lue. Essayez une photo JPG ou PNG.`, true); }
+  let ajoutees = 0;
+  for (const file of files.slice(0, libres)) {
+    try { const im = await shrinkImage(file); imgRefs.push(im.data); ajoutees++; }
+    catch (err) { toast(`« ${file.name} » n'a pas pu être lue. Essayez une photo JPG ou PNG.`, true); }
+  }
+  if (files.length > libres) toast("Seules 4 photos sont gardées", true);
+  if (ajoutees) { render(); loadImages(); const t = $("#img-prompt"); if (t) t.value = pr; }
+});
+document.addEventListener("input", e => {
+  if (!e.target || (e.target.id !== "img-w" && e.target.id !== "img-h")) return;
+  if (e.target.id === "img-w") imgCustomW = clampDim(e.target.value); else imgCustomH = clampDim(e.target.value);
+  const h = $("#img-fmt-hint"); if (h) h.textContent = fmtHint(imgTargetFormat());
 });
 
 Object.assign(ACTIONS, {
