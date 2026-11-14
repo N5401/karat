@@ -5,6 +5,7 @@
 // Règle : Essentiel inclut 6 vidéos par semaine, Pro 8, Expert 12 ; au-delà, chaque vidéo coûte 1 crédit.
 // Le crédit ou le quota n'est décompté qu'une fois la génération acceptée par le fournisseur.
 // video-result.js suit la génération, sauvegarde la vidéo et rend le crédit si elle échoue.
+// Vidéos illimitées : accordées par l'administrateur (page Attributions), sans quota ni crédits.
 // Variables communes : STRIPE_SECRET_KEY, STRIPE_CREDIT_PLINK, NETLIFY_TOKEN + SITE_ID (si besoin).
 
 const { getStore } = require("@netlify/blobs");
@@ -42,6 +43,13 @@ function isoWeek(d){
   return x.getUTCFullYear() + "-W" + String(week).padStart(2, "0");
 }
 const weekKey = (email) => "videoweek|" + encodeURIComponent(email) + "|" + isoWeek(new Date());
+// Vidéos illimitées accordées par l'administrateur (admin-grant) : ni quota, ni crédits
+async function isUnlimited(email){
+  try {
+    const u = await blobStore("karat-videounl").get("unl|" + encodeURIComponent(email), { type: "json" });
+    return !!(u && u.on === true);
+  } catch (e) { console.error("KARAT video: lecture illimité", e.message); return false; }
+}
 // Nom de fichier sûr pour les clés de stockage
 const safeName = (name) => String(name).replace(/[^\w.-]/g, "_");
 
@@ -100,7 +108,8 @@ exports.handler = async (event) => {
   try { used = ((await store.get(key, { type: "json" })) || {}).n || 0; }
   catch (e) { console.error("KARAT video: lecture du compteur", e.message); }
 
-  const source = used < weekly ? "quota" : "credit";
+  const unlimited = await isUnlimited(email);
+  const source = unlimited ? "illimite" : (used < weekly ? "quota" : "credit");
   if (source === "credit") {
     let credits = 0;
     try { credits = await balanceOf(email); }
@@ -173,7 +182,7 @@ exports.handler = async (event) => {
   if (source === "quota") {
     try { await store.setJSON(key, { n: used + 1 }); }
     catch (e) { console.error("KARAT video: écriture du compteur", e.message); }
-  } else {
+  } else if (source === "credit") {
     try { await takeCredit(email); }
     catch (e) { console.error("KARAT video: décompte du crédit", e.message); }
   }
