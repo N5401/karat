@@ -3866,12 +3866,12 @@ Object.assign(ACTIONS, {
 
 function vVideo(){
   const admin = isAdmin(session && session.email);
-  const buy = admin ? "" : (CONFIG.CREDIT_LINK ? `<a class="btn btn-line btn-sm" href="${creditUrl()}">Acheter des crédits</a>` : `<span class="muted small">Achat de crédits bientôt disponible</span>`);
+  const buy = "";
   const body = session
     ? `<div class="gx-layout">
         <aside class="card gx-form">
           <p class="muted small" style="margin:0">${esc(videoIncludedText())}</p>
-          <p class="small" style="margin:0">Crédits disponibles : <b id="credit-balance">…</b> <span class="muted">· 5 € le crédit, 1 crédit = 1 vidéo de 8 secondes</span></p>
+          <p class="small" style="margin:0">Crédits disponibles : <b id="credit-balance">…</b> </p>
           ${buy}
           ${vidRefBlock()}
           <div class="gx-lbl">Description</div>
