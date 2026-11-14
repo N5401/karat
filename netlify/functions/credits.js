@@ -1,9 +1,14 @@
 // KARAT — solde de crédits vidéo d'un abonné. GET ?email=… -> { credits }
-// Ouvert à toutes les offres payantes. Le solde est synchronisé avec les paiements Stripe au passage.
+// Ouvert à tous, avec ou sans abonnement. Le solde est synchronisé avec les paiements Stripe au passage.
 // Variables : STRIPE_SECRET_KEY, STRIPE_CREDIT_PLINK, NETLIFY_TOKEN + SITE_ID (si besoin).
 
 const { planFor, cleanEmail } = require("./_shared/acces");
 const { syncCredits } = require("./_shared/credits");
+const { getStore } = require("@netlify/blobs");
+
+const blobStore = (name) => (process.env.NETLIFY_TOKEN && process.env.SITE_ID)
+  ? getStore({ name, siteID: process.env.SITE_ID, token: process.env.NETLIFY_TOKEN })
+  : getStore(name);
 
 const json = (statusCode, body) => ({
   statusCode,
@@ -19,7 +24,13 @@ exports.handler = async (event) => {
 
   let plan = null;
   try { plan = await planFor(email); } catch (e) { return json(503, { error: "Vérification de l'offre impossible" }); }
-  if (!plan) return json(403, { error: "Les crédits vidéo sont réservés aux abonnés." });
+  // Administrateur : crédits illimités, pas de solde à synchroniser
+  if (plan === "admin") return json(200, { credits: null, unlimited: true });
+  // Vidéos illimitées accordées par l'administrateur
+  try {
+    const u = await blobStore("karat-videounl").get("unl|" + encodeURIComponent(email), { type: "json" });
+    if (u && u.on === true) return json(200, { credits: null, unlimited: true });
+  } catch (e) { console.error("KARAT credits: lecture illimité", e.message); }
 
   try {
     const bal = await syncCredits(email);
