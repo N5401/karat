@@ -2128,6 +2128,7 @@ function vLanding(){
   ${tiles}
   ${features}
   ${idea}
+  ${avisSection()}
   ${offres}
 
   <footer class="lp-foot"><div class="lp-wrap">
@@ -3910,7 +3911,7 @@ async function loadCredits(){
   try{
     const r = await fetch(`${CONFIG.CREDITS_ENDPOINT}?email=${enc(session.email)}`, { cache: "no-store" });
     const d = await r.json().catch(() => ({}));
-    el.textContent = r.ok ? (d.unlimited ? "illimités (administrateur)" : String(d.credits)) : "indisponible";
+    el.textContent = r.ok ? (d.unlimited ? "illimités" : String(d.credits)) : "indisponible";
   }catch(e){ el.textContent = "indisponible"; }
 }
 
@@ -4302,16 +4303,43 @@ function vAdminGrants(){
           <button class="btn btn-accent" data-action="grant-send">Attribuer</button>
           <button class="btn btn-line" data-action="grant-check">Voir le solde</button>
         </div>
+        <div class="row" style="gap:10px;flex-wrap:wrap;margin-top:18px;padding-top:18px;border-top:1px solid var(--line)">
+          <button class="btn btn-accent" data-action="unl-on">Vidéos illimitées : activer</button>
+          <button class="btn btn-line" data-action="unl-off">Retirer</button>
+        </div>
+        <p class="muted small" style="margin-top:10px">Les vidéos illimitées ne consomment ni quota ni crédits. Entrez l'e-mail du compte, puis activez ou retirez l'accès.</p>
         <div id="gr-result" style="margin-top:16px"></div>
       </div>
       <div class="card">
         <div class="card-h"><h3>Comment ça marche</h3></div>
         <p class="muted small">Les crédits vidéo s'ajoutent au solde du compte et servent à la prochaine génération. Les points images s'ajoutent après le quota quotidien de l'offre.</p>
         <p class="muted small" style="margin-top:10px">Aucun e-mail n'est envoyé au client : prévenez-le vous-même.</p>
+        <p class="muted small" style="margin-top:10px">Vidéos illimitées : le compte génère autant de vidéos qu'il veut, sans quota ni crédits, jusqu'à ce que vous retiriez l'accès.</p>
       </div>
     </div>`);
 }
-const grantBalance = d => `<p class="muted small" style="margin-top:8px">Solde du compte : ${d.videoCredits} crédit(s) vidéo · ${d.imageBonus} point(s) image</p>`;
+async function unlimitedSet(on){
+  const email = ($("#gr-email")?.value || "").trim();
+  const tok = ($("#gr-token")?.value || "").trim();
+  const out = $("#gr-result");
+  if (!email) return toast("Entrez l'e-mail du compte", true);
+  if (!tok) return toast("Entrez le jeton administrateur", true);
+  try { sessionStorage.setItem("karat_admin_token", tok); } catch (e) {}
+  out.innerHTML = `<p class="muted small">Envoi…</p>`;
+  try {
+    const r = await fetch("/.netlify/functions/admin-grant", {
+      method: "POST", headers: { "Content-Type": "application/json", "x-admin-token": tok },
+      body: JSON.stringify({ email, type: "unlimited", on }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.error || "Enregistrement refusé");
+    out.innerHTML = `<p class="small">Vidéos illimitées ${on ? "activées" : "retirées"} pour <b>${esc(email)}</b>.</p>${grantBalance(d)}`;
+    toast(on ? "Vidéos illimitées activées" : "Vidéos illimitées retirées");
+  } catch (e) {
+    out.innerHTML = `<p class="muted small">${esc(e.message)}</p>`;
+  }
+}
+const grantBalance = d => `<p class="muted small" style="margin-top:8px">Solde du compte : ${d.videoCredits} crédit(s) vidéo · ${d.imageBonus} point(s) image · Vidéos illimitées : ${d.videoUnlimited ? "oui" : "non"}</p>`;
 
 Object.assign(ACTIONS, {
   "grant-send": async () => {
@@ -4338,6 +4366,8 @@ Object.assign(ACTIONS, {
       out.innerHTML = `<p class="muted small">${esc(e.message)}</p>`;
     }
   },
+  "unl-on": () => unlimitedSet(true),
+  "unl-off": () => unlimitedSet(false),
   "grant-check": async () => {
     const email = ($("#gr-email")?.value || "").trim();
     const tok = ($("#gr-token")?.value || "").trim();
