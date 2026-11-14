@@ -2629,7 +2629,7 @@ function vImages(){
         <div class="gx-count"><span id="img-count">0</span> / 1000</div>
         <div class="gx-chips">${gxChips(IMG_CHIPS)}</div>
         <div class="gx-lbl">Format</div>
-        <select id="img-fmt" class="select" style="width:100%">${opts}</select>
+        <select id="img-fmt" class="select" style="width:100%" aria-label="Format de l'image">${opts}</select>
         <div class="gx-custom" id="img-custom" ${imgFmtId === "custom" ? "" : "hidden"}>
           <label class="small muted" for="img-w">Largeur (px)</label>
           <label class="small muted" for="img-h">Hauteur (px)</label>
