@@ -3,6 +3,7 @@
 // GET ?email=… avec le même en-tête : affiche le solde vidéo et les points images du compte.
 // Crédits vidéo : ajoutés au solde « karat-credits » (même format que les achats Stripe).
 // Points images : ajoutés à « karat-bonus », utilisés une fois le quota quotidien épuisé.
+// Vidéos illimitées : POST {email, type: "unlimited", on: true | false} ; drapeau dans « karat-videounl ».
 // Chaque attribution est journalisée dans « karat-admin ».
 // Variables : ADMIN_TOKEN, NETLIFY_TOKEN + SITE_ID (si besoin).
 
@@ -29,7 +30,9 @@ async function balances(email){
   const q = encodeURIComponent(email);
   const credits = (await blobStore("karat-credits").get("bal|" + q, { type: "json" })) || {};
   const bonus = (await blobStore("karat-bonus").get("img|" + q, { type: "json" })) || {};
+  const unl = (await blobStore("karat-videounl").get("unl|" + q, { type: "json" })) || {};
   return {
+    videoUnlimited: unl.on === true,
     videoCredits: typeof credits.n === "number" ? credits.n : 0,
     imageBonus: typeof bonus.n === "number" ? bonus.n : 0,
   };
@@ -65,6 +68,17 @@ exports.handler = async (event) => {
   let data;
   try { data = JSON.parse(event.body || "{}"); } catch { return json(400, { error: "Requête invalide" }); }
   const email = cleanEmail(data.email);
+  if (data.type === "unlimited") {
+    const on = data.on === true;
+    try {
+      await blobStore("karat-videounl").setJSON("unl|" + encodeURIComponent(email), { on, at: Date.now() });
+      await logGrant(email, on ? "vidéos illimitées activées" : "vidéos illimitées retirées", 0);
+      return json(200, { email, ...(await balances(email)) });
+    } catch (e) {
+      console.error("KARAT admin-grant: vidéos illimitées", e.message);
+      return json(500, { error: "Enregistrement impossible, réessayez" });
+    }
+  }
   const type = data.type === "image" ? "image" : data.type === "video" ? "video" : null;
   const amount = Math.floor(Number(data.amount));
   if (!email) return json(400, { error: "Adresse e-mail invalide" });
