@@ -667,6 +667,15 @@ function vLanding(){
     </div>
   </div></section>`;
 
+  const steps = `<section class="kh-sec kh-sec-tight" id="etapes"><div class="lp-wrap">
+    <div class="kh-kicker">Comment ça marche</div>
+    <h2 class="kh-h2">Trois étapes, <em>sans installation.</em></h2>
+    <div class="kh-feat kh-steps">
+      <article class="kh-card kh-step"><span class="kh-num">01</span><h3>Créez votre compte</h3><p>Une adresse e-mail et un mot de passe. Un code à 6 chiffres vous est envoyé pour confirmer.</p></article>
+      <article class="kh-card kh-step"><span class="kh-num">02</span><h3>Décrivez ce que vous voulez</h3><p>Un texte, une image ou une vidéo : écrivez simplement, comme à un collègue.</p></article>
+      <article class="kh-card kh-step"><span class="kh-num">03</span><h3>Retrouvez tout au même endroit</h3><p>Vos conversations, vos images et vos vidéos restent classées dans votre espace.</p></article>
+    </div>
+  </div></section>`;
   const idea = `<section class="kh-sec kh-sec-tight" id="demo"><div class="lp-wrap"><div class="kh-video">
     <div class="kh-kicker">Démonstration</div>
     <h2 class="kh-h2">Une vidéo, de l’idée au clip.</h2>
@@ -690,6 +699,7 @@ function vLanding(){
   ${hero}
   ${tiles}
   ${features}
+  ${steps}
   ${idea}
   ${avisSection()}
   ${offres}
@@ -1543,7 +1553,14 @@ function vAdminOverview(){
   const recent = [...accounts].sort((a, b) => b.createdAt - a.createdAt).slice(0, 6);
   const activity = logs.slice(0, 6);
   return appShell("/admin", pageHead("Administration", "Vue d'ensemble", "L'état de votre activité en un coup d'œil.") +
-    `<div class="grid g4" style="margin-bottom:18px">
+    `<div class="card" style="margin-bottom:18px"><div class="card-h"><h3>Actions rapides</h3></div>
+      <div class="row" style="gap:10px;flex-wrap:wrap">
+        <a class="btn btn-line btn-sm" href="#/admin/attributions">Vidéos illimitées et crédits</a>
+        <a class="btn btn-line btn-sm" href="#/admin/annonces">Publier une annonce</a>
+        <a class="btn btn-line btn-sm" href="#/admin/avis">Modérer les avis</a>
+        <a class="btn btn-line btn-sm" href="#/admin/utilisateurs">Chercher un compte</a>
+      </div></div>
+    <div class="grid g4" style="margin-bottom:18px">
       ${kpi("Comptes", accounts.length, "", newWeek - prevWeek)}
       ${kpi("Abonnés actifs", paying.length, "avec une offre active")}
       ${kpi("Revenu mensuel", money(mrr), "estimation brute")}
@@ -2583,7 +2600,7 @@ Object.assign(ACTIONS, {
     try {
       const r = await fetch("/.netlify/functions/video", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: session.email, prompt, durationSeconds: Number($("#vid-dur").value), resolution: $("#vid-res").value, aspectRatio: $("#vid-ratio").value, ref: ui.vidRef || null })
+        body: JSON.stringify({ email: session.email, prompt, durationSeconds: Number($("#vid-dur").value), resolution: $("#vid-res").value, aspectRatio: $("#vid-ratio").value, refs: vidRefList().slice() })
       });
       const d = await r.json().catch(() => ({}));
       if (!r.ok || !d.id) throw new Error(d.error || "La génération a échoué");
@@ -2774,39 +2791,44 @@ Object.assign(ACTIONS, {
 });
 
 /* ---------- Image d'exemple pour la vidéo : la vidéo part de cette image ---------- */
+const vidRefList = () => (ui.vidRefs = ui.vidRefs || []);
 function vidRefBlock(){
-  const thumb = ui.vidRef
-    ? `<div class="img-thumb" style="margin:0"><img src="${ui.vidRef}" alt="Image d'exemple"><button type="button" data-action="vid-ref-remove" aria-label="Retirer l'image d'exemple"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>`
-    : "";
+  const refs = vidRefList();
+  const thumbs = refs.map((src, i) => `<div class="img-thumb" style="margin:0"><img src="${src}" alt="Image d'exemple ${i + 1}"><button type="button" data-action="vid-ref-remove" data-index="${i}" aria-label="Retirer l'image d'exemple ${i + 1}"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>`).join("");
   return `<div style="margin-bottom:16px">
-    <div class="small muted" style="letter-spacing:.08em">IMAGE D'EXEMPLE (FACULTATIF)</div>
-    <p class="muted small" style="margin:6px 0 10px">La vidéo part de cette image : ajoutez une photo du personnage, du produit ou du lieu à reproduire.</p>
-    <div class="row" style="gap:12px;align-items:center;flex-wrap:wrap">${thumb}<button type="button" class="btn btn-line btn-sm" data-action="vid-ref-pick">${ic("image")} ${ui.vidRef ? "Changer l'image" : "Ajouter une image d'exemple"}</button></div>
-    <input type="file" id="vidRefFile" accept="image/*" hidden />
+    <div class="small muted" style="letter-spacing:.08em">IMAGES D'EXEMPLE (FACULTATIF, 4 MAX)</div>
+    <p class="muted small" style="margin:6px 0 10px">La vidéo s'appuie sur ces images : personnage, produit, lieu ou décor à reproduire. Vous pouvez en ajouter jusqu'à quatre.</p>
+    <div class="gx-refs">${thumbs}</div>
+    <div class="row" style="gap:12px;align-items:center;flex-wrap:wrap;margin-top:10px"><button type="button" class="btn btn-line btn-sm" data-action="vid-ref-pick" ${refs.length < 4 ? "" : "disabled"}>${ic("image")} ${refs.length ? "Ajouter une autre image" : "Ajouter des images"}</button></div>
+    <input type="file" id="vidRefFile" accept="image/*" multiple hidden />
   </div>`;
 }
 
 Object.assign(ACTIONS, {
   "vid-ref-pick": () => { const f = $("#vidRefFile"); if (f) f.click(); },
-  "vid-ref-remove": () => {
+  "vid-ref-remove": el => {
     const pr = ($("#vid-prompt") || {}).value || "";
-    ui.vidRef = null; render(); loadVideos(); loadCredits();
+    vidRefList().splice(Number(el.dataset.index), 1); render(); loadVideos(); loadCredits();
     const t = $("#vid-prompt"); if (t) t.value = pr;
   },
 });
 
 document.addEventListener("change", async e => {
   if (!e.target || e.target.id !== "vidRefFile") return;
-  const file = (e.target.files || [])[0];
+  const files = Array.from(e.target.files || []);
   e.target.value = "";
-  if (!file) return;
+  if (!files.length) return;
+  const list = vidRefList();
+  const libres = 4 - list.length;
+  if (libres <= 0) return toast("Vous pouvez ajouter 4 images au maximum", true);
   const pr = ($("#vid-prompt") || {}).value || "";
-  try {
-    const im = await shrinkImage(file);
-    ui.vidRef = im.data;
-    render(); loadVideos(); loadCredits();
-    const t = $("#vid-prompt"); if (t) t.value = pr;
-  } catch (err) { toast(`« ${file.name} » n'a pas pu être lue. Essayez une photo JPG ou PNG.`, true); }
+  let ajoutees = 0;
+  for (const file of files.slice(0, libres)) {
+    try { const im = await shrinkImage(file); list.push(im.data); ajoutees++; }
+    catch (err) { toast(`« ${file.name} » n'a pas pu être lue. Essayez une photo JPG ou PNG.`, true); }
+  }
+  if (files.length > libres) toast("Seules 4 images sont gardées", true);
+  if (ajoutees) { render(); loadVideos(); loadCredits(); const t = $("#vid-prompt"); if (t) t.value = pr; }
 });
 
 /* Si une image de la galerie ne s'affiche pas, affiche la réponse exacte du serveur (utile pour le diagnostic) */
