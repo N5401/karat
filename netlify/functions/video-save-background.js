@@ -50,7 +50,7 @@ exports.handler = async (event) => {
     await store.setJSON(jk, { ...rest, status: "saved" });
   } catch (e) {
     console.error("KARAT video-save: enregistrement", e.message);
-    await store.setJSON(jk, { ...job, status: "failed", error: SAVE_FAILED }).catch(() => {});
+    await store.setJSON(jk, { ...job, status: "failed", error: SAVE_FAILED + " Détail : " + String(e.message).slice(0, 200) }).catch(() => {});
     await refundOnce(email, sid);
   }
   return { statusCode: 202 };

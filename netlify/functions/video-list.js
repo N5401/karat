@@ -21,14 +21,13 @@ exports.handler = async (event) => {
 
   const email = cleanEmail((event.queryStringParameters || {}).email);
   let plan = null;
-  try { plan = await planFor(email); } catch (e) { return json(503, { error: "Vérification de l'offre impossible" }); }
-  if (!ALLOWED.includes(plan)) return json(403, { error: "La génération de vidéos est réservée aux abonnés payants." });
+  // Ouvert à tous : les vidéos sont classées par e-mail, chacun retrouve les siennes
 
   try {
     const list = (await blobStore("karat-videos").get("list|" + encodeURIComponent(email), { type: "json" })) || [];
     return json(200, { videos: list });
   } catch (e) {
     console.error("KARAT video-list:", e.message);
-    return json(500, { error: "Liste indisponible" });
+    return json(500, { error: "Liste indisponible (" + String(e.message).slice(0, 200) + ")" });
   }
 };

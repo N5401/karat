@@ -199,7 +199,8 @@ exports.handler = async (event) => {
       });
     } catch (e) {
       console.error("KARAT video-result: écriture de la demande", e.message);
-      return json(200, { status: "processing" });
+      await refundOnce(email, id);
+      return json(200, { status: "failed", error: "La vidéo est prête mais le site n'arrive pas à l'enregistrer (" + String(e.message).slice(0, 200) + ")." });
     }
   }
   // Lancement de l'enregistrement en arrière-plan. Si cette fonction n'est pas joignable, on enregistre ici même.
