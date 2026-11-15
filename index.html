@@ -4249,10 +4249,10 @@ function vidRefBlock(){
   const refs = vidRefList();
   const thumbs = refs.map((src, i) => `<div class="img-thumb" style="margin:0"><img src="${src}" alt="Image d'exemple ${i + 1}"><button type="button" data-action="vid-ref-remove" data-index="${i}" aria-label="Retirer l'image d'exemple ${i + 1}"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>`).join("");
   return `<div style="margin-bottom:16px">
-    <div class="small muted" style="letter-spacing:.08em">IMAGES D'EXEMPLE (FACULTATIF, 4 MAX)</div>
-    <p class="muted small" style="margin:6px 0 10px">La vidéo s'appuie sur ces images : personnage, produit, lieu ou décor à reproduire. Vous pouvez en ajouter jusqu'à quatre.</p>
+    <div class="small muted" style="letter-spacing:.08em">IMAGES D'EXEMPLE (FACULTATIF, 1 MAX)</div>
+    <p class="muted small" style="margin:6px 0 10px">La vidéo s'appuie sur ces images : personnage, produit, lieu ou décor à reproduire. Vous pouvez en ajouter une.</p>
     <div class="gx-refs">${thumbs}</div>
-    <div class="row" style="gap:12px;align-items:center;flex-wrap:wrap;margin-top:10px"><button type="button" class="btn btn-line btn-sm" data-action="vid-ref-pick" ${refs.length < 4 ? "" : "disabled"}>${ic("image")} ${refs.length ? "Ajouter une autre image" : "Ajouter des images"}</button></div>
+    <div class="row" style="gap:12px;align-items:center;flex-wrap:wrap;margin-top:10px"><button type="button" class="btn btn-line btn-sm" data-action="vid-ref-pick" ${refs.length < 1 ? "" : "disabled"}>${ic("image")} ${refs.length ? "Ajouter une autre image" : "Ajouter des images"}</button></div>
     <input type="file" id="vidRefFile" accept="image/*" multiple hidden />
   </div>`;
 }
@@ -4272,15 +4272,15 @@ document.addEventListener("change", async e => {
   e.target.value = "";
   if (!files.length) return;
   const list = vidRefList();
-  const libres = 4 - list.length;
-  if (libres <= 0) return toast("Vous pouvez ajouter 4 images au maximum", true);
+  const libres = 1 - list.length;
+  if (libres <= 0) return toast("Vous pouvez ajouter 1 image au maximum", true);
   const pr = ($("#vid-prompt") || {}).value || "";
   let ajoutees = 0;
   for (const file of files.slice(0, libres)) {
     try { const im = await shrinkImage(file); list.push(im.data); ajoutees++; }
     catch (err) { toast(`« ${file.name} » n'a pas pu être lue. Essayez une photo JPG ou PNG.`, true); }
   }
-  if (files.length > libres) toast("Seules 4 images sont gardées", true);
+  if (files.length > libres) toast("Une seule image est gardée", true);
   if (ajoutees) { render(); loadVideos(); loadCredits(); const t = $("#vid-prompt"); if (t) t.value = pr; }
 });
 
