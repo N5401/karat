@@ -4142,9 +4142,17 @@ Object.assign(ACTIONS, {
     }, 1000);
     try {
       const jobId = "j" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+      // Les photos partent d'abord vers image-refs (requête normale) : la fonction d'arrière-plan n'accepte que de petites requêtes
+      if (imgRefs.length) {
+        const up = await fetch("/.netlify/functions/image-refs", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: jobId, email: session.email, refs: imgRefs.slice() })
+        });
+        if (!up.ok) { const e = await up.json().catch(() => ({})); throw new Error(e.error || "Les photos n'ont pas pu être envoyées (erreur " + up.status + "). Réessayez."); }
+      }
       const r = await fetch(CONFIG.IMAGE_ENDPOINT, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: jobId, email: session.email, prompt, refs: imgRefs.slice(), size: genSize(fmt.w, fmt.h) })
+        body: JSON.stringify({ id: jobId, email: session.email, prompt, hasRefs: imgRefs.length > 0, size: genSize(fmt.w, fmt.h) })
       });
       if (!r.ok && r.status !== 202) throw new Error("Le service d'images est indisponible (erreur " + r.status + "). Réessayez dans un instant.");
       let d = { status: "pending" };
