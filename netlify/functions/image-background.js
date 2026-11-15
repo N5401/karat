@@ -85,9 +85,18 @@ exports.handler = async (event) => {
     const prompt = String(data.prompt || "").trim().slice(0, 1000);
     if (!prompt) return await fail("Décrivez l'image souhaitée");
     if (DOC_RE.test(prompt)) return await fail(DOC_MSG);
-    // Photos de référence : jusqu'à 4 (« ref » reste accepté pour l'ancienne version du site)
+    // Photos de référence : jusqu'à 4. Elles arrivent par image-refs.js (requête normale, plus grande) et sont
+    // relues ici puis supprimées. « refs » ou « ref » directs restent acceptés pour l'ancienne version du site.
     const DATA_RE = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/;
-    const rawRefs = Array.isArray(data.refs) ? data.refs : (data.ref ? [data.ref] : []);
+    let rawRefs = Array.isArray(data.refs) ? data.refs : (data.ref ? [data.ref] : []);
+    if (data.hasRefs) {
+      let saved = null;
+      try { saved = await store.get("refs_" + id, { type: "json" }); }
+      catch (e) { console.error("KARAT image: lecture des photos", e.message); }
+      await store.delete("refs_" + id).catch(() => {});
+      if (!saved || saved.email !== email || !Array.isArray(saved.refs)) return await fail("Photos de référence introuvables. Réessayez de les ajouter.");
+      rawRefs = saved.refs;
+    }
     const refs = rawRefs.filter(x => typeof x === "string" && DATA_RE.test(x)).slice(0, 4);
     // Format du générateur : trois formats seulement ; le site recadre ensuite à la taille voulue
     const SIZES = ["1024x1024", "1536x1024", "1024x1536"];
