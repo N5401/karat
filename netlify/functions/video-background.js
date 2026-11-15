@@ -31,11 +31,11 @@ async function downloadFile(uri, apiKey) {
   return Buffer.from(await d.arrayBuffer());
 }
 
-// Appel unique à Gemini Omni : texte seul, ou image d'exemple suivie du texte
-async function generateOmni(prompt, aspectRatio, ref, apiKey) {
-  const input = ref
+// Appel unique à Gemini Omni : texte seul, ou images d'exemple (jusqu'à 4) suivies du texte
+async function generateOmni(prompt, aspectRatio, refs, apiKey) {
+  const input = refs.length
     ? [
-        { type: "image", data: ref.slice(ref.indexOf(",") + 1), mime_type: ref.slice(5, ref.indexOf(";")) },
+        ...refs.map(ref => ({ type: "image", data: ref.slice(ref.indexOf(",") + 1), mime_type: ref.slice(5, ref.indexOf(";")) })),
         { type: "text", text: prompt },
       ]
     : prompt;
@@ -80,8 +80,9 @@ exports.handler = async (event) => {
   try {
     const apiKey = process.env.GOOGLE_API_KEY;
     if (!apiKey) throw new Error("GOOGLE_API_KEY manquante");
-    const ref = ((await store.get(refKey(email, sid), { type: "json" })) || {}).ref || null;
-    const buf = await generateOmni(job.prompt, job.aspectRatio, ref, apiKey);
+    const stored = (await store.get(refKey(email, sid), { type: "json" })) || {};
+    const refs = Array.isArray(stored.refs) ? stored.refs : (stored.ref ? [stored.ref] : []);
+    const buf = await generateOmni(job.prompt, job.aspectRatio, refs, apiKey);
 
     await store.setJSON("file|" + encodeURIComponent(email) + "|" + sid, { b64: buf.toString("base64"), mime: "video/mp4" });
     const lk = "list|" + encodeURIComponent(email);
