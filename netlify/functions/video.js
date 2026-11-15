@@ -6,6 +6,7 @@
 // Le crédit ou le quota n'est décompté qu'une fois la génération acceptée par le fournisseur.
 // video-result.js suit la génération, sauvegarde la vidéo et rend le crédit si elle échoue.
 // Vidéos illimitées : accordées par l'administrateur (page Attributions), sans quota ni crédits.
+//   xai    : XAI_API_KEY, XAI_VIDEO_MODEL (défaut grok-imagine-video-1.5-lite), son inclus sauf VIDEO_AUDIO=false.
 // Variables communes : STRIPE_SECRET_KEY, STRIPE_CREDIT_PLINK, NETLIFY_TOKEN + SITE_ID (si besoin).
 
 const { getStore } = require("@netlify/blobs");
@@ -14,10 +15,11 @@ const { balanceOf, takeCredit } = require("./_shared/credits");
 const { jobKey, refKey, refundOnce } = require("./_shared/videojob");
 const crypto = require("crypto");
 
-const PROVIDER = (process.env.VIDEO_PROVIDER || "google").toLowerCase() === "atlas" ? "atlas" : "google";
+const PROVIDER = ["atlas", "xai"].includes((process.env.VIDEO_PROVIDER || "google").toLowerCase()) ? (process.env.VIDEO_PROVIDER || "").toLowerCase() : "google";
 // Gemini Omni remplace Veo 3.1 (préversions arrêtées le 22 octobre 2026) : le modèle est choisi dans video-background.js.
 // Ce fichier ne lance pas la génération : il enregistre la demande puis appelle video-background.js
 const ATLAS_GENERATE = "https://api.atlascloud.ai/api/v1/model/generateVideo";
+const XAI_GENERATE = "https://api.x.ai/v1/videos/generations";
 // Vidéos incluses par semaine selon l'offre (0 = crédits seulement ; Infinity = illimité).
 // Doit rester identique à VIDEO_WEEKLY dans app.js.
 const VIDEO_WEEKLY = { essentiel: 6, pro: 8, expert: 12, admin: Infinity };
@@ -101,7 +103,7 @@ exports.handler = async (event) => {
   }
   // Limite totale : la requête reste sous la taille maximale d'une fonction Netlify
   if (refs.reduce((s, r) => s + r.length, 0) > 5500000) return json(400, { error: "Les images d'exemple sont trop lourdes au total. Ajoutez des photos plus petites ou moins nombreuses." });
-  if (refs.length && PROVIDER === "atlas") return json(400, { error: "Les images d'exemple ne sont pas prises en charge avec ce fournisseur vidéo." });
+  if (refs.length && PROVIDER !== "google") return json(400, { error: "Les images d'exemple ne sont pas prises en charge avec ce fournisseur vidéo." });
 
   // L'offre est vérifiée sur le serveur, jamais seulement dans le navigateur
   let plan = null;
@@ -149,6 +151,25 @@ exports.handler = async (event) => {
       const d = await r.json().catch(() => ({}));
       if (r.ok && d.data && d.data.id) name = "atlas:" + String(d.data.id);
       else { why = (d && (d.message || d.error)) || ""; console.error("KARAT video: Atlas refuse", r.status, JSON.stringify(d).slice(0, 500)); }
+    } else if (PROVIDER === "xai") {
+      // xAI renvoie un identifiant de demande ; la vidéo est suivie par video-result.js
+      const apiKey = process.env.XAI_API_KEY;
+      if (!apiKey) return json(500, { error: "Génération vidéo non configurée (XAI_API_KEY manquante)" });
+      const r = await fetch(XAI_GENERATE, {
+        method: "POST",
+        headers: { Authorization: "Bearer " + apiKey, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: process.env.XAI_VIDEO_MODEL || "grok-imagine-video-1.5-lite",
+          prompt,
+          duration: durationSeconds,
+          aspect_ratio: aspectRatio,
+          resolution,
+          generate_audio: process.env.VIDEO_AUDIO !== "false",
+        }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (r.ok && d.request_id) name = "xai:" + String(d.request_id);
+      else { why = (d.error && (d.error.message || d.error)) || ""; console.error("KARAT video: xAI refuse", r.status, JSON.stringify(d).slice(0, 500)); }
     } else {
       // Gemini Omni ne renvoie pas d'opération à suivre : l'identifiant est créé ici, la génération suit en arrière-plan
       if (!process.env.GOOGLE_API_KEY) return json(500, { error: "Génération vidéo non configurée (GOOGLE_API_KEY manquante)" });
