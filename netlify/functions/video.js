@@ -90,10 +90,18 @@ exports.handler = async (event) => {
   const resolution = "720p";
   const aspectRatio = RATIOS.includes(data.aspectRatio) ? data.aspectRatio : "16:9";
 
-  // Image d'exemple facultative : la vidéo part de cette image (JPG, PNG ou WebP, 3 Mo au plus)
-  const ref = typeof data.ref === "string" && data.ref.length <= 4000000 && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(data.ref) ? data.ref : null;
-  if (data.ref && !ref) return json(400, { error: "Image d'exemple refusée : utilisez une photo JPG, PNG ou WebP de 3 Mo au plus." });
-  if (ref && PROVIDER === "atlas") return json(400, { error: "L'image d'exemple n'est pas prise en charge avec ce fournisseur vidéo." });
+  // Images d'exemple facultatives (4 au plus) : la vidéo s'appuie sur ces images (JPG, PNG ou WebP, 3 Mo au plus chacune)
+  const DATA_IMG = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/;
+  const rawRefs = Array.isArray(data.refs) ? data.refs : (data.ref ? [data.ref] : []);
+  if (rawRefs.length > 4) return json(400, { error: "Vous pouvez ajouter 4 images d'exemple au maximum." });
+  const refs = [];
+  for (const r of rawRefs) {
+    if (typeof r !== "string" || r.length > 4000000 || !DATA_IMG.test(r)) return json(400, { error: "Image d'exemple refusée : utilisez une photo JPG, PNG ou WebP de 3 Mo au plus." });
+    refs.push(r);
+  }
+  // Limite totale : la requête reste sous la taille maximale d'une fonction Netlify
+  if (refs.reduce((s, r) => s + r.length, 0) > 5500000) return json(400, { error: "Les images d'exemple sont trop lourdes au total. Ajoutez des photos plus petites ou moins nombreuses." });
+  if (refs.length && PROVIDER === "atlas") return json(400, { error: "Les images d'exemple ne sont pas prises en charge avec ce fournisseur vidéo." });
 
   // L'offre est vérifiée sur le serveur, jamais seulement dans le navigateur
   let plan = null;
@@ -164,7 +172,7 @@ exports.handler = async (event) => {
     try {
       const vstore = blobStore("karat-videos");
       await vstore.setJSON(jobKey(email, sid), { prompt, durationSeconds, aspectRatio, resolution, createdAt: Date.now(), source, refunded: false, status: "queued" });
-      if (ref) await vstore.setJSON(refKey(email, sid), { ref });
+      if (refs.length) await vstore.setJSON(refKey(email, sid), { refs });
     } catch (e) {
       console.error("KARAT video: écriture de la demande", e.message);
       return json(503, { error: "Demande impossible à enregistrer, réessayez. Aucun crédit n'a été débité." });
