@@ -1,6 +1,6 @@
 // KARAT — suivi d'une vidéo (offre Expert), chez Google ou chez Atlas. Quand elle est prête, la fonction
 // la télécharge et la range dans Netlify Blobs, dans la liste de l'abonné.
-// Identifiants : « models/…/operations/… » = Google Veo ; « omni:… » = Gemini Omni (suivi dans la demande) ; « atlas:… » = Atlas.
+// Identifiants : « models/…/operations/… » = Google Veo ; « omni:… » = Gemini Omni (suivi dans la demande) ; « atlas:… » = Atlas ; « xai:… » = xAI.
 // Variables : GOOGLE_API_KEY et/ou ATLAS_API_KEY, STRIPE_SECRET_KEY (offre).
 
 const { getStore } = require("@netlify/blobs");
@@ -9,10 +9,12 @@ const { refundOnce } = require("./_shared/videojob");
 
 const GOOGLE_BASE = "https://generativelanguage.googleapis.com/v1beta/";
 const ATLAS_PREDICTION = "https://api.atlascloud.ai/api/v1/model/prediction/";
+const XAI_VIDEO = "https://api.x.ai/v1/videos/";
 const ALLOWED = ["essentiel", "pro", "expert", "admin"];
 const GOOGLE_OP = /^models\/[\w.-]+\/operations\/[\w.-]+$/;
 const ATLAS_ID = /^atlas:[\w-]{4,120}$/;
 const OMNI_ID = /^omni:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const XAI_ID = /^xai:[\w-]{4,120}$/;
 
 const blobStore = (name) => (process.env.NETLIFY_TOKEN && process.env.SITE_ID)
   ? getStore({ name, siteID: process.env.SITE_ID, token: process.env.NETLIFY_TOKEN })
@@ -50,6 +52,19 @@ async function checkAtlas(name, apiKey) {
   return { state: "done", uri, headers: {} };
 }
 
+// Lit l'état d'une demande xAI : pending, done (avec video.url) ou failed
+async function checkXai(name, apiKey) {
+  const r = await fetch(XAI_VIDEO + encodeURIComponent(name.slice(4)), { headers: { Authorization: "Bearer " + apiKey } });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error("xAI " + r.status);
+  if (d.status === "failed") return { state: "failed", error: (d.error && d.error.message) || "La génération a échoué" };
+  if (d.status !== "done") return { state: "processing" };
+  if (d.video && d.video.respect_moderation === false) return { state: "failed", error: "Vidéo refusée par les règles de sécurité." };
+  const uri = d.video && d.video.url;
+  if (!uri) return { state: "failed", error: "Aucune vidéo renvoyée par xAI." };
+  return { state: "done", uri, headers: {} };
+}
+
 exports.handler = async (event) => {
   if (event.httpMethod !== "GET") return json(405, { error: "Méthode non autorisée" });
 
@@ -57,7 +72,8 @@ exports.handler = async (event) => {
   const name = String(q.id || "");
   const isAtlas = ATLAS_ID.test(name);
   const isOmni = OMNI_ID.test(name);
-  if (!isAtlas && !isOmni && !GOOGLE_OP.test(name)) return json(400, { error: "Identifiant invalide" });
+  const isXai = XAI_ID.test(name);
+  if (!isAtlas && !isOmni && !isXai && !GOOGLE_OP.test(name)) return json(400, { error: "Identifiant invalide" });
 
   const email = cleanEmail(q.email);
   let plan = null;
@@ -92,7 +108,11 @@ exports.handler = async (event) => {
   // État chez le fournisseur
   let st;
   try {
-    if (isAtlas) {
+    if (isXai) {
+      const apiKey = process.env.XAI_API_KEY;
+      if (!apiKey) return json(500, { error: "Génération vidéo non configurée (XAI_API_KEY manquante)" });
+      st = await checkXai(name, apiKey);
+    } else if (isAtlas) {
       const apiKey = process.env.ATLAS_API_KEY;
       if (!apiKey) return json(500, { error: "Génération vidéo non configurée (ATLAS_API_KEY manquante)" });
       st = await checkAtlas(name, apiKey);
@@ -106,7 +126,16 @@ exports.handler = async (event) => {
     return json(502, { error: "Impossible de lire l'état de la vidéo" });
   }
 
-  if (st.state === "processing") return json(200, { status: "processing" });
+  if (st.state === "processing") {
+    // Au-delà de 20 minutes, la génération est considérée comme perdue : le crédit est rendu
+    let jb = null;
+    try { jb = await store.get("job|" + encodeURIComponent(email) + "|" + id, { type: "json" }); } catch (e) { console.error("KARAT video-result: lecture de la demande", e.message); }
+    if (jb && Date.now() - (jb.createdAt || 0) > 20 * 60 * 1000) {
+      await refundOnce(email, id);
+      return json(200, { status: "failed", error: "La génération a expiré. Aucun crédit n'a été débité." });
+    }
+    return json(200, { status: "processing" });
+  }
   if (st.state === "failed") { await refundOnce(email, id); return json(200, { status: "failed", error: st.error }); }
 
   // Téléchargement du fichier, puis sauvegarde sur le site
