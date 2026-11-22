@@ -2121,6 +2121,35 @@ function vLanding(){
       <article class="kh-card kh-step"><span class="kh-num">03</span><h3>Retrouvez tout au même endroit</h3><p>Vos conversations, vos images et vos vidéos restent classées dans votre espace.</p></article>
     </div>
   </div></section>`;
+  const avantages = `<section class="kh-sec kh-sec-tight" id="avantages"><div class="lp-wrap">
+    <div class="kh-kicker">Pourquoi KARAT</div>
+    <h2 class="kh-h2">Simple, clair, <em>à votre main.</em></h2>
+    <div class="kh-feat">
+      <article class="kh-card"><span class="kh-ico">${ic("sparkle")}</span><h3>Simple à utiliser</h3><p>Pas de formation. Vous décrivez ce que vous voulez, KARAT s'occupe du reste.</p></article>
+      <article class="kh-card"><span class="kh-ico">${ic("lock")}</span><h3>Vos créations restent à vous</h3><p>Textes, images et vidéos sont classés dans votre espace, à votre adresse e-mail.</p></article>
+      <article class="kh-card"><span class="kh-ico">${ic("card")}</span><h3>Des offres adaptées</h3><p>Essentiel, Pro ou Expert, selon vos besoins et votre rythme.</p></article>
+    </div>
+  </div></section>`;
+
+  const exemples = `<section class="kh-sec kh-sec-tight" id="exemples"><div class="lp-wrap">
+    <div class="kh-kicker">Exemples</div>
+    <h2 class="kh-h2">Quelques demandes, <em>pour commencer.</em></h2>
+    <div class="kh-feat">
+      <article class="kh-card"><span class="kh-ico">${ic("edit")}</span><h3>Une annonce</h3><p>« Annonce pour un T2 lumineux, proche des transports. »</p><p class="muted small">Résultat : un texte complet, prêt à publier.</p></article>
+      <article class="kh-card"><span class="kh-ico">${ic("image")}</span><h3>Un visuel</h3><p>« Affiche pour une boulangerie artisanale, ambiance chaleureuse. »</p><p class="muted small">Résultat : une image prête à partager.</p></article>
+      <article class="kh-card"><span class="kh-ico">${ic("film")}</span><h3>Un court clip</h3><p>« Plan fixe d'une ville la nuit, lumière chaude, circulation douce. »</p><p class="muted small">Résultat : une vidéo de 8 secondes en 720p.</p></article>
+    </div>
+  </div></section>`;
+
+  const conseils = `<section class="kh-sec kh-sec-tight" id="conseils"><div class="lp-wrap">
+    <div class="kh-kicker">Conseils pratiques</div>
+    <h2 class="kh-h2">Trois réflexes <em>pour mieux réussir.</em></h2>
+    <div class="kh-feat">
+      <article class="kh-card"><span class="kh-ico">${ic("check")}</span><h3>Soyez précis</h3><p>Indiquez le sujet, le ton et le format voulu. Un message clair donne un meilleur résultat.</p></article>
+      <article class="kh-card"><span class="kh-ico">${ic("image")}</span><h3>Choisissez une bonne photo</h3><p>Pour une vidéo, une image nette, bien éclairée, avec le sujet bien visible.</p></article>
+      <article class="kh-card"><span class="kh-ico">${ic("film")}</span><h3>Gardez un mouvement simple</h3><p>Un regard, un geste ou une caméra qui avance lentement donnent un rendu plus naturel.</p></article>
+    </div>
+  </div></section>`;
   const idea = `<section class="kh-sec kh-sec-tight" id="demo"><div class="lp-wrap"><div class="kh-video">
     <div class="kh-kicker">Démonstration</div>
     <h2 class="kh-h2">Une vidéo, de l’idée au clip.</h2>
@@ -2143,9 +2172,12 @@ function vLanding(){
   ${pubHeader("/")}
   ${hero}
   ${tiles}
+  ${avantages}
   ${features}
   ${steps}
+  ${exemples}
   ${idea}
+  ${conseils}
   ${avisSection()}
   ${offres}
 
