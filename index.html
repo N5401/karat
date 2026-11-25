@@ -1979,6 +1979,41 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opac
 .kh-band-chat .kh-band-track{font-size:clamp(18px,2vw,24px)}
 .welcome.kh-welcome .kh-band{max-width:none}
 
+/* ===== Indicateur de recherche animé : requête, icône vivante, barre qui balaie ===== */
+.srch-live{position:relative;border-color:rgba(90,122,94,.35);background:#e3ebdf}
+.srch-live::after{content:"";position:absolute;inset:-6px;border-radius:50%;border:1.5px solid rgba(90,122,94,.45);animation:srchRing 1.8s ease-out infinite;pointer-events:none}
+@keyframes srchRing{0%{transform:scale(.7);opacity:.9}100%{transform:scale(1.5);opacity:0}}
+.srch-step.on>span:nth-child(2){background:linear-gradient(90deg,#2e3a33 0%,#2e3a33 40%,#7f9c80 50%,#2e3a33 60%,#2e3a33 100%);background-size:250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:srchShimmer 2.4s linear infinite}
+@keyframes srchShimmer{from{background-position:100% 0}to{background-position:-100% 0}}
+.srch-q{margin:2px 0 0;display:flex;align-items:flex-start;gap:8px;font-size:13.5px;line-height:1.5;color:#4d5a52;overflow-wrap:anywhere}
+.srch-q-ico{width:16px;height:16px;flex:0 0 16px;margin-top:2px;color:#5a7a5e}
+.srch-q-ico svg{width:16px;height:16px}
+.srch-bar{position:relative;height:3px;border-radius:3px;background:rgba(46,58,51,.08);overflow:hidden}
+.srch-bar i{position:absolute;top:0;bottom:0;width:38%;border-radius:3px;background:linear-gradient(90deg,#9bb59a,#e8b4a6);animation:srchBar 1.6s ease-in-out infinite}
+@keyframes srchBar{0%{left:-40%}100%{left:102%}}
+@media (prefers-reduced-motion:reduce){
+  .srch-live::after,.srch-step.on>span:nth-child(2),.srch-bar i{animation:none}
+  .srch-swap .srch-spin,.srch-swap .srch-check,.srch-later,.think-lines span{animation:none !important}
+  .srch-swap .srch-check{opacity:1}
+  .srch-later{opacity:1}
+}
+
+/* ===== Réflexion animée pour chaque réponse : étapes qui s'enchaînent ===== */
+.srch-swap{position:relative}
+.srch-swap .srch-spin{animation:srchSpin .9s linear infinite,swapOut .3s ease var(--d,0s) forwards}
+.srch-swap .srch-check{position:absolute;left:50%;top:50%;width:12px;height:12px;margin:-6px 0 0 -6px;fill:none;stroke:#fffdf8;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;opacity:0;animation:swapIn .35s ease var(--d,0s) forwards}
+.think-a .srch-ico{background:#5a7a5e;border-color:transparent}
+.think-a .srch-spin{border-color:rgba(255,253,248,.3);border-top-color:#fffdf8}
+@keyframes swapIn{to{opacity:1}}
+@keyframes swapOut{to{opacity:0}}
+.srch-later{opacity:0;animation:stepIn .55s cubic-bezier(.2,.7,.2,1) var(--d,0s) forwards}
+@keyframes stepIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.think-lines{display:grid;gap:9px;margin-top:2px}
+.think-lines span{display:block;height:10px;border-radius:6px;background:linear-gradient(90deg,rgba(46,58,51,.06),rgba(90,122,94,.18),rgba(46,58,51,.06));background-size:200% 100%;animation:srchShim 1.6s linear infinite}
+.think-lines span:nth-child(2){width:86%}
+.think-lines span:nth-child(3){width:58%}
+.msg.ai .bubble.think{min-width:min(300px,100%)}
+
 </style>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 
@@ -3285,11 +3320,25 @@ function composerHTML(mode, welcome){
     <div class="hint"><span>KARAT peut se tromper. Vérifiez les informations importantes.</span><span id="usage-hint" class="usage-hint"></span></div>
   </form>`;
 }
-// Indicateur pendant une recherche web : étapes visibles, sans source inventée (les sources arrivent avec la réponse)
-function searchingHTML(){
+// Indicateur pendant chaque réponse : réflexion animée, puis rédaction ou recherche web selon la demande.
+// Les étapes s'enchaînent d'elles-mêmes (animation) ; les sources, elles, n'apparaissent qu'avec la réponse réelle.
+function statusHTML(searching, query){
+  const check = `<svg class="srch-check" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>`;
+  const reflexion = `<div class="srch-step on think-a" style="--d:${searching ? "1.1s" : "2.2s"}"><span class="srch-ico srch-swap"><span class="srch-spin" aria-hidden="true"></span>${check}</span><span>Réflexion sur votre demande</span></div>`;
+  if (!searching){
+    return `<div class="msg ai">${AI_AVATAR}<div class="bubble srch think" role="status" aria-live="polite">
+    ${reflexion}
+    <div class="srch-step on srch-later" style="--d:2.2s"><span class="srch-ico srch-live"><span class="srch-spin" aria-hidden="true"></span></span><span>Rédaction de la réponse</span><span class="srch-dots" aria-hidden="true"><i></i><i></i><i></i></span></div>
+    <div class="think-lines" aria-hidden="true"><span></span><span></span><span></span></div>
+  </div></div>`;
+  }
+  const q = String(query || "").replace(/\s+/g, " ").trim().slice(0, 140);
+  const qLine = q ? `<p class="srch-q"><span class="srch-q-ico" aria-hidden="true">${ic("search")}</span><span>« ${esc(q)} »</span></p>` : "";
   return `<div class="msg ai">${AI_AVATAR}<div class="bubble srch" role="status" aria-live="polite">
-    <div class="srch-step done"><span class="srch-ico">${ic("check")}</span><span>Réflexion sur votre demande</span></div>
-    <div class="srch-step on"><span class="srch-ico"><span class="srch-spin" aria-hidden="true"></span></span><span>Recherche sur le web</span><span class="srch-dots" aria-hidden="true"><i></i><i></i><i></i></span></div>
+    ${reflexion}
+    <div class="srch-step on srch-later" style="--d:1.1s"><span class="srch-ico srch-live"><span class="srch-spin" aria-hidden="true"></span></span><span>Recherche sur le web</span><span class="srch-dots" aria-hidden="true"><i></i><i></i><i></i></span></div>
+    ${qLine}
+    <div class="srch-bar" aria-hidden="true"><i></i></div>
     <div class="srch-chips" aria-hidden="true"><span class="srch-ph"></span><span class="srch-ph"></span><span class="srch-ph"></span></div>
     <p class="srch-note">Les sources apparaîtront ici dès que la réponse est prête.</p>
   </div></div>`;
@@ -3351,9 +3400,7 @@ function vChat(m){
   if (id && !conv){ toast("Conversation introuvable", true); go("/app/chat"); return ""; }
   ui.convId = conv ? conv.id : null;
   const mode = conv ? conv.mode : ui.mode;
-  const typing = ui.typing
-    ? (ui.searching ? searchingHTML() : `<div class="msg ai">${AI_AVATAR}<div class="bubble"><span class="typing"><i></i><i></i><i></i></span></div></div>`)
-    : "";
+  const typing = ui.typing ? statusHTML(!!ui.searching, ui.searchText) : "";
   const showConv = !!(conv || ui.typing);
   const body = showConv ? (conv ? conv.messages.map(msgHTML).join("") : "") + typing : welcomeHTML(mode);
   const chev = `<svg class="chat-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>`;
@@ -3403,6 +3450,12 @@ async function askAI(conv, ctx, images, pdfs, names, id, search){
   const extra = ctx ? "\n\nLes fichiers joints ont bien été lus." : "";
   return `[Démo · ${MODES[conv.mode].name}] ${MODES[conv.mode].desc}\n\nVotre message : « ${last.slice(0, 160)}${last.length > 160 ? "…" : ""} »${extra}\n\nBranchez AI_ENDPOINT dans la configuration pour activer la vraie IA.`;
 }
+// Reconnaît une demande de recherche : préfixe « Recherche sur le web : » ou formulation claire (« recherche moi… », « cherche… », « sur internet », « actualités »)
+function wantsWebSearch(t){
+  const s = String(t || "").trim();
+  if (/^\s*recherche sur le web\s*:/i.test(s)) return true;
+  return /\b(recherch\w*|cherch\w*|sur (le )?(web|internet)|sur google|actualit\w*|derni[eè]res? (nouvelles|infos|actualit\w*))\b/i.test(s);
+}
 async function sendMessage(override){
   if (ui.typing) return;
   const input = $("#input");
@@ -3412,8 +3465,8 @@ async function sendMessage(override){
   if (!typed && !imgs.length && !docs.length) return;
   if (!hasAccess()) return go("/tarifs");
   const text = typed || "Analyse chaque fichier joint et dis-moi l'essentiel de chacun.";
-  // Recherche web : seulement si la personne la demande (action « Rechercher sur le Web » ou préfixe)
-  const useSearch = /^\s*recherche sur le web\s*:/i.test(text);
+  // Recherche web : seulement si la personne la demande (action « Rechercher sur le Web », préfixe ou verbe de recherche)
+  const useSearch = wantsWebSearch(text);
 
   // Contexte texte : 30 000 caractères par fichier, 150 000 au total
   let budget = 150000;
@@ -3447,6 +3500,7 @@ async function sendMessage(override){
   ui.pendingFiles = [];
   ui.typing = true;
   ui.searching = useSearch;
+  ui.searchText = useSearch ? text : "";
   saveChats();
   go(`/app/chat/${conv.id}`);
   if (location.hash === "#/app/chat/" + conv.id) render();
